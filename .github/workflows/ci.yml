@@ -4,21 +4,21 @@ on:
     branches: [main, develop]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   dotnet:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
-      - name: Test solution when present
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t slns < <(find . -maxdepth 3 \( -name '*.sln' -o -name '*.slnx' \) -print)
-          if [ "${#slns[@]}" -eq 0 ]; then
-            echo "No .NET solution yet: bootstrap documentation only"
-            exit 0
-          fi
-          dotnet test "${slns[0]}" --configuration Release
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore IronDominion.sln
+      - name: Build
+        run: dotnet build IronDominion.sln --configuration Release --no-restore
+      - name: Test
+        run: dotnet test IronDominion.sln --configuration Release --no-build

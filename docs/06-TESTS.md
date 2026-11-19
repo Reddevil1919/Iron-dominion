@@ -41,4 +41,4 @@ Serialize initial config version, random seed and ordered commands; use fake det
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.
 
 ## CI gates
-`dotnet restore`, `dotnet build --configuration Release`, `dotnet test --configuration Release`, asset-license audit, optional Godot headless import/export job with pinned version. No fabricated pass reports: attach actual CI output.
+GitHub Actions runs `dotnet restore`, `dotnet build --configuration Release` and `dotnet test --configuration Release`. A second job imports the project and launches the main scene headlessly with the pinned Godot .NET editor. Asset licenses are reviewed with the PR. See [Development setup](08-SETUP.md) for the Windows export smoke test.

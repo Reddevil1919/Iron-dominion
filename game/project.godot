@@ -1,0 +1,22 @@
+config_version=5
+
+[application]
+
+config/name="Iron Dominion"
+run/main_scene="res://Scenes/Battlefield.tscn"
+config/features=PackedStringArray("4.6", "C#", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[dotnet]
+
+project/assembly_name="IronDominion.Game"
+project/solution_directory=".."
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
