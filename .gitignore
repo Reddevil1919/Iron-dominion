@@ -1,0 +1,18 @@
+# Godot 4
+.godot/
+.import/
+# .NET
+**/bin/
+**/obj/
+.vs/
+.idea/
+.vscode/
+# Exports
+build/
+dist/
+*.pck
+*.exe
+# Local secrets
+.env
+.env.*
+!.env.example
