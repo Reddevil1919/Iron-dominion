@@ -1,0 +1,19 @@
+name: Godot Validation
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate project exists
+        run: |
+          if [ ! -f game/project.godot ]; then
+            echo "Godot project not created yet; validation deferred"
+            exit 0
+          fi
+          echo "Godot project detected. Configure a pinned Godot .NET binary in the next implementation PR."
+          echo "This step does not validate scenes yet."
