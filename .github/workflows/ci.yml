@@ -1,0 +1,24 @@
+name: Iron Dominion CI
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test solution when present
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t slns < <(find . -maxdepth 3 \( -name '*.sln' -o -name '*.slnx' \) -print)
+          if [ "${#slns[@]}" -eq 0 ]; then
+            echo "No .NET solution yet: bootstrap documentation only"
+            exit 0
+          fi
+          dotnet test "${slns[0]}" --configuration Release
