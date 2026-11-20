@@ -92,6 +92,27 @@ and remaining training time. A `UnitSpawned` event carries the new unit's
 monotonic ID and starting position. On that tick the snapshot includes its
 position, health and owner, and it can receive orders on subsequent ticks.
 
+## RTS-009 economy and sector capture
+
+After movement and damage, each sector checks for living infantry within
+its configured radius, including the boundary. Opposing infantry freeze
+progress while they are both present. If only the rival remains, previous
+progress decreases by one tick at a time before that player can start
+capturing. A sector without infantry resets unfinished progress. Ownership
+and income stay with the current owner until the full capture completes.
+
+Each living HQ and owned sector contributes its configured income rate on
+every tick, including a sector's capture tick. Dividing accumulated income
+by the tick rate credits whole units and carries the remainder forward per
+player. Orders use the balance at command processing time, before that
+tick's income. The wallet caps at the maximum C# `int` value to keep
+credits nonnegative for large configurations.
+
+`IReadOnlyWorld.Sectors` exposes immutable sector states in entity ID order.
+`IncomePerSecond` reports the current rate for a player. `SectorCaptured`
+reports the previous and new owners. `CreditsChanged` reports each changed
+player's net balance change for the tick in player ID order.
+
 ## Godot bridge pseudocode
 ```csharp
 // In a Godot Node: call from _PhysicsProcess or an accumulator.

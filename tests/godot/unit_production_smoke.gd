@@ -40,20 +40,21 @@ func _check_infantry_queue() -> void:
 	var exit := current_scene.get_node("BlueBarracks/ProductionExit") as Marker3D
 	await process_frame
 
-	assert(credits.text == "500 credits", "The player sees their starting balance")
+	assert(_balance(credits) >= 500, "The player sees their starting balance")
 	assert(not infantry.disabled and not tank.disabled, "Both units are initially affordable")
 	await _click(infantry.get_global_rect().get_center(), MOUSE_BUTTON_LEFT)
 	await _click(infantry.get_global_rect().get_center(), MOUSE_BUTTON_LEFT)
-	assert(credits.text == "300 credits", "Both clicks immediately reserve their cost")
+	var reserved_balance := _balance(credits)
+	assert(reserved_balance >= 300 and reserved_balance < 305, "Both clicks immediately reserve their cost")
 	assert(tank.disabled, "The tank becomes unaffordable")
 	assert(queue.text.begins_with("2 queued"), "Both squads enter the same FIFO queue")
 	assert(units.get_child_count() == 6, "Nothing spawns before training")
 
 	for tick in range(160):
 		await physics_frame
-		if units.has_node("Unit11"):
+		if units.has_node("Unit14"):
 			break
-	var first := units.get_node("Unit11") as Node3D
+	var first := units.get_node("Unit14") as Node3D
 	assert(first.global_position.is_equal_approx(exit.global_position), "The squad spawns at the barracks exit")
 
 	for tick in range(165):
@@ -69,13 +70,14 @@ func _check_infantry_queue() -> void:
 	await _click(camera.unproject_position(destination), MOUSE_BUTTON_RIGHT)
 	for tick in range(110):
 		await physics_frame
-		if units.has_node("Unit12"):
+		if units.has_node("Unit15"):
 			break
 	assert(first.global_position.distance_to(exit.global_position) >= 9.5, "The trained squad obeys move orders")
-	var second := units.get_node("Unit12") as Node3D
+	var second := units.get_node("Unit15") as Node3D
 	assert(second.global_position.is_equal_approx(exit.global_position), "The next squad spawns after the exit clears")
 	assert(units.get_child_count() == 8, "Each training order spawns exactly one squad")
-	assert(queue.text == "Idle" and credits.text == "300 credits", "Spawning empties the queue without charging again")
+	assert(queue.text == "Idle", "Spawning empties the queue")
+	assert(_balance(credits) > reserved_balance, "The HQ keeps paying without a second training charge")
 
 
 func _check_tank_production() -> void:
@@ -88,16 +90,21 @@ func _check_tank_production() -> void:
 	await process_frame
 
 	await _click(tank.get_global_rect().get_center(), MOUSE_BUTTON_LEFT)
-	assert(credits.text == "0 credits", "The HQ reserves the entire tank cost")
+	assert(_balance(credits) < 5, "The HQ reserves the entire tank cost")
 	assert(queue.text.begins_with("1 queued"), "The tank enters the HQ queue")
 	assert(units.get_child_count() == 6, "The tank trains before spawning")
 	for tick in range(400):
 		await physics_frame
-		if units.has_node("Unit11"):
+		if units.has_node("Unit14"):
 			break
-	var trained := units.get_node("Unit11") as Node3D
+	var trained := units.get_node("Unit14") as Node3D
 	assert(trained.global_position.is_equal_approx(exit.global_position), "The tank spawns at the HQ exit")
-	assert(queue.text == "Idle" and credits.text == "0 credits", "The HQ order completes without charging again")
+	assert(queue.text == "Idle", "The HQ order completes")
+	assert(_balance(credits) >= 100, "The HQ pays while the tank trains without charging again")
+
+
+func _balance(label: Label) -> int:
+	return int(label.text.get_slice(" ", 0))
 
 
 func _click(point: Vector2, button: MouseButton) -> void:

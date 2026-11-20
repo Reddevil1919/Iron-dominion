@@ -146,6 +146,31 @@ The graphical cloud driver reported that changing VSync is unsupported.
 The graphical test ran on Linux. Windows runtime verification remains
 under RTS-015.
 
+## RTS-009 passive income and sector capture
+
+A living HQ earns 5 credits per second and each owned sector adds 2.
+Income accrues on simulation ticks and carries fractional credits forward.
+The production panel shows the current balance and combined rate.
+
+The battlefield has three initially neutral sectors. Living infantry captures
+within a 6 m radius after 200 uncontested ticks. Opposing infantry freeze
+progress. When only the rival remains, it removes prior progress one tick at
+a time before it can capture. An empty sector resets unfinished progress.
+Ownership and income transfer at completion. Colored rings and the sector
+panel show ownership, progress and contested states.
+
+### Verification on 21 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` and `dotnet build IronDominion.sln --configuration Release --no-restore` | Restore and Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 91 xUnit cases passed. Seven new cases cover BR-011 through BR-013 and T-003 through T-005, including an opponent contesting on the last tick and income transferring on recapture. |
+| `scripts/validate-godot.sh` | Debug build, import, startup and all six smoke checks passed. The new check sends infantry to sector A, observes its progress and verifies the map marker and the balance after income rises from 5 to 7 credits per second. |
+| Graphical Linux smoke test | Sent a blue squad into sector A and observed the blue marker, ownership change and the displayed rate rising to 7 credits per second. |
+
+The graphical check ran in the Linux cloud environment. Windows runtime
+verification remains under RTS-015.
+
 ## RTS-001 bootstrap
 
 RTS-001 adds the Godot 4.6.3 .NET project, the .NET SDK 10.0.404 solution and
@@ -188,5 +213,4 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-009 adds passive income and sector capture. Victory and defeat remain
-under RTS-013.
+RTS-010 adds static infantry cover. Victory and defeat remain under RTS-013.
