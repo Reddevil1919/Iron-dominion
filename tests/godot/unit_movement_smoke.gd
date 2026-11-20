@@ -13,6 +13,7 @@ func _run() -> void:
 	await scene_changed
 	root.size = Vector2i(1280, 720)
 	var region := current_scene.get_node("NavigationRegion") as NavigationRegion3D
+	NavigationServer3D.map_set_use_async_iterations(region.get_navigation_map(), false)
 	for tick in range(10):
 		await physics_frame
 		if NavigationServer3D.map_get_iteration_id(region.get_navigation_map()) > 0:

@@ -44,6 +44,18 @@ internal sealed class UnitMovement(
         return Accepted;
     }
 
+    public void Stop(IEnumerable<EntityId> ids)
+    {
+        foreach (var id in ids)
+            _routes.Remove(id);
+    }
+
+    public void Remove(EntityId id)
+    {
+        _routes.Remove(id);
+        Positions = Positions.Remove(id);
+    }
+
     public void Advance()
     {
         if (_routes.Count == 0)

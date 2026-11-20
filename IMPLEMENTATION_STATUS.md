@@ -99,6 +99,27 @@ use 9 m spacing. Navigation currently accounts for the static map.
 | `scripts/validate-godot.sh` | Headless import, scene launch, camera, selection and movement passed. A right-click sent the blue tank around the roadblock at its configured speed, while blocked targets left it stationary. |
 | Graphical Linux smoke test | Selected the blue tank in the game window and sent it to ground on the opposite side of the central block. Observed the tank arrive at the clicked destination. |
 
+## RTS-007 combat, health and destruction
+
+Right-click an orange unit or HQ to focus fire. The simulation checks
+ownership, visibility, weapon range and cooldowns. It resolves each tick's
+damage simultaneously in entity ID order and reports destruction once.
+Godot shows health bars, removes destroyed units and leaves HQ ruins as
+solid terrain obstacles. The roadblock and HQs block fire.
+
+The current visibility rule uses line of sight from living allies. Move
+units within range before giving an attack order. Cover and match outcomes
+are tracked in RTS-010 and RTS-013.
+
+### Verification on 20 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 76 xUnit cases passed, including 11 new cases for cooldown, range, sight, targeting, simultaneous damage and destroyed actors. |
+| `scripts/validate-godot.sh` | Import, camera, selection, movement and combat checks passed. The focused attack destroyed the clicked squad while the closer tank survived. The navigation checks use synchronous map initialization in the test harness. |
+| Graphical Linux smoke test | Observed both tanks lose health, then disappear with their bars during the exchange. |
+
 ## RTS-001 bootstrap
 
 RTS-001 adds the Godot 4.6.3 .NET project, the .NET SDK 10.0.404 solution and
@@ -141,5 +162,5 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-007 adds combat, health changes and entity destruction. A full match
-remains a later milestone.
+RTS-008 adds production orders and the training queue. Victory and defeat
+remain under RTS-013.
