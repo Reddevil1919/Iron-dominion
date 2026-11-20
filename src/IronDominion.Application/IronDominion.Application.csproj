@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../IronDominion.Domain/IronDominion.Domain.csproj" />
+    <ProjectReference Include="../IronDominion.Simulation/IronDominion.Simulation.csproj" />
+  </ItemGroup>
+</Project>

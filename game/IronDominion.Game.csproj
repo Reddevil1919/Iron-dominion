@@ -1,0 +1,10 @@
+<Project Sdk="Godot.NET.Sdk/4.6.3">
+  <PropertyGroup>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../src/IronDominion.Application/IronDominion.Application.csproj" />
+  </ItemGroup>
+</Project>

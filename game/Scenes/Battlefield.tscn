@@ -1,0 +1,87 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" uid="uid://dv02nqkqukcxa" path="res://Scripts/Battlefield.cs" id="1_battlefield"]
+
+[sub_resource type="Environment" id="Environment_battlefield"]
+background_mode = 1
+background_color = Color(0.12, 0.17, 0.22, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.88, 0.93, 1, 1)
+ambient_light_energy = 0.6
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(128, 0.5, 128)
+
+[sub_resource type="StandardMaterial3D" id="Material_ground"]
+albedo_color = Color(0.32, 0.39, 0.28, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+material = SubResource("Material_ground")
+size = Vector3(128, 0.5, 128)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hq"]
+size = Vector3(11, 4, 9)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hq_roof"]
+size = Vector3(7, 2, 5)
+
+[sub_resource type="StandardMaterial3D" id="Material_blue"]
+albedo_color = Color(0.16, 0.43, 0.76, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_orange"]
+albedo_color = Color(0.8, 0.34, 0.16, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_roof"]
+albedo_color = Color(0.22, 0.25, 0.28, 1)
+
+[node name="Battlefield" type="Node3D"]
+script = ExtResource("1_battlefield")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_battlefield")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.93, -0.56, 0)
+shadow_enabled = true
+
+[node name="OverviewCamera" type="Camera3D" parent="."]
+position = Vector3(96, 126.5, 96)
+rotation = Vector3(-0.75, 0.785398, 0)
+projection = 1
+current = true
+size = 136.0
+
+[node name="Terrain" type="StaticBody3D" parent="."]
+position = Vector3(0, -0.25, 0)
+
+[node name="GroundMesh" type="MeshInstance3D" parent="Terrain"]
+mesh = SubResource("BoxMesh_ground")
+
+[node name="GroundCollision" type="CollisionShape3D" parent="Terrain"]
+shape = SubResource("BoxShape3D_ground")
+
+[node name="BlueHQ" type="Node3D" parent="."]
+position = Vector3(-32, 0, 24)
+
+[node name="Base" type="MeshInstance3D" parent="BlueHQ"]
+position = Vector3(0, 2, 0)
+material_override = SubResource("Material_blue")
+mesh = SubResource("BoxMesh_hq")
+
+[node name="Roof" type="MeshInstance3D" parent="BlueHQ"]
+position = Vector3(0, 5, 0)
+material_override = SubResource("Material_roof")
+mesh = SubResource("BoxMesh_hq_roof")
+
+[node name="OrangeHQ" type="Node3D" parent="."]
+position = Vector3(32, 0, -24)
+
+[node name="Base" type="MeshInstance3D" parent="OrangeHQ"]
+position = Vector3(0, 2, 0)
+material_override = SubResource("Material_orange")
+mesh = SubResource("BoxMesh_hq")
+
+[node name="Roof" type="MeshInstance3D" parent="OrangeHQ"]
+position = Vector3(0, 5, 0)
+material_override = SubResource("Material_roof")
+mesh = SubResource("BoxMesh_hq_roof")

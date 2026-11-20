@@ -4,16 +4,21 @@ on:
     branches: [main, develop]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Validate project exists
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Install pinned Godot .NET editor
         run: |
-          if [ ! -f game/project.godot ]; then
-            echo "Godot project not created yet; validation deferred"
-            exit 0
-          fi
-          echo "Godot project detected. Configure a pinned Godot .NET binary in the next implementation PR."
-          echo "This step does not validate scenes yet."
+          godot_bin=$(scripts/install-godot-linux.sh "$RUNNER_TEMP/godot")
+          printf 'GODOT_BIN=%s\n' "$godot_bin" >> "$GITHUB_ENV"
+      - name: Import and launch the project headlessly
+        run: scripts/validate-godot.sh
