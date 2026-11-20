@@ -68,6 +68,9 @@ The Godot script builds the Debug game assembly, imports the project with
 exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
 
+The script also runs the headless camera smoke test against the main scene.
+It sends keyboard and wheel events and checks the terrain and zoom limits.
+
 For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
 then import `game/project.godot` in the project manager and run the main scene.
@@ -100,8 +103,11 @@ Windows. RTS-015 tracks Windows playtesting and profiling.
 
 ## First playable milestone
 
-RTS-001 runs a static 128 m × 128 m battlefield with two placeholder HQs and a
-20 Hz simulation clock. RTS-002 and RTS-003 extend the domain contracts and
-implement command scheduling. The first playable milestone adds selection and
-movement around an obstacle, a target with HP, an attack order and a victory
-condition.
+The prototype runs a 128 m × 128 m battlefield with two placeholder HQs and a
+20 Hz simulation clock. Use the arrow keys, the physical WASD positions
+(ZQSD on AZERTY), or the 24 pixels inside the window edges to pan. The wheel
+zooms between the 32 m close view and the 136 m overview while keeping
+the same ground focus. The terrain bounds limit how far the focus can move.
+
+The first playable milestone adds selection and movement around an obstacle,
+a target with HP, an attack order and a victory condition.

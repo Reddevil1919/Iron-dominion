@@ -1,6 +1,7 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" uid="uid://dv02nqkqukcxa" path="res://Scripts/Battlefield.cs" id="1_battlefield"]
+[ext_resource type="Script" uid="uid://2vc3lmq0l1g8" path="res://Scripts/RtsCamera.cs" id="2_camera"]
 
 [sub_resource type="Environment" id="Environment_battlefield"]
 background_mode = 1
@@ -44,7 +45,12 @@ environment = SubResource("Environment_battlefield")
 rotation = Vector3(-0.93, -0.56, 0)
 shadow_enabled = true
 
-[node name="OverviewCamera" type="Camera3D" parent="."]
+[node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("_view", "_terrain")]
+script = ExtResource("2_camera")
+_view = NodePath("OverviewCamera")
+_terrain = NodePath("../Terrain/GroundCollision")
+
+[node name="OverviewCamera" type="Camera3D" parent="CameraRig"]
 position = Vector3(96, 126.5, 96)
 rotation = Vector3(-0.75, 0.785398, 0)
 projection = 1
