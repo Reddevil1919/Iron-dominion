@@ -118,6 +118,54 @@ position = Vector3(0, 5, 0)
 material_override = SubResource("Material_roof")
 mesh = SubResource("BoxMesh_hq_roof")
 
+[node name="ProductionExit" type="Marker3D" parent="BlueHQ"]
+position = Vector3(-14, 0, 0)
+
+[node name="ProductionExit" type="Marker3D" parent="OrangeHQ"]
+position = Vector3(14, 0, 0)
+
+[node name="BlueBarracks" type="StaticBody3D" parent="."]
+position = Vector3(-32, 0, -24)
+
+[node name="Collision" type="CollisionShape3D" parent="BlueBarracks"]
+position = Vector3(0, 3, 0)
+shape = SubResource("BoxShape3D_hq")
+
+[node name="Base" type="MeshInstance3D" parent="BlueBarracks"]
+position = Vector3(0, 2, 0)
+material_override = SubResource("Material_blue")
+mesh = SubResource("BoxMesh_hq")
+
+[node name="Roof" type="MeshInstance3D" parent="BlueBarracks"]
+position = Vector3(0, 4.8, 0)
+scale = Vector3(1.45, 0.8, 0.62)
+material_override = SubResource("Material_roof")
+mesh = SubResource("BoxMesh_hq_roof")
+
+[node name="ProductionExit" type="Marker3D" parent="BlueBarracks"]
+position = Vector3(-14, 0, 0)
+
+[node name="OrangeBarracks" type="StaticBody3D" parent="."]
+position = Vector3(32, 0, 24)
+
+[node name="Collision" type="CollisionShape3D" parent="OrangeBarracks"]
+position = Vector3(0, 3, 0)
+shape = SubResource("BoxShape3D_hq")
+
+[node name="Base" type="MeshInstance3D" parent="OrangeBarracks"]
+position = Vector3(0, 2, 0)
+material_override = SubResource("Material_orange")
+mesh = SubResource("BoxMesh_hq")
+
+[node name="Roof" type="MeshInstance3D" parent="OrangeBarracks"]
+position = Vector3(0, 4.8, 0)
+scale = Vector3(1.45, 0.8, 0.62)
+material_override = SubResource("Material_roof")
+mesh = SubResource("BoxMesh_hq_roof")
+
+[node name="ProductionExit" type="Marker3D" parent="OrangeBarracks"]
+position = Vector3(14, 0, 0)
+
 [node name="Roadblock" type="StaticBody3D" parent="."]
 position = Vector3(0, 1.5, 0)
 

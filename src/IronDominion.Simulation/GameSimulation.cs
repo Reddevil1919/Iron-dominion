@@ -9,9 +9,12 @@ public sealed class GameSimulation : IGameSimulation
 
     private readonly PriorityQueue<GameCommand, (long Tick, int Player, long Sequence)> _pending = new();
     private readonly HashSet<(PlayerId Player, long Sequence)> _scheduledSequences = new();
+    private readonly WorldEntities _entities;
     private readonly CommandValidator _validator;
     private readonly UnitMovement? _movement;
     private readonly UnitCombat? _combat;
+    private readonly UnitProduction? _production;
+    private ImmutableDictionary<EntityId, PlayerId> _unitOwners;
     private readonly ImmutableDictionary<EntityId, int> _initialHealth;
     private readonly ImmutableDictionary<EntityId, SimVector> _initialPositions;
 
@@ -22,23 +25,27 @@ public sealed class GameSimulation : IGameSimulation
     public GameSimulation(WorldEntities entities)
     {
         ArgumentNullException.ThrowIfNull(entities);
-        _validator = new CommandValidator(entities);
-        _initialPositions = entities.Units.ToImmutableDictionary(unit => unit.Id, unit => unit.Position);
-        _initialHealth = UnitCombat.InitialHealth(entities);
-        World = new WorldSnapshot(0, _initialPositions, _initialHealth);
+        _entities = entities.Copy();
+        _validator = new CommandValidator(_entities);
+        _initialPositions = _entities.Units.ToImmutableDictionary(unit => unit.Id, unit => unit.Position);
+        _initialHealth = UnitCombat.InitialHealth(_entities);
+        _unitOwners = _entities.Units.ToImmutableDictionary(unit => unit.Id, unit => unit.Owner!.Value);
+        World = Snapshot(0);
     }
 
     public GameSimulation(WorldEntities entities, GameConfiguration configuration, INavigationService navigation)
         : this(entities)
     {
-        _movement = new UnitMovement(entities, configuration, navigation);
+        _movement = new UnitMovement(_entities, configuration, navigation);
     }
 
     public GameSimulation(WorldEntities entities, GameConfiguration configuration, INavigationService navigation,
         ILineOfSightService sight) : this(entities, configuration, navigation)
     {
         ArgumentNullException.ThrowIfNull(sight);
-        _combat = new UnitCombat(entities, configuration, sight);
+        _combat = new UnitCombat(_entities, configuration, sight);
+        _production = new UnitProduction(_entities, configuration, navigation, _movement!, _combat);
+        World = Snapshot(0);
     }
 
     public IReadOnlyWorld World { get; private set; }
@@ -79,6 +86,10 @@ public sealed class GameSimulation : IGameSimulation
                     if (result.Accepted)
                         _movement.Stop(attack.Units);
                 }
+                else if (command is TrainUnitCommand train && _production is not null)
+                {
+                    result = _production.Enqueue(train);
+                }
             }
 
             events.Add(new CommandProcessed(tick, command, result));
@@ -91,14 +102,37 @@ public sealed class GameSimulation : IGameSimulation
             _combat.Resolve(tick, _movement.Positions, events, _movement);
         }
 
-        World = new WorldSnapshot(tick, _movement?.Positions ?? _initialPositions, _combat?.Health ?? _initialHealth);
-        return events is null ? Array.Empty<IGameEvent>() : events.AsReadOnly();
+        if (_production is not null)
+        {
+            events ??= new List<IGameEvent>();
+            _production.Advance(tick, events);
+            foreach (var gameEvent in events)
+            {
+                if (gameEvent is UnitSpawned spawn)
+                    _unitOwners = _unitOwners.Add(spawn.Unit.Id, spawn.Unit.Owner!.Value);
+            }
+        }
+
+        World = Snapshot(tick);
+        return events is not { Count: > 0 } ? Array.Empty<IGameEvent>() : events.AsReadOnly();
     }
 
+    private WorldSnapshot Snapshot(long tick) => new(
+        tick, _movement?.Positions ?? _initialPositions, _combat?.Health ?? _initialHealth, _unitOwners,
+        _production?.Credits ?? ImmutableDictionary<PlayerId, int>.Empty,
+        _production?.Queues ?? ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>>.Empty);
+
     private sealed record WorldSnapshot(long Tick, ImmutableDictionary<EntityId, SimVector> Positions,
-        ImmutableDictionary<EntityId, int> Health) : IReadOnlyWorld
+        ImmutableDictionary<EntityId, int> Health, ImmutableDictionary<EntityId, PlayerId> UnitOwners,
+        ImmutableDictionary<PlayerId, int> Balances,
+        ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>> Queues) : IReadOnlyWorld
     {
         public bool TryGetUnitPosition(EntityId id, out SimVector position) => Positions.TryGetValue(id, out position);
         public bool TryGetHitPoints(EntityId id, out int hitPoints) => Health.TryGetValue(id, out hitPoints);
+        public PlayerId? LivingUnitOwner(EntityId id) =>
+            Health.GetValueOrDefault(id) > 0 && UnitOwners.TryGetValue(id, out var owner) ? owner : null;
+        public int Credits(PlayerId player) => Balances.GetValueOrDefault(player);
+        public IReadOnlyList<TrainingOrder> TrainingQueue(EntityId producer) =>
+            Queues.GetValueOrDefault(producer, ImmutableList<TrainingOrder>.Empty);
     }
 }

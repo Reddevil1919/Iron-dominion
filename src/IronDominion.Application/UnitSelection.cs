@@ -3,14 +3,19 @@ using IronDominion.Domain;
 
 namespace IronDominion.Application;
 
-public sealed class UnitSelection(PlayerId player, WorldEntities world, Func<EntityId, bool>? isAlive = null)
+public sealed class UnitSelection(PlayerId player, Func<EntityId, PlayerId?> livingOwner)
 {
+    public UnitSelection(PlayerId player, WorldEntities world, Func<EntityId, bool>? isAlive = null)
+        : this(player, id => world.Find(id) is Unit { HitPoints: > 0 } unit && (isAlive?.Invoke(id) ?? true)
+            ? unit.Owner : null)
+    {
+    }
+
     private readonly Dictionary<int, ImmutableArray<EntityId>> _groups = new();
 
     public ImmutableArray<EntityId> Selected { get; private set; } = [];
 
-    public bool CanSelect(EntityId id) =>
-        world.Find(id) is Unit { HitPoints: > 0 } unit && unit.Owner == player && (isAlive?.Invoke(id) ?? true);
+    public bool CanSelect(EntityId id) => livingOwner(id) == player;
 
     public void Select(IEnumerable<EntityId> candidates, bool toggle = false)
     {

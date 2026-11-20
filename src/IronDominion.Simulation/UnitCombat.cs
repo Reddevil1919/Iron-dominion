@@ -10,9 +10,9 @@ internal sealed class UnitCombat(
 {
     private static readonly CommandResult Accepted = new(true, null);
 
-    private readonly Unit[] _units = world.Units.OrderBy(unit => unit.Id.Value).ToArray();
-    private readonly WorldEntity[] _targets = world.Units.Cast<WorldEntity>().Concat(world.Buildings)
-        .OrderBy(entity => entity.Id.Value).ToArray();
+    private readonly List<Unit> _units = world.Units.OrderBy(unit => unit.Id.Value).ToList();
+    private readonly List<WorldEntity> _targets = world.Units.Cast<WorldEntity>().Concat(world.Buildings)
+        .OrderBy(entity => entity.Id.Value).ToList();
     private readonly Dictionary<UnitKind, UnitDefinition> _definitions = configuration.Units.ToDictionary(unit => unit.Kind);
     private readonly Dictionary<EntityId, EntityId> _orderedTargets = new();
     private readonly Dictionary<EntityId, long> _nextShot = new();
@@ -23,6 +23,14 @@ internal sealed class UnitCombat(
         world.Units.Select(unit => (unit.Id, unit.HitPoints))
             .Concat(world.Buildings.Select(building => (building.Id, building.HitPoints)))
             .ToImmutableDictionary(entity => entity.Id, entity => entity.HitPoints);
+
+    public void Register(Unit unit)
+    {
+        // Spawn IDs are greater than the existing IDs, so appending preserves combat order.
+        _units.Add(unit);
+        _targets.Add(unit);
+        Health = Health.Add(unit.Id, unit.HitPoints);
+    }
 
     public CommandResult OrderAttack(AttackCommand command, IReadOnlyDictionary<EntityId, SimVector> positions)
     {
