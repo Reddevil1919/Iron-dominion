@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" uid="uid://dv02nqkqukcxa" path="res://Scripts/Battlefield.cs" id="1_battlefield"]
 [ext_resource type="Script" uid="uid://2vc3lmq0l1g8" path="res://Scripts/RtsCamera.cs" id="2_camera"]
@@ -36,10 +36,24 @@ albedo_color = Color(0.8, 0.34, 0.16, 1)
 [sub_resource type="StandardMaterial3D" id="Material_roof"]
 albedo_color = Color(0.22, 0.25, 0.28, 1)
 
-[node name="Battlefield" type="Node3D" node_paths=PackedStringArray("_unitSelection", "_unitRoot")]
+[sub_resource type="BoxShape3D" id="BoxShape3D_hq"]
+size = Vector3(11, 6, 9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_roadblock"]
+size = Vector3(12, 3, 16)
+
+[sub_resource type="StandardMaterial3D" id="Material_roadblock"]
+albedo_color = Color(0.41, 0.43, 0.46, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_roadblock"]
+material = SubResource("Material_roadblock")
+size = Vector3(12, 3, 16)
+
+[node name="Battlefield" type="Node3D" node_paths=PackedStringArray("_unitSelection", "_unitRoot", "_navigationRegion")]
 script = ExtResource("1_battlefield")
 _unitSelection = NodePath("SelectionLayer/UnitSelection")
 _unitRoot = NodePath("Units")
+_navigationRegion = NodePath("NavigationRegion")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_battlefield")
@@ -49,6 +63,7 @@ rotation = Vector3(-0.93, -0.56, 0)
 shadow_enabled = true
 
 [node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("_view", "_terrain")]
+physics_interpolation_mode = 2
 script = ExtResource("2_camera")
 _view = NodePath("OverviewCamera")
 _terrain = NodePath("../Terrain/GroundCollision")
@@ -69,8 +84,12 @@ mesh = SubResource("BoxMesh_ground")
 [node name="GroundCollision" type="CollisionShape3D" parent="Terrain"]
 shape = SubResource("BoxShape3D_ground")
 
-[node name="BlueHQ" type="Node3D" parent="."]
+[node name="BlueHQ" type="StaticBody3D" parent="."]
 position = Vector3(-32, 0, 24)
+
+[node name="Collision" type="CollisionShape3D" parent="BlueHQ"]
+position = Vector3(0, 3, 0)
+shape = SubResource("BoxShape3D_hq")
 
 [node name="Base" type="MeshInstance3D" parent="BlueHQ"]
 position = Vector3(0, 2, 0)
@@ -82,8 +101,12 @@ position = Vector3(0, 5, 0)
 material_override = SubResource("Material_roof")
 mesh = SubResource("BoxMesh_hq_roof")
 
-[node name="OrangeHQ" type="Node3D" parent="."]
+[node name="OrangeHQ" type="StaticBody3D" parent="."]
 position = Vector3(32, 0, -24)
+
+[node name="Collision" type="CollisionShape3D" parent="OrangeHQ"]
+position = Vector3(0, 3, 0)
+shape = SubResource("BoxShape3D_hq")
 
 [node name="Base" type="MeshInstance3D" parent="OrangeHQ"]
 position = Vector3(0, 2, 0)
@@ -94,6 +117,17 @@ mesh = SubResource("BoxMesh_hq")
 position = Vector3(0, 5, 0)
 material_override = SubResource("Material_roof")
 mesh = SubResource("BoxMesh_hq_roof")
+
+[node name="Roadblock" type="StaticBody3D" parent="."]
+position = Vector3(0, 1.5, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="Roadblock"]
+shape = SubResource("BoxShape3D_roadblock")
+
+[node name="Mesh" type="MeshInstance3D" parent="Roadblock"]
+mesh = SubResource("BoxMesh_roadblock")
+
+[node name="NavigationRegion" type="NavigationRegion3D" parent="."]
 
 [node name="Units" type="Node3D" parent="."]
 

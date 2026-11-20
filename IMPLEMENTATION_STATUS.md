@@ -79,8 +79,25 @@ number keys recall. The selection model lives in the Application project.
 | `scripts/validate-godot.sh` | Debug build, headless import, scene launch and camera checks passed. The selection check sent clicks, Shift-clicks, drags and group keys to the main scene and verified which rings were visible. |
 | Graphical Linux smoke test | Clicked a blue squad, dragged a rectangle over both sides and observed rings on the three blue units. Clicking an orange squad cleared the rings. After Ctrl+9 had saved the group, pressing 9 brought the three rings back. |
 
-The six units are static prototypes. RTS-006 connects the selection to
-movement orders and navigation.
+## RTS-006 movement and navigation
+
+Right-click ground to move the selection. RTS-006 brings the RTS-003
+scheduler into this branch from the commit reviewed in PR #5. An order
+checks ownership and reachability, computes the routes once and advances the
+units at their configured speeds every 50 ms. Godot renders the positions
+from the read-only snapshots. The navigation region keeps a 5 m clearance
+from the terrain edges, both HQs and the central obstacle. Group destinations
+use 9 m spacing. Navigation currently accounts for the static map.
+
+### Verification on 20 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` | Restored all nine projects. |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 65 xUnit cases passed, including six movement cases. Covered tick speeds, cached routes, inaccessible destinations, ownership and a ten-unit order with distinct destinations. |
+| `scripts/validate-godot.sh` | Headless import, scene launch, camera, selection and movement passed. A right-click sent the blue tank around the roadblock at its configured speed, while blocked targets left it stationary. |
+| Graphical Linux smoke test | Selected the blue tank in the game window and sent it to ground on the opposite side of the central block. Observed the tank arrive at the clicked destination. |
 
 ## RTS-001 bootstrap
 
@@ -124,4 +141,5 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-006 adds movement orders and navigation. A full match remains a later milestone.
+RTS-007 adds combat, health changes and entity destruction. A full match
+remains a later milestone.

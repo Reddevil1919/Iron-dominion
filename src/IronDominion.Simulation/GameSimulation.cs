@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using IronDominion.Domain;
 
 namespace IronDominion.Simulation;
@@ -9,6 +10,8 @@ public sealed class GameSimulation : IGameSimulation
     private readonly PriorityQueue<GameCommand, (long Tick, int Player, long Sequence)> _pending = new();
     private readonly HashSet<(PlayerId Player, long Sequence)> _scheduledSequences = new();
     private readonly CommandValidator _validator;
+    private readonly UnitMovement? _movement;
+    private readonly ImmutableDictionary<EntityId, SimVector> _initialPositions;
 
     public GameSimulation() : this(new WorldEntities([]))
     {
@@ -18,9 +21,17 @@ public sealed class GameSimulation : IGameSimulation
     {
         ArgumentNullException.ThrowIfNull(entities);
         _validator = new CommandValidator(entities);
+        _initialPositions = entities.Units.ToImmutableDictionary(unit => unit.Id, unit => unit.Position);
+        World = new WorldSnapshot(0, _initialPositions);
     }
 
-    public IReadOnlyWorld World { get; private set; } = new WorldSnapshot(0);
+    public GameSimulation(WorldEntities entities, GameConfiguration configuration, INavigationService navigation)
+        : this(entities)
+    {
+        _movement = new UnitMovement(entities, configuration, navigation);
+    }
+
+    public IReadOnlyWorld World { get; private set; }
 
     public void Schedule(GameCommand command)
     {
@@ -43,12 +54,20 @@ public sealed class GameSimulation : IGameSimulation
         {
             _pending.Dequeue();
             events ??= new List<IGameEvent>();
-            events.Add(new CommandProcessed(tick, command, _validator.Validate(command)));
+            var result = _validator.Validate(command);
+            if (result.Accepted && command is MoveCommand move && _movement is not null)
+                result = _movement.Plan(move);
+
+            events.Add(new CommandProcessed(tick, command, result));
         }
 
-        World = new WorldSnapshot(tick);
+        _movement?.Advance();
+        World = new WorldSnapshot(tick, _movement?.Positions ?? _initialPositions);
         return events is null ? Array.Empty<IGameEvent>() : events.AsReadOnly();
     }
 
-    private sealed record WorldSnapshot(long Tick) : IReadOnlyWorld;
+    private sealed record WorldSnapshot(long Tick, ImmutableDictionary<EntityId, SimVector> Positions) : IReadOnlyWorld
+    {
+        public bool TryGetUnitPosition(EntityId id, out SimVector position) => Positions.TryGetValue(id, out position);
+    }
 }

@@ -26,7 +26,8 @@ run_godot --fixed-fps 20 --quit-after 10
 run_smoke_test() {
     local script=$1
     local success=$2
-    run_godot --fixed-fps 60 --quit-after 600 --script "$repo_root/tests/godot/$script"
+    local frame_limit=${3:-600}
+    run_godot --fixed-fps 60 --quit-after "$frame_limit" --script "$repo_root/tests/godot/$script"
     if ! grep -Fxq "$success" "$log"; then
         printf 'The Godot smoke test %s did not finish.\n' "$script" >&2
         return 1
@@ -35,3 +36,4 @@ run_smoke_test() {
 
 run_smoke_test rts_camera_smoke.gd 'RTS camera smoke checks passed.'
 run_smoke_test unit_selection_smoke.gd 'Unit selection smoke checks passed.'
+run_smoke_test unit_movement_smoke.gd 'Unit movement smoke checks passed.' 1500

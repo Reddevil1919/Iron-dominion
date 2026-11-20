@@ -13,14 +13,19 @@ public partial class UnitSelectionController : Control
     private readonly Queue<Action> _pending = new();
     private UnitSelection? _selection;
     private IReadOnlyList<UnitView> _units = [];
+    private StaticBody3D _ground = null!;
+    private Action<IReadOnlyList<EntityId>, SimVector> _move = null!;
     private Vector2? _start;
     private Vector2 _pointer;
     private bool _dragging;
 
-    public void Initialize(UnitSelection selection, IReadOnlyList<UnitView> units)
+    public void Initialize(UnitSelection selection, IReadOnlyList<UnitView> units,
+        StaticBody3D ground, Action<IReadOnlyList<EntityId>, SimVector> move)
     {
         _selection = selection;
         _units = units;
+        _ground = ground;
+        _move = move;
     }
 
     public override void _Ready() => GetWindow().FocusExited += CancelGesture;
@@ -35,6 +40,12 @@ public partial class UnitSelectionController : Control
         if (inputEvent is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } button)
         {
             _start = _pointer = button.Position;
+            GetViewport().SetInputAsHandled();
+        }
+        else if (inputEvent is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true } move)
+        {
+            var point = move.Position;
+            _pending.Enqueue(() => MoveSelected(selection, point));
             GetViewport().SetInputAsHandled();
         }
         else if (inputEvent is InputEventKey { Pressed: true, Echo: false } key)
@@ -104,16 +115,34 @@ public partial class UnitSelectionController : Control
 
     private IEnumerable<EntityId> ClickHits(Vector2 point)
     {
+        using var hit = Raycast(point, UnitView.PickingLayer);
+        if (hit is not null && hit.TryGetValue("collider", out var collider) && collider.AsGodotObject() is UnitView unit)
+            yield return unit.Id;
+    }
+
+    private void MoveSelected(UnitSelection selection, Vector2 point)
+    {
+        if (selection.Selected.IsEmpty)
+            return;
+
+        using var hit = Raycast(point, _ground.CollisionLayer);
+        if (hit is not null && hit.TryGetValue("collider", out var collider) && collider.AsGodotObject() == _ground)
+        {
+            var target = hit["position"].AsVector3();
+            _move(selection.Selected, new SimVector(target.X, target.Z));
+        }
+    }
+
+    private Godot.Collections.Dictionary? Raycast(Vector2 point, uint mask)
+    {
         var viewport = GetViewport();
         if (!viewport.GetVisibleRect().HasPoint(point) || viewport.GetCamera3D() is not { } camera)
-            yield break;
+            return null;
 
         var start = camera.ProjectRayOrigin(point);
         var end = start + camera.ProjectRayNormal(point) * camera.Far;
-        using var query = PhysicsRayQueryParameters3D.Create(start, end, UnitView.PickingLayer);
-        var hit = camera.GetWorld3D().DirectSpaceState.IntersectRay(query);
-        if (hit.TryGetValue("collider", out var collider) && collider.AsGodotObject() is UnitView unit)
-            yield return unit.Id;
+        using var query = PhysicsRayQueryParameters3D.Create(start, end, mask);
+        return camera.GetWorld3D().DirectSpaceState.IntersectRay(query);
     }
 
     private IEnumerable<EntityId> BoxHits(Rect2 box)

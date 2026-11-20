@@ -68,9 +68,9 @@ The Godot script builds the Debug game assembly, imports the project with
 exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
 
-The script also runs headless camera and unit selection smoke tests against
-the main scene. They send keyboard and mouse events to check camera bounds,
-selection feedback, ownership filtering and control groups.
+The script also runs headless camera, selection and movement checks against
+the main scene. They send keyboard and mouse events to verify camera bounds,
+selection ownership, control groups and a tank's route around the obstacle.
 
 For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
@@ -119,5 +119,12 @@ Use Ctrl+1 through Ctrl+9 to assign the current selection to a group. Press
 the number by itself to recall it. Assign an empty selection to clear a
 group. Unassigned number keys leave the selection as it is.
 
-The first playable milestone adds movement around an obstacle, a target
-with HP, an attack order and a victory condition.
+Right-click clear ground to move the selected blue units. Units route around
+the central roadblock and both HQs. For groups, the first unit goes to the
+clicked point and the others use adjacent 9 m slots in entity ID order. Pick
+open ground with room for the group. A blocked destination leaves existing
+orders in effect. Routes account for the static map. Moving units can pass
+through each other in this milestone.
+
+The remaining parts of the first playable milestone are a target with HP,
+an attack order and a victory condition.

@@ -63,8 +63,11 @@ numbers, and any sequence already used by that player in the same match.
 `AdvanceOneTick()` returns the tick's `CommandProcessed` events in order of
 scheduled tick, player ID and sequence. Events report whether each order
 passed the initial checks, including ownership and whether its actors are
-alive. Movement, attack resolution and production apply gameplay effects in
-RTS-006, RTS-007 and RTS-008 respectively.
+alive. In a session with navigation, move orders also validate that every
+requested destination is reachable. The simulation caches successful routes
+and publishes positions through `IReadOnlyWorld.TryGetUnitPosition` after
+each 50 ms step. Attack resolution and production follow in RTS-007 and
+RTS-008.
 
 ## Godot bridge pseudocode
 ```csharp
