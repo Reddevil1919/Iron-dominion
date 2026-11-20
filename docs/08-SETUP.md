@@ -68,9 +68,10 @@ The Godot script builds the Debug game assembly, imports the project with
 exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
 
-The script also runs headless camera, selection and movement checks against
-the main scene. They send keyboard and mouse events to verify camera bounds,
-selection ownership, control groups and a tank's route around the obstacle.
+The script also runs headless camera, selection, movement and combat checks
+against the main scene. They send keyboard and mouse events to verify camera
+bounds, selection ownership, control groups, obstacle navigation and a
+focused attack on an enemy unit.
 
 For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
@@ -126,5 +127,11 @@ open ground with room for the group. A blocked destination leaves existing
 orders in effect. Routes account for the static map. Moving units can pass
 through each other in this milestone.
 
-The remaining parts of the first playable milestone are a target with HP,
-an attack order and a victory condition.
+Right-click an orange unit or HQ to focus fire. An accepted attack order
+stops the selected units. Move them within weapon range for the shot to
+fire. Units also fire automatically at visible enemies in range.
+The roadblock and HQs block line of sight. Health bars shrink as damage is
+applied. Destroyed units leave the battlefield and destroyed HQs leave
+solid ruins.
+
+Victory and defeat follow in RTS-013.

@@ -22,6 +22,11 @@ public sealed class GameSession
     {
     }
 
+    public GameSession(WorldEntities entities, GameConfiguration configuration, INavigationService navigation,
+        ILineOfSightService sight) : this(new GameSimulation(entities, configuration, navigation, sight))
+    {
+    }
+
     private GameSession(IGameSimulation simulation)
     {
         _simulation = simulation;

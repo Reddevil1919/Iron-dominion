@@ -30,7 +30,7 @@ public interface IReadOnlyWorld {
 public interface INavigationService {
     IReadOnlyList<SimVector> FindPath(SimVector start, SimVector end, int movementMask);
 }
-public interface ILineOfSightService { bool HasLineOfSight(SimVector origin, SimVector target); }
+public interface ILineOfSightService { bool HasLineOfSight(SimVector origin, SimVector target, EntityId targetId); }
 public interface IGameEvent { long Tick { get; } }
 public sealed record EntityDestroyed(long Tick, EntityId Entity) : IGameEvent;
 public sealed record MatchEnded(long Tick, MatchResult Result) : IGameEvent;
@@ -66,7 +66,16 @@ passed the initial checks, including ownership and whether its actors are
 alive. In a session with navigation, move orders also validate that every
 requested destination is reachable. The simulation caches successful routes
 and publishes positions through `IReadOnlyWorld.TryGetUnitPosition` after
-each 50 ms step. Attack resolution and production follow in RTS-007 and
+each 50 ms step. The combat session resolves fire after movement. It checks
+range, line of sight and the configured cooldown before firing. An order can
+focus a hostile target that at least one living allied unit can see. In this
+prototype, an allied unit's unobstructed view defines visibility. Fog rendering
+follows in RTS-016.
+
+`ShotFired` events are ordered by attacker ID. Damage from that tick is
+applied together in target ID order and produces `EntityDamaged` and
+`EntityDestroyed` events. `IReadOnlyWorld.TryGetHitPoints` reports the
+remaining health, including zero after destruction. Production follows in
 RTS-008.
 
 ## Godot bridge pseudocode

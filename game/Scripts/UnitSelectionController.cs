@@ -15,17 +15,22 @@ public partial class UnitSelectionController : Control
     private IReadOnlyList<UnitView> _units = [];
     private StaticBody3D _ground = null!;
     private Action<IReadOnlyList<EntityId>, SimVector> _move = null!;
+    private Func<GodotObject, EntityId?> _hostile = null!;
+    private Action<IReadOnlyList<EntityId>, EntityId> _attack = null!;
     private Vector2? _start;
     private Vector2 _pointer;
     private bool _dragging;
 
     public void Initialize(UnitSelection selection, IReadOnlyList<UnitView> units,
-        StaticBody3D ground, Action<IReadOnlyList<EntityId>, SimVector> move)
+        StaticBody3D ground, Action<IReadOnlyList<EntityId>, SimVector> move,
+        Func<GodotObject, EntityId?> hostile, Action<IReadOnlyList<EntityId>, EntityId> attack)
     {
         _selection = selection;
         _units = units;
         _ground = ground;
         _move = move;
+        _hostile = hostile;
+        _attack = attack;
     }
 
     public override void _Ready() => GetWindow().FocusExited += CancelGesture;
@@ -45,7 +50,7 @@ public partial class UnitSelectionController : Control
         else if (inputEvent is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true } move)
         {
             var point = move.Position;
-            _pending.Enqueue(() => MoveSelected(selection, point));
+            _pending.Enqueue(() => OrderSelected(selection, point));
             GetViewport().SetInputAsHandled();
         }
         else if (inputEvent is InputEventKey { Pressed: true, Echo: false } key)
@@ -99,6 +104,20 @@ public partial class UnitSelectionController : Control
         while (_pending.TryDequeue(out var update))
             update();
 
+        ShowSelection(selection);
+    }
+
+    public void RefreshSelection()
+    {
+        if (_selection is not { } selection)
+            return;
+
+        selection.Select(selection.Selected);
+        ShowSelection(selection);
+    }
+
+    private void ShowSelection(UnitSelection selection)
+    {
         foreach (var unit in _units)
             unit.ShowSelection(selection.Selected.Contains(unit.Id));
     }
@@ -120,13 +139,18 @@ public partial class UnitSelectionController : Control
             yield return unit.Id;
     }
 
-    private void MoveSelected(UnitSelection selection, Vector2 point)
+    private void OrderSelected(UnitSelection selection, Vector2 point)
     {
         if (selection.Selected.IsEmpty)
             return;
 
-        using var hit = Raycast(point, _ground.CollisionLayer);
-        if (hit is not null && hit.TryGetValue("collider", out var collider) && collider.AsGodotObject() == _ground)
+        using var hit = Raycast(point, _ground.CollisionLayer | UnitView.PickingLayer);
+        if (hit is null || !hit.TryGetValue("collider", out var collider) || collider.AsGodotObject() is not { } actor)
+            return;
+
+        if (_hostile(actor) is { } targetId)
+            _attack(selection.Selected, targetId);
+        else if (actor == _ground)
         {
             var target = hit["position"].AsVector3();
             _move(selection.Selected, new SimVector(target.X, target.Z));

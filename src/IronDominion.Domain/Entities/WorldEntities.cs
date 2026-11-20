@@ -17,6 +17,7 @@ public sealed class WorldEntities
     }
 
     public IEnumerable<Unit> Units => _entities.Values.OfType<Unit>();
+    public IEnumerable<Building> Buildings => _entities.Values.OfType<Building>();
 
     public WorldEntity? Find(EntityId id) => _entities.GetValueOrDefault(id);
 }
