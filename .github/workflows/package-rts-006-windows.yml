@@ -1,0 +1,88 @@
+name: Package RTS-006 for Windows
+on:
+  push:
+    branches: [codex/package-rts-006-windows]
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      RELEASE_ID: '453159252'
+      SOURCE_SHA: 7e7b2d1e3e186b514353a09a6ca2c326547ea6f5
+      PACKAGE_NAME: IronDominion-RTS-006-Windows-x64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7e7b2d1e3e186b514353a09a6ca2c326547ea6f5
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Install Godot .NET and the Windows templates
+        run: |
+          set -euo pipefail
+          godot_bin=$(scripts/install-godot-linux.sh "$RUNNER_TEMP/godot")
+          printf 'GODOT_BIN=%s\n' "$godot_bin" >> "$GITHUB_ENV"
+          printf 'XDG_DATA_HOME=%s\n' "$RUNNER_TEMP/godot-data" >> "$GITHUB_ENV"
+          templates_dir="$RUNNER_TEMP/godot-data/godot/export_templates/4.6.3.stable.mono"
+          mkdir -p "$templates_dir"
+          archive="$RUNNER_TEMP/templates.tpz"
+          curl -fsSL --retry 3 https://github.com/godotengine/godot-builds/releases/download/4.6.3-stable/Godot_v4.6.3-stable_mono_export_templates.tpz -o "$archive"
+          printf '%s  %s\n' 6436f474ee085fb0a94d3d296b9821736bdd663b6e91b2228fdf77066f1d1400 "$archive" | sha256sum -c -
+          unzip -jq "$archive" templates/version.txt templates/windows_release_x86_64.exe templates/windows_release_x86_64_console.exe -d "$templates_dir"
+      - name: Validate and export
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          scripts/validate-godot.sh
+          package="$RUNNER_TEMP/$PACKAGE_NAME"
+          mkdir -p "$package/LICENCES"
+          "$GODOT_BIN" --headless --path game --export-release "Windows Desktop" "$package/IronDominion.exe" 2>&1 | tee "$RUNNER_TEMP/export.log"
+          if grep -Eq '(^|[[:space:]])(ERROR|Error):' "$RUNNER_TEMP/export.log"; then
+              exit 1
+          fi
+          file "$package/IronDominion.exe" | grep -E 'PE32\+ executable.*x86-64'
+          test -s "$package/IronDominion.pck"
+          data="$package/data_IronDominion.Game_windows_x86_64"
+          for file in hostfxr.dll hostpolicy.dll coreclr.dll IronDominion.Game.dll; do
+              test -s "$data/$file"
+          done
+          jq -e '.runtimeOptions.includedFrameworks | any(.name == "Microsoft.NETCore.App" and .version == "10.0.15")' "$data/IronDominion.Game.runtimeconfig.json"
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/godotengine/godot/4.6.3-stable/LICENSE.txt -o "$package/LICENCES/Godot-LICENSE.txt"
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/godotengine/godot/4.6.3-stable/COPYRIGHT.txt -o "$package/LICENCES/Godot-COPYRIGHT.txt"
+          nuget_line=$(dotnet nuget locals global-packages --list)
+          notices="${nuget_line#global-packages: }/microsoft.netcore.app.runtime.win-x64/10.0.15"
+          cp "$notices/LICENSE.TXT" "$package/LICENCES/dotnet-LICENSE.txt"
+          cp "$notices/THIRD-PARTY-NOTICES.TXT" "$package/LICENCES/dotnet-THIRD-PARTY-NOTICES.txt"
+          cat > "$package/LISEZ-MOI.txt" <<'README'
+          Iron Dominion — Prototype RTS-006 pour Windows x64
+
+          1. Extraire toute l’archive.
+          2. Ouvrir le dossier extrait et lancer IronDominion.exe.
+          3. Garder le fichier PCK et le dossier data à côté de l’exécutable.
+
+          Flèches ou ZQSD pour la caméra, molette pour zoomer.
+          Clic gauche ou rectangle pour sélectionner les unités bleues.
+          Maj modifie la sélection. Ctrl+1 à Ctrl+9 enregistre les groupes.
+          Clic droit sur le terrain pour déplacer la sélection.
+          README
+          cd "$RUNNER_TEMP"
+          zip -q -5 -r "$PACKAGE_NAME.zip" "$PACKAGE_NAME"
+          unzip -tq "$PACKAGE_NAME.zip"
+          sha256sum "$PACKAGE_NAME.zip" > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+      - name: Attach the verified package to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release="/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID"
+          gh api "$release" | jq -e --arg sha "$SOURCE_SHA" '.draft and .target_commitish == $sha'
+          cd "$RUNNER_TEMP"
+          for asset in "$PACKAGE_NAME.zip" SHA256SUMS.txt; do
+              curl --fail-with-body --silent --show-error                   -H "Authorization: Bearer $GH_TOKEN"                   -H 'Accept: application/vnd.github+json'                   -H 'Content-Type: application/octet-stream'                   --data-binary "@$asset"                   "https://uploads.github.com$release/assets?name=$asset" |
+                  jq -e --arg name "$asset" '.name == $name and .state == "uploaded"'
+          done
