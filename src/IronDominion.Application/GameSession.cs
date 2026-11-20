@@ -7,10 +7,24 @@ public sealed class GameSession
 {
     public const int TicksPerSecond = GameSimulation.TicksPerSecond;
 
-    private readonly IGameSimulation _simulation = new GameSimulation();
+    private readonly IGameSimulation _simulation;
 
-    public void AdvanceOneTick()
+    public GameSession() : this(new GameSimulation())
     {
-        _simulation.Tick();
     }
+
+    public GameSession(WorldEntities entities) : this(new GameSimulation(entities))
+    {
+    }
+
+    private GameSession(IGameSimulation simulation)
+    {
+        _simulation = simulation;
+        Commands = new CommandScheduler(simulation);
+    }
+
+    public CommandScheduler Commands { get; }
+    public IReadOnlyWorld World => _simulation.World;
+
+    public IReadOnlyList<IGameEvent> AdvanceOneTick() => _simulation.Tick();
 }
