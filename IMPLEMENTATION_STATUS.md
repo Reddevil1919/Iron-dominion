@@ -1,5 +1,27 @@
 # Implementation status
 
+## RTS-003 fixed ticks and command scheduling
+
+The simulation processes due commands every 50 ms in the order of their
+scheduled tick, player ID and sequence. `GameSession.Commands` assigns a
+sequence per player. Replaying the same pre-sequenced orders in reverse
+arrival order produces the same processing events. Stale ticks and duplicate
+sequences are rejected before enqueueing. Each processing event records the
+initial validation result, including ownership and whether the actors are alive.
+
+### Verification on 20 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` | Restored all eight projects in an isolated checkout. |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | 52 xUnit cases passed, including 13 new scheduling cases. Covered replay order, tick boundaries, duplicate rejection, ownership, actor health and immutable selections. VSTest used a private temporary artifacts directory. |
+| `scripts/validate-godot.sh` | Debug build, headless editor import and main-scene startup passed with Godot 4.6.3 .NET on Linux. |
+
+Godot drives the fixed tick from the existing battlefield scene. Gameplay
+input and order effects arrive in the subsequent selection, movement, combat
+and production milestones. The runtime check was headless on Linux.
+
 ## RTS-002 domain and configuration
 
 The domain defines players, units, buildings and sectors. Entity IDs are
@@ -65,5 +87,5 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-003 extends the simulation contract with command scheduling. RTS-004
-adds the interactive RTS camera. A full match remains a later milestone.
+RTS-004 adds the interactive RTS camera. RTS-005 connects selection input.
+A full match remains a later milestone.
