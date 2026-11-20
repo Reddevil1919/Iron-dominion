@@ -4,7 +4,7 @@ namespace IronDominion.Simulation;
 
 public sealed class GameSimulation : IGameSimulation
 {
-    public const int TicksPerSecond = 20;
+    public const int TicksPerSecond = GameConfiguration.FixedTickRate;
 
     public IReadOnlyWorld World { get; private set; } = new WorldSnapshot(0);
 

@@ -3,4 +3,8 @@
     <ProjectReference Include="../IronDominion.Domain/IronDominion.Domain.csproj" />
     <ProjectReference Include="../IronDominion.Application/IronDominion.Application.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration/DefaultGameConfiguration.json"
+                      LogicalName="IronDominion.DefaultGameConfiguration.json" />
+  </ItemGroup>
 </Project>
