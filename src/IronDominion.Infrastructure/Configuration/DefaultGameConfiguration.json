@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "tickRate": 20,
+  "startingCredits": 500,
+  "headquartersIncomePerSecond": 5,
+  "sectorIncomePerSecond": 2,
+  "captureSeconds": 10,
+  "captureRadiusMeters": 6,
+  "infantryCoverMultiplier": 0.7,
+  "units": [
+    {
+      "kind": "infantrySquad",
+      "maxHp": 400,
+      "cost": 100,
+      "buildTicks": 160,
+      "speedMetersPerSecond": 4,
+      "attackRangeMeters": 12,
+      "damagePerShot": 10,
+      "cooldownTicks": 20
+    },
+    {
+      "kind": "tank",
+      "maxHp": 600,
+      "cost": 500,
+      "buildTicks": 400,
+      "speedMetersPerSecond": 3,
+      "attackRangeMeters": 16,
+      "damagePerShot": 45,
+      "cooldownTicks": 40
+    }
+  ],
+  "buildings": [
+    { "kind": "headquarters", "maxHp": 1500 },
+    { "kind": "barracks", "maxHp": 700 }
+  ]
+}

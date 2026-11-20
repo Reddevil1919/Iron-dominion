@@ -12,6 +12,7 @@ Infrastructure ───────────────> Domain/Application
 Tests ───────────────> Domain/Simulation/Application
 ```
 No Godot namespace in Domain, Simulation or AI. Dependency inversion for navigation, line-of-sight and clocks.
+The Godot startup code also references Infrastructure to load the default configuration. Domain validates the values and Infrastructure handles JSON and packaging.
 
 ## Proposed repository
 ```text

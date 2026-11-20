@@ -64,15 +64,19 @@ while (accumulator >= 0.05 && ticksThisFrame < MaxCatchUpTicks) {
 // Visual interpolation between previous and current snapshots.
 ```
 
-## Configuration example
-```json
-{
-  "schemaVersion": 1,
-  "tickRate": 20,
-  "startingCredits": 500,
-  "headquartersIncomePerSecond": 5,
-  "sectorIncomePerSecond": 2,
-  "captureSeconds": 10,
-  "infantryCoverMultiplier": 0.7
-}
-```
+## Configuration schema 1
+
+The [default configuration](../src/IronDominion.Infrastructure/Configuration/DefaultGameConfiguration.json)
+ships as an embedded resource in the Infrastructure assembly. The Godot scene
+loads and validates it at startup. `GameConfigurationLoader.Load(Stream)` can
+also validate another JSON document without Godot.
+
+The schema requires a 20 Hz tick rate, one definition per unit and building
+kind, positive maximum HP and nonnegative costs, rates, ranges and durations.
+Distances and speeds must be finite. The infantry cover multiplier is between
+0 and 1 inclusive. Field names use camel case. Missing, unknown and duplicate
+properties are rejected.
+
+`EntityId` and `PlayerId` constructors require positive values. Entity
+constructors also reject default IDs and owners, since C# value types can be
+zero-initialized. A neutral sector has a null owner.
