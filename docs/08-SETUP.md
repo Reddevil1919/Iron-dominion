@@ -68,10 +68,11 @@ The Godot script builds the Debug game assembly, imports the project with
 exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
 
-The script also runs headless camera, selection, movement and combat checks
-against the main scene. They send keyboard and mouse events to verify camera
-bounds, selection ownership, control groups, obstacle navigation and a
-focused attack on an enemy unit.
+The script also runs headless camera, selection, movement, combat and
+production checks against the main scene. They send keyboard and mouse
+events to verify camera bounds, selection ownership, control groups,
+obstacle navigation, a focused attack, a tank spawning at the HQ and
+a blocked barracks queue resuming after a trained squad moves away.
 
 For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
@@ -105,11 +106,12 @@ Windows. RTS-015 tracks Windows playtesting and profiling.
 
 ## First playable milestone
 
-The prototype runs a 128 m × 128 m battlefield with two placeholder HQs and a
-20 Hz simulation clock. Use the arrow keys, the physical WASD positions
-(ZQSD on AZERTY), or the 24 pixels inside the window edges to pan. The wheel
-zooms between the 32 m close view and the 136 m overview while keeping
-the same ground focus. The terrain bounds limit how far the focus can move.
+The prototype runs a 128 m × 128 m battlefield with two bases and a 20 Hz
+simulation clock. Each base has one HQ and one barracks. Use the arrow
+keys, the physical WASD positions (ZQSD on AZERTY), or the 24 pixels
+inside the window edges to pan. The wheel zooms between the 32 m close
+view and the 136 m overview while keeping the same ground focus. The
+terrain bounds limit how far the focus can move.
 
 The scene has two infantry squads and one tank per side. Left-click a blue
 unit or drag a rectangle to select several. Hold Shift when releasing the
@@ -121,17 +123,24 @@ the number by itself to recall it. Assign an empty selection to clear a
 group. Unassigned number keys leave the selection as it is.
 
 Right-click clear ground to move the selected blue units. Units route around
-the central roadblock and both HQs. For groups, the first unit goes to the
+the central roadblock and the buildings. For groups, the first unit goes to the
 clicked point and the others use adjacent 9 m slots in entity ID order. Pick
 open ground with room for the group. A blocked destination leaves existing
 orders in effect. Routes account for the static map. Moving units can pass
 through each other in this milestone.
 
-Right-click an orange unit or HQ to focus fire. An accepted attack order
+Right-click an orange unit or building to focus fire. An accepted attack order
 stops the selected units. Move them within weapon range for the shot to
 fire. Units also fire automatically at visible enemies in range.
-The roadblock and HQs block line of sight. Health bars shrink as damage is
-applied. Destroyed units leave the battlefield and destroyed HQs leave
-solid ruins.
+The roadblock and buildings block line of sight. Health bars shrink as
+damage is applied. Destroyed units leave the battlefield and destroyed
+buildings leave solid ruins.
 
-Victory and defeat follow in RTS-013.
+Use the panel at the bottom left to train infantry at the barracks for
+100 credits (8 seconds) or a tank at the HQ for 500 credits (20 seconds).
+You start with 500 credits. Costs are deducted when orders enter the
+queue. If the panel shows **Exit blocked**, move units away from the
+producer's exit to let the finished unit spawn.
+
+Passive income and sector capture follow in RTS-009. Victory and defeat
+follow in RTS-013.

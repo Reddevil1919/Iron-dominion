@@ -17,7 +17,9 @@ public partial class Battlefield : Node3D
 
     private readonly List<UnitView> _views = new();
     private readonly Dictionary<EntityId, HealthBar> _healthBars = new();
-    private readonly Dictionary<EntityId, StaticBody3D> _headquarters = new();
+    private readonly Dictionary<EntityId, StaticBody3D> _buildings = new();
+    private readonly Dictionary<PlayerId, StandardMaterial3D> _teamMaterials = new();
+    private ProductionPanel? _productionPanel;
     private GameSession? _session;
 
     public override void _Ready()
@@ -49,52 +51,61 @@ public partial class Battlefield : Node3D
             CreateUnit(5, Opponent, infantry, 15, -29),
             CreateUnit(6, Opponent, tank, 17, -7)
         ];
-        var blue = new StandardMaterial3D { AlbedoColor = new Color("3da9fc") };
-        var orange = new StandardMaterial3D { AlbedoColor = new Color("f7793c") };
+        _teamMaterials.Add(LocalPlayer, new StandardMaterial3D { AlbedoColor = new Color("3da9fc") });
+        _teamMaterials.Add(Opponent, new StandardMaterial3D { AlbedoColor = new Color("f7793c") });
         foreach (var unit in units)
-        {
-            var view = UnitView.Create(unit, unit.Owner == LocalPlayer ? blue : orange);
-            _unitRoot.AddChild(view);
-            view.ResetPhysicsInterpolation();
-            _views.Add(view);
-            _healthBars.Add(unit.Id, new HealthBar(view, unit.HitPoints, 4.2f, 0.10f));
-        }
+            AddUnitView(unit);
 
         var headquarters = configuration.Buildings.Single(building => building.Kind == BuildingKind.Headquarters);
-        var blueHq = AddHeadquarters(new EntityId(7), LocalPlayer, headquarters.MaxHp, "BlueHQ");
-        var orangeHq = AddHeadquarters(new EntityId(8), Opponent, headquarters.MaxHp, "OrangeHQ");
-        var world = new WorldEntities([.. units, blueHq, orangeHq]);
+        var barracks = configuration.Buildings.Single(building => building.Kind == BuildingKind.Barracks);
+        var blueHq = AddBuilding(new EntityId(7), LocalPlayer, headquarters, "BlueHQ");
+        var orangeHq = AddBuilding(new EntityId(8), Opponent, headquarters, "OrangeHQ");
+        var blueBarracks = AddBuilding(new EntityId(9), LocalPlayer, barracks, "BlueBarracks");
+        var orangeBarracks = AddBuilding(new EntityId(10), Opponent, barracks, "OrangeBarracks");
+        var world = new WorldEntities([.. units, blueHq, orangeHq, blueBarracks, orangeBarracks]);
         var ground = GetNode<StaticBody3D>("Terrain");
         var navigation = new BattlefieldNavigation(_navigationRegion, ground.GetNode<CollisionShape3D>("GroundCollision"),
-        [
-            GetNode<CollisionShape3D>("Roadblock/Collision"),
-            GetNode<CollisionShape3D>("BlueHQ/Collision"),
-            GetNode<CollisionShape3D>("OrangeHQ/Collision")
-        ]);
-        var sight = new BattlefieldSight(GetWorld3D(), ground.CollisionLayer, _headquarters);
+            _buildings.Values.Select(body => body.GetNode<CollisionShape3D>("Collision"))
+                .Append(GetNode<CollisionShape3D>("Roadblock/Collision")).ToArray());
+        var sight = new BattlefieldSight(GetWorld3D(), ground.CollisionLayer, _buildings);
         var session = new GameSession(world, configuration, navigation, sight);
         _session = session;
-        var opposingHQ = _headquarters[orangeHq.Id];
+        var enemyBuildings = new[] { orangeHq, orangeBarracks }.ToDictionary(building => _buildings[building.Id],
+            building => building.Id);
         _unitSelection.Initialize(
-            new UnitSelection(LocalPlayer, world, id => session.World.TryGetHitPoints(id, out var hp) && hp > 0),
+            new UnitSelection(LocalPlayer, id => session.World.LivingUnitOwner(id)),
             _views, ground,
             (selected, destination) => session.Commands.ScheduleMove(LocalPlayer, selected, destination),
             actor => actor switch
             {
-                UnitView view when world.Find(view.Id)?.Owner == Opponent => view.Id,
-                _ when actor == opposingHQ && session.World.TryGetHitPoints(orangeHq.Id, out var hp) && hp > 0 => orangeHq.Id,
+                UnitView view when session.World.LivingUnitOwner(view.Id) == Opponent => view.Id,
+                StaticBody3D body when enemyBuildings.TryGetValue(body, out var id)
+                    && session.World.TryGetHitPoints(id, out var hp) && hp > 0 => id,
                 _ => null
             },
             (selected, target) => session.Commands.ScheduleAttack(LocalPlayer, selected, target));
+        _productionPanel = new ProductionPanel(GetNode("SelectionLayer"), LocalPlayer, configuration,
+            [blueBarracks, blueHq], (producer, kind) => session.Commands.ScheduleTraining(LocalPlayer, producer, kind));
+        _productionPanel.Update(session.World);
     }
 
-    private Building AddHeadquarters(EntityId id, PlayerId owner, int maxHp, string path)
+    private void AddUnitView(Unit unit)
+    {
+        var view = UnitView.Create(unit, _teamMaterials[unit.Owner!.Value]);
+        _unitRoot.AddChild(view);
+        view.ResetPhysicsInterpolation();
+        _views.Add(view);
+        _healthBars.Add(unit.Id, new HealthBar(view, unit.HitPoints, 4.2f, 0.10f));
+    }
+
+    private Building AddBuilding(EntityId id, PlayerId owner, BuildingDefinition definition, string path)
     {
         var body = GetNode<StaticBody3D>(path);
-        _headquarters.Add(id, body);
-        _healthBars.Add(id, new HealthBar(body, maxHp, 7.3f, 0.14f));
-        return new Building(id, owner, new SimVector(body.Position.X, body.Position.Z),
-            BuildingKind.Headquarters, maxHp);
+        var exit = body.GetNode<Marker3D>("ProductionExit").GlobalPosition;
+        _buildings.Add(id, body);
+        _healthBars.Add(id, new HealthBar(body, definition.MaxHp, 7.3f, 0.14f));
+        return new Building(id, owner, new SimVector(body.GlobalPosition.X, body.GlobalPosition.Z),
+            definition.Kind, definition.MaxHp, new SimVector(exit.X, exit.Z));
     }
 
     private static Unit CreateUnit(int id, PlayerId player, UnitDefinition definition, float x, float z) =>
@@ -111,6 +122,8 @@ public partial class Battlefield : Node3D
         {
             if (gameEvent is EntityDamaged damage && _healthBars.TryGetValue(damage.Entity, out var bar))
                 bar.SetHitPoints(damage.RemainingHitPoints);
+            if (gameEvent is UnitSpawned spawn)
+                AddUnitView(spawn.Unit);
             if (gameEvent is EntityDestroyed death)
             {
                 DestroyView(death.Entity);
@@ -120,6 +133,8 @@ public partial class Battlefield : Node3D
 
         if (destroyed)
             _unitSelection.RefreshSelection();
+
+        _productionPanel?.Update(session.World);
 
         foreach (var view in _views)
         {
@@ -131,12 +146,12 @@ public partial class Battlefield : Node3D
     private void DestroyView(EntityId id)
     {
         _healthBars.Remove(id);
-        if (_headquarters.TryGetValue(id, out var headquarters))
+        if (_buildings.TryGetValue(id, out var building))
         {
-            headquarters.GetNode<Sprite3D>("HealthBar").QueueFree();
+            building.GetNode<Sprite3D>("HealthBar").QueueFree();
             var ruin = new StandardMaterial3D { AlbedoColor = new Color("505862") };
-            headquarters.GetNode<MeshInstance3D>("Base").MaterialOverride = ruin;
-            headquarters.GetNode<MeshInstance3D>("Roof").MaterialOverride = ruin;
+            building.GetNode<MeshInstance3D>("Base").MaterialOverride = ruin;
+            building.GetNode<MeshInstance3D>("Roof").MaterialOverride = ruin;
             return;
         }
 

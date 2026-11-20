@@ -44,6 +44,8 @@ internal sealed class UnitMovement(
         return Accepted;
     }
 
+    public void Register(Unit unit) => Positions = Positions.Add(unit.Id, unit.Position);
+
     public void Stop(IEnumerable<EntityId> ids)
     {
         foreach (var id in ids)

@@ -75,8 +75,22 @@ follows in RTS-016.
 `ShotFired` events are ordered by attacker ID. Damage from that tick is
 applied together in target ID order and produces `EntityDamaged` and
 `EntityDestroyed` events. `IReadOnlyWorld.TryGetHitPoints` reports the
-remaining health, including zero after destruction. Production follows in
-RTS-008.
+remaining health, including zero after destruction.
+
+## RTS-008 production
+
+Training reserves the full unit cost when the scheduled order succeeds.
+Each living barracks trains infantry and each living HQ trains tanks, one
+order at a time. Only the first order in each queue advances on a tick,
+starting on the tick it was accepted. After movement and combat, ready orders
+are checked in producer ID order. A blocked exit holds the order at zero
+remaining ticks until the exit is clear and walkable. Destroying a producer
+discards its queue and leaves the reserved credits spent.
+
+`IReadOnlyWorld.Credits` and `TrainingQueue` expose the same tick's balance
+and remaining training time. A `UnitSpawned` event carries the new unit's
+monotonic ID and starting position. On that tick the snapshot includes its
+position, health and owner, and it can receive orders on subsequent ticks.
 
 ## Godot bridge pseudocode
 ```csharp

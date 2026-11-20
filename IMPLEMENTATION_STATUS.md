@@ -120,6 +120,32 @@ are tracked in RTS-010 and RTS-013.
 | `scripts/validate-godot.sh` | Import, camera, selection, movement and combat checks passed. The focused attack destroyed the clicked squad while the closer tank survived. The navigation checks use synchronous map initialization in the test harness. |
 | Graphical Linux smoke test | Observed both tanks lose health, then disappear with their bars during the exchange. |
 
+## RTS-008 headquarters, barracks and production
+
+Each side starts with 500 credits, one HQ and one barracks. The player's
+production panel lists the balance, cost, queue length and time remaining.
+Barracks train infantry for 100 credits in 8 seconds. HQs train tanks for
+500 credits in 20 seconds.
+
+Orders reserve their cost when accepted and advance in FIFO order per
+building. A finished order waits for a free, walkable exit. Each unit
+spawns once with a new entity ID and can be selected, moved and used in
+combat. Both building types obstruct movement and line of sight. A
+destroyed producer discards its queue and leaves reserved credits spent.
+
+### Verification on 20 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` and `dotnet build IronDominion.sln --configuration Release --no-restore` | Restore and Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 84 xUnit cases passed, including eight new cases for BR-009, BR-010, T-002 and T-011. They verify reservation, ownership, FIFO, spawn IDs, blocked exits and producer destruction. |
+| `scripts/validate-godot.sh` | Godot 4.6.3 .NET imported and launched the scene headlessly. Camera, selection, movement, combat and production checks passed. Clicks queued two squads and a tank across two matches. Moving the first squad cleared the second order to spawn. |
+| Graphical Linux smoke test | Clicked the infantry button, saw the credits fall and the first squad spawn. Observed the next order wait at the occupied exit, then spawn after moving the first squad away. |
+
+The graphical cloud driver reported that changing VSync is unsupported.
+The graphical test ran on Linux. Windows runtime verification remains
+under RTS-015.
+
 ## RTS-001 bootstrap
 
 RTS-001 adds the Godot 4.6.3 .NET project, the .NET SDK 10.0.404 solution and
@@ -162,5 +188,5 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-008 adds production orders and the training queue. Victory and defeat
-remain under RTS-013.
+RTS-009 adds passive income and sector capture. Victory and defeat remain
+under RTS-013.
