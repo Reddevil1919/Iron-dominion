@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace IronDominion.Domain;
 
 public interface IReadOnlyWorld
@@ -7,5 +9,7 @@ public interface IReadOnlyWorld
     bool TryGetHitPoints(EntityId id, out int hitPoints);
     PlayerId? LivingUnitOwner(EntityId id);
     int Credits(PlayerId player);
+    long IncomePerSecond(PlayerId player);
+    ImmutableArray<SectorState> Sectors { get; }
     IReadOnlyList<TrainingOrder> TrainingQueue(EntityId producer);
 }

@@ -177,6 +177,17 @@ mesh = SubResource("BoxMesh_roadblock")
 
 [node name="NavigationRegion" type="NavigationRegion3D" parent="."]
 
+[node name="Sectors" type="Node3D" parent="."]
+
+[node name="Alpha" type="Marker3D" parent="Sectors"]
+position = Vector3(-30, 0, -6)
+
+[node name="Bravo" type="Marker3D" parent="Sectors"]
+position = Vector3(15, 0, 20)
+
+[node name="Charlie" type="Marker3D" parent="Sectors"]
+position = Vector3(30, 0, 6)
+
 [node name="Units" type="Node3D" parent="."]
 
 [node name="SelectionLayer" type="CanvasLayer" parent="."]

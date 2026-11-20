@@ -8,6 +8,7 @@ internal sealed class ProductionPanel
     private readonly PlayerId _player;
     private readonly int _tickRate;
     private readonly Label _credits = new() { Name = "Credits" };
+    private readonly Label _income = new() { Name = "Income" };
     private readonly List<Row> _rows = new();
 
     public ProductionPanel(Node canvas, PlayerId player, GameConfiguration configuration,
@@ -39,7 +40,12 @@ internal sealed class ProductionPanel
         var content = new VBoxContainer { Name = "QueueRows" };
         margin.AddChild(content);
         _credits.AddThemeFontSizeOverride("font_size", 20);
-        content.AddChild(_credits);
+        var budget = new HBoxContainer();
+        budget.AddThemeConstantOverride("separation", 12);
+        budget.AddChild(_credits);
+        _income.Modulate = new Color("b5c6b7");
+        budget.AddChild(_income);
+        content.AddChild(budget);
 
         foreach (var producer in producers)
         {
@@ -71,6 +77,7 @@ internal sealed class ProductionPanel
     {
         var credits = world.Credits(_player);
         SetLabel(_credits, $"{credits} credits");
+        SetLabel(_income, $"+{world.IncomePerSecond(_player)} credits/s");
 
         foreach (var row in _rows)
         {

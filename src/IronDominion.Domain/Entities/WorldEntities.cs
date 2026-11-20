@@ -20,6 +20,7 @@ public sealed class WorldEntities
 
     public IEnumerable<Unit> Units => _entities.Values.OfType<Unit>();
     public IEnumerable<Building> Buildings => _entities.Values.OfType<Building>();
+    public IEnumerable<Sector> Sectors => _entities.Values.OfType<Sector>();
 
     public WorldEntity? Find(EntityId id) => _entities.GetValueOrDefault(id);
 
