@@ -50,6 +50,25 @@ public interface IGameSimulation {
 - `CommandResult` returned by validation; execution may still fail gracefully if world changed before scheduled tick.
 - Navigation and LOS are injected; they must not mutate world state.
 
+## RTS-003 scheduling contract
+
+Call `GameSession.Commands` on the simulation thread to schedule move, attack
+and training orders. The scheduler assigns each player a sequence starting at
+1 and defaults to the next tick. Commands carry an immutable copy of the unit
+selection. `GameSimulation.Schedule` also accepts pre-sequenced commands for
+deterministic replay in any arrival order.
+
+Scheduling rejects past or current ticks, nonpositive player IDs and sequence
+numbers, and any sequence already used by that player in the same match.
+`AdvanceOneTick()` returns the tick's `CommandProcessed` events in order of
+scheduled tick, player ID and sequence. Events report whether each order
+passed the initial checks, including ownership and whether its actors are
+alive. In a session with navigation, move orders also validate that every
+requested destination is reachable. The simulation caches successful routes
+and publishes positions through `IReadOnlyWorld.TryGetUnitPosition` after
+each 50 ms step. Attack resolution and production follow in RTS-007 and
+RTS-008.
+
 ## Godot bridge pseudocode
 ```csharp
 // In a Godot Node: call from _PhysicsProcess or an accumulator.

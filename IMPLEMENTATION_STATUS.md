@@ -1,5 +1,27 @@
 # Implementation status
 
+## RTS-003 fixed ticks and command scheduling
+
+The simulation processes due commands every 50 ms in the order of their
+scheduled tick, player ID and sequence. `GameSession.Commands` assigns a
+sequence per player. Replaying the same pre-sequenced orders in reverse
+arrival order produces the same processing events. Stale ticks and duplicate
+sequences are rejected before enqueueing. Each processing event records the
+initial validation result, including ownership and whether the actors are alive.
+
+### Verification on 20 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` | Restored all eight projects in an isolated checkout. |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | 52 xUnit cases passed, including 13 new scheduling cases. Covered replay order, tick boundaries, duplicate rejection, ownership, actor health and immutable selections. VSTest used a private temporary artifacts directory. |
+| `scripts/validate-godot.sh` | Debug build, headless editor import and main-scene startup passed with Godot 4.6.3 .NET on Linux. |
+
+Godot drives the fixed tick from the existing battlefield scene. Gameplay
+input and order effects arrive in the subsequent selection, movement, combat
+and production milestones. The runtime check was headless on Linux.
+
 ## RTS-002 domain and configuration
 
 The domain defines players, units, buildings and sectors. Entity IDs are
@@ -57,8 +79,25 @@ number keys recall. The selection model lives in the Application project.
 | `scripts/validate-godot.sh` | Debug build, headless import, scene launch and camera checks passed. The selection check sent clicks, Shift-clicks, drags and group keys to the main scene and verified which rings were visible. |
 | Graphical Linux smoke test | Clicked a blue squad, dragged a rectangle over both sides and observed rings on the three blue units. Clicking an orange squad cleared the rings. After Ctrl+9 had saved the group, pressing 9 brought the three rings back. |
 
-The six units are static prototypes. RTS-006 connects the selection to
-movement orders and navigation.
+## RTS-006 movement and navigation
+
+Right-click ground to move the selection. RTS-006 brings the RTS-003
+scheduler into this branch from the commit reviewed in PR #5. An order
+checks ownership and reachability, computes the routes once and advances the
+units at their configured speeds every 50 ms. Godot renders the positions
+from the read-only snapshots. The navigation region keeps a 5 m clearance
+from the terrain edges, both HQs and the central obstacle. Group destinations
+use 9 m spacing. Navigation currently accounts for the static map.
+
+### Verification on 20 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` | Restored all nine projects. |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 65 xUnit cases passed, including six movement cases. Covered tick speeds, cached routes, inaccessible destinations, ownership and a ten-unit order with distinct destinations. |
+| `scripts/validate-godot.sh` | Headless import, scene launch, camera, selection and movement passed. A right-click sent the blue tank around the roadblock at its configured speed, while blocked targets left it stationary. |
+| Graphical Linux smoke test | Selected the blue tank in the game window and sent it to ground on the opposite side of the central block. Observed the tank arrive at the clicked destination. |
 
 ## RTS-001 bootstrap
 
@@ -102,5 +141,5 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-006 adds movement orders and navigation. It depends on RTS-003 for
-command scheduling. A full match remains a later milestone.
+RTS-007 adds combat, health changes and entity destruction. A full match
+remains a later milestone.
