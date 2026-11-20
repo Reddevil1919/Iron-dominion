@@ -1,7 +1,8 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" uid="uid://dv02nqkqukcxa" path="res://Scripts/Battlefield.cs" id="1_battlefield"]
 [ext_resource type="Script" uid="uid://2vc3lmq0l1g8" path="res://Scripts/RtsCamera.cs" id="2_camera"]
+[ext_resource type="Script" uid="uid://ccf7t4e6whks5" path="res://Scripts/UnitSelectionController.cs" id="3_unit_selection"]
 
 [sub_resource type="Environment" id="Environment_battlefield"]
 background_mode = 1
@@ -35,8 +36,10 @@ albedo_color = Color(0.8, 0.34, 0.16, 1)
 [sub_resource type="StandardMaterial3D" id="Material_roof"]
 albedo_color = Color(0.22, 0.25, 0.28, 1)
 
-[node name="Battlefield" type="Node3D"]
+[node name="Battlefield" type="Node3D" node_paths=PackedStringArray("_unitSelection", "_unitRoot")]
 script = ExtResource("1_battlefield")
+_unitSelection = NodePath("SelectionLayer/UnitSelection")
+_unitRoot = NodePath("Units")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_battlefield")
@@ -91,3 +94,17 @@ mesh = SubResource("BoxMesh_hq")
 position = Vector3(0, 5, 0)
 material_override = SubResource("Material_roof")
 mesh = SubResource("BoxMesh_hq_roof")
+
+[node name="Units" type="Node3D" parent="."]
+
+[node name="SelectionLayer" type="CanvasLayer" parent="."]
+
+[node name="UnitSelection" type="Control" parent="SelectionLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_unit_selection")

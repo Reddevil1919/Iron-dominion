@@ -40,6 +40,26 @@ camera size between 32 m and 136 m around the current focus.
 | Graphical Linux smoke test | Launched the game in Godot .NET and observed the view change with an arrow key, the mouse wheel and the pointer at the left edge. |
 | Headless Windows x64 export | Generated the executable and PCK from Linux and verified that the published game assembly contains `RtsCamera`. Native Windows execution remains to be tested. |
 
+## RTS-005 unit selection and control groups
+
+The battlefield starts with two infantry squads and one tank per side.
+The local player can select living blue units with a click or a rectangle.
+Shift toggles the matching units. Selection rings identify the active
+selection, and Ctrl+1 through Ctrl+9 save groups that the corresponding
+number keys recall. The selection model lives in the Application project.
+
+### Verification on 20 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 46 xUnit cases passed. The 7 new cases cover ownership, living units, toggling and control groups. |
+| `scripts/validate-godot.sh` | Debug build, headless import, scene launch and camera checks passed. The selection check sent clicks, Shift-clicks, drags and group keys to the main scene and verified which rings were visible. |
+| Graphical Linux smoke test | Clicked a blue squad, dragged a rectangle over both sides and observed rings on the three blue units. Clicking an orange squad cleared the rings. After Ctrl+9 had saved the group, pressing 9 brought the three rings back. |
+
+The six units are static prototypes. RTS-006 connects the selection to
+movement orders and navigation.
+
 ## RTS-001 bootstrap
 
 RTS-001 adds the Godot 4.6.3 .NET project, the .NET SDK 10.0.404 solution and
@@ -82,5 +102,5 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-003 extends the simulation contract with command scheduling. RTS-005
-adds click and drag selection. A full match remains a later milestone.
+RTS-006 adds movement orders and navigation. It depends on RTS-003 for
+command scheduling. A full match remains a later milestone.

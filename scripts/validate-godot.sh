@@ -23,8 +23,15 @@ run_godot() {
 dotnet build "$repo_root/game/IronDominion.Game.csproj" --configuration Debug
 run_godot --editor --import
 run_godot --fixed-fps 20 --quit-after 10
-run_godot --fixed-fps 60 --quit-after 600 --script "$repo_root/tests/godot/rts_camera_smoke.gd"
-if ! grep -Fxq 'RTS camera smoke checks passed.' "$log"; then
-    echo 'The RTS camera smoke test did not finish.' >&2
-    exit 1
-fi
+run_smoke_test() {
+    local script=$1
+    local success=$2
+    run_godot --fixed-fps 60 --quit-after 600 --script "$repo_root/tests/godot/$script"
+    if ! grep -Fxq "$success" "$log"; then
+        printf 'The Godot smoke test %s did not finish.\n' "$script" >&2
+        return 1
+    fi
+}
+
+run_smoke_test rts_camera_smoke.gd 'RTS camera smoke checks passed.'
+run_smoke_test unit_selection_smoke.gd 'Unit selection smoke checks passed.'

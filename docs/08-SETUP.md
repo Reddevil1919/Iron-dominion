@@ -68,8 +68,9 @@ The Godot script builds the Debug game assembly, imports the project with
 exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
 
-The script also runs the headless camera smoke test against the main scene.
-It sends keyboard and wheel events and checks the terrain and zoom limits.
+The script also runs headless camera and unit selection smoke tests against
+the main scene. They send keyboard and mouse events to check camera bounds,
+selection feedback, ownership filtering and control groups.
 
 For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
@@ -109,5 +110,14 @@ The prototype runs a 128 m × 128 m battlefield with two placeholder HQs and a
 zooms between the 32 m close view and the 136 m overview while keeping
 the same ground focus. The terrain bounds limit how far the focus can move.
 
-The first playable milestone adds selection and movement around an obstacle,
-a target with HP, an attack order and a victory condition.
+The scene has two infantry squads and one tank per side. Left-click a blue
+unit or drag a rectangle to select several. Hold Shift when releasing the
+mouse to toggle the blue units under the click or rectangle. Clicking empty
+ground clears the selection. Selected units show a yellow-green ring.
+
+Use Ctrl+1 through Ctrl+9 to assign the current selection to a group. Press
+the number by itself to recall it. Assign an empty selection to clear a
+group. Unassigned number keys leave the selection as it is.
+
+The first playable milestone adds movement around an obstacle, a target
+with HP, an attack order and a victory condition.
