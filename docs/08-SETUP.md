@@ -68,11 +68,13 @@ The Godot script builds the Debug game assembly, imports the project with
 exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
 
-The script also runs headless camera, selection, movement, combat and
-production checks against the main scene. They send keyboard and mouse
+The script also runs headless camera, selection, movement, combat,
+production and sector capture checks against the main scene. They send keyboard and mouse
 events to verify camera bounds, selection ownership, control groups,
 obstacle navigation, a focused attack, a tank spawning at the HQ and
-a blocked barracks queue resuming after a trained squad moves away.
+a blocked barracks queue resuming after a trained squad moves away. The
+sector check moves infantry into a zone and verifies the HUD, map marker
+and increased balance.
 
 For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
@@ -142,5 +144,11 @@ You start with 500 credits. Costs are deducted when orders enter the
 queue. If the panel shows **Exit blocked**, move units away from the
 producer's exit to let the finished unit spawn.
 
-Passive income and sector capture follow in RTS-009. Victory and defeat
-follow in RTS-013.
+Each living HQ earns 5 credits per second. To capture one of the three
+marked sectors, move an infantry squad inside its ring and hold it for
+10 seconds uncontested. Tanks can fight in the area. Living infantry
+determines capture. The top-left panel shows ownership, progress and
+contested sectors. Each owned sector adds 2 credits per second to the
+rate shown next to your balance.
+
+Victory and defeat follow in RTS-013.

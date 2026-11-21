@@ -20,6 +20,7 @@ public partial class Battlefield : Node3D
     private readonly Dictionary<EntityId, StaticBody3D> _buildings = new();
     private readonly Dictionary<PlayerId, StandardMaterial3D> _teamMaterials = new();
     private ProductionPanel? _productionPanel;
+    private SectorBoard? _sectorBoard;
     private GameSession? _session;
 
     public override void _Ready()
@@ -62,7 +63,10 @@ public partial class Battlefield : Node3D
         var orangeHq = AddBuilding(new EntityId(8), Opponent, headquarters, "OrangeHQ");
         var blueBarracks = AddBuilding(new EntityId(9), LocalPlayer, barracks, "BlueBarracks");
         var orangeBarracks = AddBuilding(new EntityId(10), Opponent, barracks, "OrangeBarracks");
-        var world = new WorldEntities([.. units, blueHq, orangeHq, blueBarracks, orangeBarracks]);
+        var canvas = GetNode("SelectionLayer");
+        var sectorBoard = new SectorBoard(GetNode<Node3D>("Sectors"), canvas, configuration, _teamMaterials);
+        _sectorBoard = sectorBoard;
+        var world = new WorldEntities([.. units, blueHq, orangeHq, blueBarracks, orangeBarracks, .. sectorBoard.Sectors]);
         var ground = GetNode<StaticBody3D>("Terrain");
         var navigation = new BattlefieldNavigation(_navigationRegion, ground.GetNode<CollisionShape3D>("GroundCollision"),
             _buildings.Values.Select(body => body.GetNode<CollisionShape3D>("Collision"))
@@ -84,9 +88,10 @@ public partial class Battlefield : Node3D
                 _ => null
             },
             (selected, target) => session.Commands.ScheduleAttack(LocalPlayer, selected, target));
-        _productionPanel = new ProductionPanel(GetNode("SelectionLayer"), LocalPlayer, configuration,
+        _productionPanel = new ProductionPanel(canvas, LocalPlayer, configuration,
             [blueBarracks, blueHq], (producer, kind) => session.Commands.ScheduleTraining(LocalPlayer, producer, kind));
         _productionPanel.Update(session.World);
+        sectorBoard.Update(session.World);
     }
 
     private void AddUnitView(Unit unit)
@@ -135,6 +140,7 @@ public partial class Battlefield : Node3D
             _unitSelection.RefreshSelection();
 
         _productionPanel?.Update(session.World);
+        _sectorBoard?.Update(session.World);
 
         foreach (var view in _views)
         {

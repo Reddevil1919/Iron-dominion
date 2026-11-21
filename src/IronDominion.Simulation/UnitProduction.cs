@@ -8,7 +8,8 @@ internal sealed class UnitProduction(
     GameConfiguration configuration,
     INavigationService navigation,
     UnitMovement movement,
-    UnitCombat combat)
+    UnitCombat combat,
+    PlayerEconomy economy)
 {
     private const int GroundMask = 1;
     private const float SpawnSeparationSquared = 9.5f * 9.5f;
@@ -18,11 +19,6 @@ internal sealed class UnitProduction(
         .OrderBy(building => building.Id.Value).ToArray();
     private readonly Dictionary<UnitKind, UnitDefinition> _definitions =
         configuration.Units.ToDictionary(unit => unit.Kind);
-
-    public ImmutableDictionary<PlayerId, int> Credits { get; private set; } =
-        world.Units.Cast<WorldEntity>().Concat(world.Buildings)
-            .Select(entity => entity.Owner!.Value).Distinct()
-            .ToImmutableDictionary(player => player, _ => configuration.StartingCredits);
 
     public ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>> Queues { get; private set; } =
         ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>>.Empty;
@@ -34,13 +30,11 @@ internal sealed class UnitProduction(
             return new(false, "invalid_production_type");
 
         var definition = _definitions[command.Kind];
-        var balance = Credits[command.Player];
-        if (balance < definition.Cost)
+        if (!economy.TrySpend(command.Player, definition.Cost))
             return new(false, "insufficient_credits");
 
         var queue = Queues.GetValueOrDefault(producer.Id, ImmutableList<TrainingOrder>.Empty);
         Queues = Queues.SetItem(producer.Id, queue.Add(new TrainingOrder(command.Kind, definition.BuildTicks)));
-        Credits = Credits.SetItem(command.Player, balance - definition.Cost);
         return Accepted;
     }
 
