@@ -243,6 +243,30 @@ reason. The HUD reads the existing snapshot and command events.
 The Linux graphics driver reported that changing VSync is unsupported.
 Windows runtime verification remains under RTS-015.
 
+## RTS-013 match lifecycle
+
+Destroying the opponent's HQ ends the match. The simulation resolves
+simultaneous damage before choosing the result, so both HQs falling
+on the same tick produces a draw. The final snapshot is frozen and
+later commands are ignored.
+
+The Pause button and Escape open a menu for resume, restart and quit.
+The result screen shows victory, defeat or a draw. Restart loads a
+fresh battlefield and resets the session, units, credits, sectors,
+selection, queued commands and AI.
+
+### Verification on 21 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` and `dotnet build IronDominion.sln --configuration Release --no-restore` | Restore and Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 114 xUnit cases passed. Six new cases cover wins for both sides, a simultaneous draw, the final snapshot, barracks destruction and pause with a pending command. |
+| `scripts/validate-godot.sh` | Godot 4.6.3 .NET imported and launched the scene headlessly. All ten smoke checks passed. Player input paused and resumed the match, moved a tank into range of the orange HQ, won against the passive opponent and restarted. The active AI scenario ended on the defeat screen. |
+| Graphical Linux smoke test | Paused and resumed from the menu, watched the active AI destroy the blue HQ, then used the result screen to start a new match. |
+
+The Linux graphics driver reported that changing VSync is unsupported.
+Windows runtime verification remains under RTS-015.
+
 ## RTS-001 bootstrap
 
 RTS-001 adds the Godot 4.6.3 .NET project, the .NET SDK 10.0.404 solution and
@@ -285,4 +309,4 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-013 adds victory, defeat, pause and restart.
+RTS-014 adds an automated integration scenario and deterministic replay tests.

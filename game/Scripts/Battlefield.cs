@@ -24,6 +24,7 @@ public partial class Battlefield : Node3D
     private SectorBoard? _sectorBoard;
     private SelectionPanel? _selectionPanel;
     private BattlefieldFeedback? _feedback;
+    private MatchMenu? _matchMenu;
     private GameSession? _session;
     private EnemyCommander? _enemyCommander;
     private PlayerCommands? _enemyCommands;
@@ -81,6 +82,13 @@ public partial class Battlefield : Node3D
         var sight = new BattlefieldSight(GetWorld3D(), ground.CollisionLayer, _buildings);
         var session = new GameSession(world, configuration, navigation, sight);
         _session = session;
+        var menuLayer = new CanvasLayer { Name = "MatchMenuLayer", Layer = 2, ProcessMode = ProcessModeEnum.Always };
+        var menu = new MatchMenu { Name = "MatchMenu" };
+        menu.Initialize(session, LocalPlayer);
+        _matchMenu = menu;
+        AddChild(menuLayer);
+        menuLayer.AddChild(menu);
+
         if (!OS.IsDebugBuild() || !OS.GetCmdlineUserArgs().Contains("--passive-opponent"))
         {
             _enemyCommander = new EnemyCommander(configuration);
@@ -145,7 +153,8 @@ public partial class Battlefield : Node3D
             return;
 
         var events = session.AdvanceOneTick();
-        if (_enemyCommander is { } commander && _enemyCommands is { } commands
+        if (session.World.Result == MatchResult.Running
+            && _enemyCommander is { } commander && _enemyCommands is { } commands
             && EnemyCommander.IsDecisionTick(session.World.Tick))
         {
             commander.Plan(session.Observe(Opponent), commands);
@@ -178,6 +187,8 @@ public partial class Battlefield : Node3D
         _selectionPanel?.Update(session.World, _views);
         _feedback?.Update(session.World.Tick);
         UpdateUnitViews(session.World);
+        if (session.World.Result != MatchResult.Running)
+            _matchMenu?.ShowOutcome(session.World.Result);
     }
 
     private Vector3? FindActorPosition(EntityId id, IReadOnlyWorld world)

@@ -7,6 +7,6 @@ public interface IGameSimulation
 
     void Schedule(GameCommand command);
 
-    // Advances the world by one fixed 50 ms step.
+    // Advances a running match by one fixed 50 ms step.
     IReadOnlyList<IGameEvent> Tick();
 }

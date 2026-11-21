@@ -31,7 +31,7 @@ internal sealed class BattlefieldFeedback
         _notice.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight);
         _notice.OffsetLeft = -304;
         _notice.OffsetRight = -24;
-        _notice.OffsetTop = 24;
+        _notice.OffsetTop = 72;
         _notice.Visible = false;
         _message.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _message.CustomMinimumSize = new Vector2(248, 0);

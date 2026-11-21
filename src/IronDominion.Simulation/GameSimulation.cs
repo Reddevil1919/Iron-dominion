@@ -17,6 +17,8 @@ public sealed class GameSimulation : IGameSimulation
     private readonly PlayerEconomy? _economy;
     private readonly SectorControl? _sectorControl;
     private readonly ImmutableArray<SectorState> _initialSectors;
+    private readonly EntityId[] _playerOneHeadquarters = [];
+    private readonly EntityId[] _playerTwoHeadquarters = [];
     private ImmutableDictionary<EntityId, Unit> _units;
     private readonly ImmutableDictionary<EntityId, int> _initialHealth;
     private readonly ImmutableDictionary<EntityId, SimVector> _initialPositions;
@@ -50,6 +52,11 @@ public sealed class GameSimulation : IGameSimulation
     {
         ArgumentNullException.ThrowIfNull(sight);
         _combat = new UnitCombat(_entities, configuration, sight);
+        var headquarters = _entities.Buildings.Where(building => building.Kind == BuildingKind.Headquarters).ToArray();
+        _playerOneHeadquarters = headquarters.Where(building => building.Owner == new PlayerId(1))
+            .Select(building => building.Id).ToArray();
+        _playerTwoHeadquarters = headquarters.Where(building => building.Owner == new PlayerId(2))
+            .Select(building => building.Id).ToArray();
         _sectorControl = new SectorControl(_initialSectors, _entities, configuration);
         _economy = new PlayerEconomy(_entities, configuration, _combat.Health, _initialSectors);
         _production = new UnitProduction(_entities, configuration, navigation, _movement!, _combat, _economy);
@@ -84,6 +91,9 @@ public sealed class GameSimulation : IGameSimulation
     public void Schedule(GameCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
+        if (World.Result != MatchResult.Running)
+            return;
+
         if (command.ExecuteAtTick <= World.Tick)
             throw new ArgumentOutOfRangeException(nameof(command), "Commands must be scheduled for a future tick.");
         if (command.Player.Value <= 0 || command.Sequence <= 0)
@@ -96,6 +106,9 @@ public sealed class GameSimulation : IGameSimulation
 
     public IReadOnlyList<IGameEvent> Tick()
     {
+        if (World.Result != MatchResult.Running)
+            return [];
+
         var tick = checked(World.Tick + 1);
         List<IGameEvent>? events = null;
         var startingBalances = _economy?.Credits ?? ImmutableDictionary<PlayerId, int>.Empty;
@@ -144,18 +157,44 @@ public sealed class GameSimulation : IGameSimulation
             }
         }
 
-        World = Snapshot(tick);
+        var resultAtEndOfTick = ResolveMatchResult();
+        if (resultAtEndOfTick != MatchResult.Running)
+        {
+            _pending.Clear();
+            _scheduledSequences.Clear();
+            events ??= new List<IGameEvent>();
+            events.Add(new MatchEnded(tick, resultAtEndOfTick));
+        }
+
+        World = Snapshot(tick, resultAtEndOfTick);
         return events is not { Count: > 0 } ? Array.Empty<IGameEvent>() : events.AsReadOnly();
     }
 
-    private WorldSnapshot Snapshot(long tick) => new(
-        tick, _movement?.Positions ?? _initialPositions, _combat?.Health ?? _initialHealth, _units, _entities.CoverZones,
+    private MatchResult ResolveMatchResult()
+    {
+        if (_combat is null || _playerOneHeadquarters.Length == 0 || _playerTwoHeadquarters.Length == 0)
+            return MatchResult.Running;
+
+        var health = _combat.Health;
+        var playerOneAlive = _playerOneHeadquarters.Any(id => health[id] > 0);
+        var playerTwoAlive = _playerTwoHeadquarters.Any(id => health[id] > 0);
+        return (playerOneAlive, playerTwoAlive) switch
+        {
+            (true, true) => MatchResult.Running,
+            (true, false) => MatchResult.PlayerOneWon,
+            (false, true) => MatchResult.PlayerTwoWon,
+            _ => MatchResult.Draw
+        };
+    }
+
+    private WorldSnapshot Snapshot(long tick, MatchResult result = MatchResult.Running) => new(
+        tick, result, _movement?.Positions ?? _initialPositions, _combat?.Health ?? _initialHealth, _units, _entities.CoverZones,
         _economy?.Credits ?? ImmutableDictionary<PlayerId, int>.Empty,
         _economy?.Income ?? ImmutableDictionary<PlayerId, long>.Empty,
         _sectorControl?.Sectors ?? _initialSectors,
         _production?.Queues ?? ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>>.Empty);
 
-    private sealed record WorldSnapshot(long Tick, ImmutableDictionary<EntityId, SimVector> Positions,
+    private sealed record WorldSnapshot(long Tick, MatchResult Result, ImmutableDictionary<EntityId, SimVector> Positions,
         ImmutableDictionary<EntityId, int> Health, ImmutableDictionary<EntityId, Unit> Units,
         ImmutableArray<CoverZone> CoverZones,
         ImmutableDictionary<PlayerId, int> Balances,

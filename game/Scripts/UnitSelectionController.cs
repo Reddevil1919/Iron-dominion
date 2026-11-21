@@ -39,6 +39,12 @@ public partial class UnitSelectionController : Control
 
     public override void _ExitTree() => GetWindow().FocusExited -= CancelGesture;
 
+    public override void _Notification(int what)
+    {
+        if (what == NotificationPaused)
+            CancelGesture();
+    }
+
     public override void _UnhandledInput(InputEvent inputEvent)
     {
         if (_selection is not { } selection)

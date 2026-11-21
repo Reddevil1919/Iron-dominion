@@ -35,7 +35,14 @@ public sealed class GameSession
 
     public CommandScheduler Commands { get; }
     public IReadOnlyWorld World => _simulation.World;
+    public bool IsPaused { get; private set; }
     public PlayerObservation Observe(PlayerId player) => _simulation.Observe(player);
 
-    public IReadOnlyList<IGameEvent> AdvanceOneTick() => _simulation.Tick();
+    public void SetPaused(bool paused)
+    {
+        if (World.Result == MatchResult.Running)
+            IsPaused = paused;
+    }
+
+    public IReadOnlyList<IGameEvent> AdvanceOneTick() => IsPaused ? [] : _simulation.Tick();
 }
