@@ -21,23 +21,18 @@ internal sealed class SectorBoard
             ? new TorusMesh { InnerRadius = Math.Max(0f, radius - 0.4f), OuterRadius = radius, Rings = 40, RingSegments = 8 }
             : null;
 
-        var panel = new PanelContainer
-        {
-            Name = "SectorPanel", OffsetLeft = 16f, OffsetTop = 16f, OffsetRight = 220f,
-            MouseFilter = Control.MouseFilterEnum.Ignore
-        };
-        var style = new StyleBoxFlat { BgColor = new Color("192635ee"), BorderColor = new Color("526375") };
-        style.SetBorderWidthAll(1);
-        style.SetCornerRadiusAll(6);
-        style.ContentMarginTop = 8f;
-        style.ContentMarginBottom = 8f;
-        style.ContentMarginLeft = 12f;
-        style.ContentMarginRight = 12f;
-        panel.AddThemeStyleboxOverride("panel", style);
+        var panel = HudStyle.Panel("SectorPanel");
+        panel.OffsetLeft = 24;
+        panel.OffsetTop = 24;
+        panel.OffsetRight = 284;
         canvas.AddChild(panel);
 
         var rows = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        rows.AddThemeConstantOverride("separation", 7);
         panel.AddChild(rows);
+        var heading = HudStyle.Label("SectorHeading", 14, HudStyle.Muted);
+        heading.Text = "SECTORS";
+        rows.AddChild(heading);
 
         var sectors = new List<Sector>();
         foreach (var (markerName, code, id) in new[]
@@ -67,9 +62,14 @@ internal sealed class SectorBoard
             };
             marker.AddChild(symbol);
 
-            var status = new Label { Name = markerName };
-            rows.AddChild(status);
-            _views.Add(id, new SectorView(code, material, symbol, status));
+            var row = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            row.AddThemeConstantOverride("separation", 3);
+            var status = HudStyle.Label(markerName, 15, HudStyle.Text);
+            var progress = HudStyle.Progress($"{markerName}Progress", HudStyle.Blue, Math.Max(1, _captureTicks));
+            row.AddChild(status);
+            row.AddChild(progress);
+            rows.AddChild(row);
+            _views.Add(id, new SectorView(code, material, symbol, status, progress));
         }
 
         Sectors = sectors.AsReadOnly();
@@ -87,17 +87,18 @@ internal sealed class SectorBoard
             {
                 view.Material.AlbedoColor = color;
                 view.Symbol.Modulate = color;
-                view.Status.Modulate = color;
+                HudStyle.SetTextColor(view.Status, color);
+                HudStyle.SetProgressColor(view.Progress, color);
             }
 
             var status = $"{view.Code}   {OwnerName(sector.Owner)}";
             if (sector.Contested)
                 status += " · Contested";
-            else if (sector.CapturingPlayer is { } challenger)
+            else if (sector.CapturingPlayer is { } challenger && _captureTicks > 0)
                 status += $" · {OwnerName(challenger)} {sector.CaptureTicks * 100 / _captureTicks}%";
 
-            if (view.Status.Text != status)
-                view.Status.Text = status;
+            HudStyle.SetText(view.Status, status);
+            view.Progress.Value = sector.CaptureTicks;
         }
     }
 
@@ -111,5 +112,5 @@ internal sealed class SectorBoard
         _ => "Neutral"
     };
 
-    private sealed record SectorView(string Code, StandardMaterial3D Material, Label3D Symbol, Label Status);
+    private sealed record SectorView(string Code, StandardMaterial3D Material, Label3D Symbol, Label Status, ProgressBar Progress);
 }

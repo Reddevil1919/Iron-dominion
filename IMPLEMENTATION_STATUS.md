@@ -219,6 +219,30 @@ attack orders. On-screen fog rendering follows in RTS-016.
 The rendered check ran on Linux. Windows runtime verification remains
 under RTS-015. Match outcomes and restart follow in RTS-013.
 
+## RTS-012 battlefield HUD and feedback
+
+The production panel shows the balance, income, time remaining and a
+progress bar for each queue. A completed order waiting for a free exit
+shows a full amber bar. The sector panel shows each flag's owner and
+capture progress, including contested states. The bottom-right panel
+shows selected units, exact hit points and cover. World health bars
+change color at 60% and 25% health.
+
+Firing draws short-lived traces. Failed local orders display a brief
+reason. The HUD reads the existing snapshot and command events.
+
+### Verification on 21 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` and `dotnet build IronDominion.sln --configuration Release --no-restore` | Restore and Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 108 xUnit cases passed. |
+| `scripts/validate-godot.sh` | Godot 4.6.3 .NET imported and launched the scene headlessly. All nine smoke checks passed. The HUD test covered single and group hit points, panel separation at 960 × 540, rejected orders, combat damage and shot-trace expiry. The production and capture tests also checked the new progress bars. |
+| Graphical Linux smoke test | Checked credits and the tank queue, selected a mixed group, saw a blocked-order message and watched the selected tank lose health in combat. |
+
+The Linux graphics driver reported that changing VSync is unsupported.
+Windows runtime verification remains under RTS-015.
+
 ## RTS-001 bootstrap
 
 RTS-001 adds the Godot 4.6.3 .NET project, the .NET SDK 10.0.404 solution and
@@ -261,4 +285,4 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-012 expands the HUD and feedback. Victory and defeat remain under RTS-013.
+RTS-013 adds victory, defeat, pause and restart.

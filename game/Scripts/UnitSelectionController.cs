@@ -17,13 +17,14 @@ public partial class UnitSelectionController : Control
     private Action<IReadOnlyList<EntityId>, SimVector> _move = null!;
     private Func<GodotObject, EntityId?> _hostile = null!;
     private Action<IReadOnlyList<EntityId>, EntityId> _attack = null!;
+    private Action<string> _reject = null!;
     private Vector2? _start;
     private Vector2 _pointer;
     private bool _dragging;
 
     public void Initialize(UnitSelection selection, IReadOnlyList<UnitView> units,
         StaticBody3D ground, Action<IReadOnlyList<EntityId>, SimVector> move,
-        Func<GodotObject, EntityId?> hostile, Action<IReadOnlyList<EntityId>, EntityId> attack)
+        Func<GodotObject, EntityId?> hostile, Action<IReadOnlyList<EntityId>, EntityId> attack, Action<string> reject)
     {
         _selection = selection;
         _units = units;
@@ -31,6 +32,7 @@ public partial class UnitSelectionController : Control
         _move = move;
         _hostile = hostile;
         _attack = attack;
+        _reject = reject;
     }
 
     public override void _Ready() => GetWindow().FocusExited += CancelGesture;
@@ -146,7 +148,10 @@ public partial class UnitSelectionController : Control
 
         using var hit = Raycast(point, _ground.CollisionLayer | UnitView.PickingLayer);
         if (hit is null || !hit.TryGetValue("collider", out var collider) || collider.AsGodotObject() is not { } actor)
+        {
+            _reject("outside_battlefield");
             return;
+        }
 
         if (_hostile(actor) is { } targetId)
             _attack(selection.Selected, targetId);
@@ -154,6 +159,10 @@ public partial class UnitSelectionController : Control
         {
             var target = hit["position"].AsVector3();
             _move(selection.Selected, new SimVector(target.X, target.Z));
+        }
+        else
+        {
+            _reject("blocked_ground");
         }
     }
 

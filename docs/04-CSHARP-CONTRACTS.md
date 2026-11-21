@@ -150,6 +150,19 @@ public sector locations until a contact is available. An assault unit
 moves to firing range before taking aim and tries another position
 if its path was rejected.
 
+## RTS-012 battlefield HUD
+
+The production, sector and selection panels read the published world
+snapshot. Build bars use elapsed ticks for the first order, and capture
+bars use the current sector's capture ticks. The selection panel sums
+the current and maximum hit points of living selected units and reports
+cover from `IReadOnlyWorld.HasCover`.
+
+The Godot scene turns `ShotFired` events into brief traces and uses
+`CommandProcessed` rejection codes to explain failed local orders.
+Blocked clicks receive feedback at the input boundary. These effects
+read simulation state and leave gameplay rules in the simulation.
+
 ## Godot bridge pseudocode
 ```csharp
 // In a Godot Node: call from _PhysicsProcess or an accumulator.

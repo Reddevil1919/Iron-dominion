@@ -7,8 +7,8 @@ internal sealed class ProductionPanel
 {
     private readonly PlayerId _player;
     private readonly int _tickRate;
-    private readonly Label _credits = new() { Name = "Credits" };
-    private readonly Label _income = new() { Name = "Income" };
+    private readonly Label _credits = HudStyle.Label("Credits", 26, HudStyle.Text);
+    private readonly Label _income = HudStyle.Label("Income", 14, HudStyle.Green);
     private readonly List<Row> _rows = new();
 
     public ProductionPanel(Node canvas, PlayerId player, GameConfiguration configuration,
@@ -17,94 +17,81 @@ internal sealed class ProductionPanel
         _player = player;
         _tickRate = configuration.TickRate;
 
-        var panel = new PanelContainer
-        {
-            Name = "ProductionPanel",
-            AnchorTop = 1f,
-            AnchorBottom = 1f,
-            OffsetLeft = 16f,
-            OffsetTop = -146f,
-            OffsetBottom = -16f
-        };
-        var style = new StyleBoxFlat { BgColor = new Color("192635ee"), BorderColor = new Color("526375") };
-        style.SetBorderWidthAll(1);
-        style.SetCornerRadiusAll(6);
-        panel.AddThemeStyleboxOverride("panel", style);
+        var panel = HudStyle.Panel("ProductionPanel", Control.MouseFilterEnum.Stop);
+        panel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.BottomLeft);
+        panel.OffsetLeft = 24;
+        panel.OffsetRight = 358;
+        panel.OffsetTop = -178;
+        panel.OffsetBottom = -24;
         canvas.AddChild(panel);
 
-        var margin = new MarginContainer();
-        foreach (var side in new[] { "left", "right", "top", "bottom" })
-            margin.AddThemeConstantOverride($"margin_{side}", 10);
-        panel.AddChild(margin);
-
         var content = new VBoxContainer { Name = "QueueRows" };
-        margin.AddChild(content);
-        _credits.AddThemeFontSizeOverride("font_size", 20);
+        content.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(content);
+
         var budget = new HBoxContainer();
         budget.AddThemeConstantOverride("separation", 12);
         budget.AddChild(_credits);
-        _income.Modulate = new Color("b5c6b7");
         budget.AddChild(_income);
         content.AddChild(budget);
 
         foreach (var producer in producers)
         {
             var unit = configuration.Units.Single(definition => definition.Kind == producer.TrainedUnitKind);
+            var infantry = unit.Kind == UnitKind.InfantrySquad;
             var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 12);
             content.AddChild(row);
 
-            var infantry = unit.Kind == UnitKind.InfantrySquad;
             var button = new Button
             {
                 Name = infantry ? "TrainInfantry" : "TrainTank",
                 Text = infantry ? $"Infantry · {unit.Cost}" : $"Tank · {unit.Cost}",
-                CustomMinimumSize = new Vector2(150f, 30f)
+                CustomMinimumSize = new Vector2(136, 34)
             };
+            HudStyle.StyleTrainingButton(button);
             button.Pressed += () => train(producer.Id, unit.Kind);
             row.AddChild(button);
 
-            var status = new Label
-            {
-                Name = infantry ? "InfantryQueue" : "TankQueue",
-                CustomMinimumSize = new Vector2(150f, 0f)
-            };
-            row.AddChild(status);
-            _rows.Add(new Row(producer.Id, unit.Cost, button, status));
+            var info = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            info.AddThemeConstantOverride("separation", 3);
+            row.AddChild(info);
+            var status = HudStyle.Label(infantry ? "InfantryQueue" : "TankQueue", 14, HudStyle.Muted);
+            var progress = HudStyle.Progress(infantry ? "InfantryProgress" : "TankProgress", HudStyle.Blue,
+                Math.Max(1, unit.BuildTicks));
+            info.AddChild(status);
+            info.AddChild(progress);
+            _rows.Add(new Row(producer.Id, unit.Cost, unit.BuildTicks, button, status, progress));
         }
     }
 
     public void Update(IReadOnlyWorld world)
     {
         var credits = world.Credits(_player);
-        SetLabel(_credits, $"{credits} credits");
-        SetLabel(_income, $"+{world.IncomePerSecond(_player)} credits/s");
+        HudStyle.SetText(_credits, $"{credits} credits");
+        HudStyle.SetText(_income, $"+{world.IncomePerSecond(_player)} credits/s");
 
         foreach (var row in _rows)
         {
             var alive = world.TryGetHitPoints(row.Producer, out var hp) && hp > 0;
             row.Button.Disabled = !alive || credits < row.Cost;
+            row.Button.TooltipText = !alive ? "Training building destroyed" : credits < row.Cost
+                ? $"Requires {row.Cost} credits" : $"Train for {row.Cost} credits";
+
             var queue = world.TrainingQueue(row.Producer);
-            var status = !alive ? "Destroyed" : QueueStatus(queue);
-            SetLabel(row.Status, status);
+            var remaining = queue.Count == 0 ? row.BuildTicks : queue[0].RemainingTicks;
+            var blocked = queue.Count > 0 && remaining == 0;
+            var status = !alive ? "Destroyed" : queue.Count == 0 ? "Idle" : blocked ? $"{queue.Count} · Exit blocked"
+                : $"{queue.Count} queued · {Math.Ceiling((double)remaining / _tickRate):0}s";
+            HudStyle.SetText(row.Status, status);
+            var color = !alive ? HudStyle.Red : blocked ? HudStyle.Amber : queue.Count == 0 ? HudStyle.Muted : HudStyle.Text;
+            HudStyle.SetTextColor(row.Status, color);
+            HudStyle.SetProgressColor(row.Progress, blocked ? HudStyle.Amber : HudStyle.Blue);
+            row.Progress.Value = alive && queue.Count > 0
+                ? Math.Max(1, row.BuildTicks) - remaining
+                : 0;
         }
     }
 
-    private string QueueStatus(IReadOnlyList<TrainingOrder> queue)
-    {
-        if (queue.Count == 0)
-            return "Idle";
-        if (queue[0].RemainingTicks == 0)
-            return $"{queue.Count} · Exit blocked";
-
-        var seconds = (int)Math.Ceiling((double)queue[0].RemainingTicks / _tickRate);
-        return $"{queue.Count} queued · {seconds}s";
-    }
-
-    private static void SetLabel(Label label, string text)
-    {
-        if (label.Text != text)
-            label.Text = text;
-    }
-
-    private sealed record Row(EntityId Producer, int Cost, Button Button, Label Status);
+    private sealed record Row(EntityId Producer, int Cost, int BuildTicks, Button Button, Label Status, ProgressBar Progress);
 }
