@@ -8,6 +8,7 @@ public partial class UnitView : StaticBody3D
     public const uint PickingLayer = 1u << 1;
 
     private MeshInstance3D _ring = null!;
+    private Label3D? _coverIndicator;
 
     public EntityId Id { get; private set; }
 
@@ -54,6 +55,12 @@ public partial class UnitView : StaticBody3D
 
     public void ShowSelection(bool selected) => _ring.Visible = selected;
 
+    public void ShowCover(bool covered)
+    {
+        if (_coverIndicator is { } indicator && indicator.Visible != covered)
+            indicator.Visible = covered;
+    }
+
     private void AddTank(StandardMaterial3D material)
     {
         AddMesh(new BoxMesh { Size = new Vector3(6.5f, 1.5f, 5.2f) }, new Vector3(0, 0.75f, 0), material);
@@ -63,6 +70,20 @@ public partial class UnitView : StaticBody3D
 
     private void AddInfantry(StandardMaterial3D material)
     {
+        _coverIndicator = new Label3D
+        {
+            Name = "CoverIndicator",
+            Text = "COVER",
+            Position = Vector3.Up * 6f,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            FontSize = 28,
+            OutlineSize = 6,
+            Modulate = new Color("f6d88d"),
+            PixelSize = 0.065f,
+            Visible = false
+        };
+        AddChild(_coverIndicator);
+
         var soldier = new CapsuleMesh { Radius = 0.7f, Height = 2.4f, RadialSegments = 10, Rings = 4 };
         foreach (var x in new[] { -1.4f, 1.4f })
         foreach (var z in new[] { -1.4f, 1.4f })

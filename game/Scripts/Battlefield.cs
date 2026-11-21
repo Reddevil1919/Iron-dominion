@@ -66,7 +66,9 @@ public partial class Battlefield : Node3D
         var canvas = GetNode("SelectionLayer");
         var sectorBoard = new SectorBoard(GetNode<Node3D>("Sectors"), canvas, configuration, _teamMaterials);
         _sectorBoard = sectorBoard;
-        var world = new WorldEntities([.. units, blueHq, orangeHq, blueBarracks, orangeBarracks, .. sectorBoard.Sectors]);
+        var cover = GetNode<Node3D>("CoverZones").GetChildren().OfType<MeshInstance3D>().Select(ReadCoverZone);
+        var world = new WorldEntities([.. units, blueHq, orangeHq, blueBarracks, orangeBarracks, .. sectorBoard.Sectors],
+            cover);
         var ground = GetNode<StaticBody3D>("Terrain");
         var navigation = new BattlefieldNavigation(_navigationRegion, ground.GetNode<CollisionShape3D>("GroundCollision"),
             _buildings.Values.Select(body => body.GetNode<CollisionShape3D>("Collision"))
@@ -92,6 +94,7 @@ public partial class Battlefield : Node3D
             [blueBarracks, blueHq], (producer, kind) => session.Commands.ScheduleTraining(LocalPlayer, producer, kind));
         _productionPanel.Update(session.World);
         sectorBoard.Update(session.World);
+        UpdateUnitViews(session.World);
     }
 
     private void AddUnitView(Unit unit)
@@ -111,6 +114,13 @@ public partial class Battlefield : Node3D
         _healthBars.Add(id, new HealthBar(body, definition.MaxHp, 7.3f, 0.14f));
         return new Building(id, owner, new SimVector(body.GlobalPosition.X, body.GlobalPosition.Z),
             definition.Kind, definition.MaxHp, new SimVector(exit.X, exit.Z));
+    }
+
+    private static CoverZone ReadCoverZone(MeshInstance3D mesh)
+    {
+        var bounds = mesh.GlobalTransform * mesh.GetAabb();
+        return new CoverZone(new SimVector(bounds.Position.X, bounds.Position.Z),
+            new SimVector(bounds.End.X, bounds.End.Z));
     }
 
     private static Unit CreateUnit(int id, PlayerId player, UnitDefinition definition, float x, float z) =>
@@ -141,11 +151,18 @@ public partial class Battlefield : Node3D
 
         _productionPanel?.Update(session.World);
         _sectorBoard?.Update(session.World);
+        UpdateUnitViews(session.World);
+    }
 
+    private void UpdateUnitViews(IReadOnlyWorld world)
+    {
         foreach (var view in _views)
         {
-            if (session.World.TryGetUnitPosition(view.Id, out var position))
-                view.Position = new Vector3(position.X, 0f, position.Z);
+            if (!world.TryGetUnitPosition(view.Id, out var position))
+                continue;
+
+            view.Position = new Vector3(position.X, 0f, position.Z);
+            view.ShowCover(world.HasCover(view.Id));
         }
     }
 

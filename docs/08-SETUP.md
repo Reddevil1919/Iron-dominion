@@ -69,12 +69,14 @@ exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
 
 The script also runs headless camera, selection, movement, combat,
-production and sector capture checks against the main scene. They send keyboard and mouse
+production, sector capture and infantry cover checks against the main scene. They send keyboard and mouse
 events to verify camera bounds, selection ownership, control groups,
 obstacle navigation, a focused attack, a tank spawning at the HQ and
 a blocked barracks queue resuming after a trained squad moves away. The
 sector check moves infantry into a zone and verifies the HUD, map marker
-and increased balance.
+and increased balance. The cover check moves a squad in and out of a
+cover rectangle and verifies its indicator. The xUnit combat cases verify
+the exact damage per hit.
 
 For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
@@ -150,5 +152,10 @@ marked sectors, move an infantry squad inside its ring and hold it for
 determines capture. The top-left panel shows ownership, progress and
 contested sectors. Each owned sector adds 2 credits per second to the
 rate shown next to your balance.
+
+The two ochre rectangles provide cover. Move infantry inside one to
+display **COVER** above its health bar and reduce incoming damage. A
+10-damage hit deals 7 HP, and a 45-damage hit deals 32 HP after rounding.
+Tanks and buildings take full damage.
 
 Victory and defeat follow in RTS-013.

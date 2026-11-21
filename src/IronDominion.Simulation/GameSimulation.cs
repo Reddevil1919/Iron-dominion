@@ -17,7 +17,7 @@ public sealed class GameSimulation : IGameSimulation
     private readonly PlayerEconomy? _economy;
     private readonly SectorControl? _sectorControl;
     private readonly ImmutableArray<SectorState> _initialSectors;
-    private ImmutableDictionary<EntityId, PlayerId> _unitOwners;
+    private ImmutableDictionary<EntityId, Unit> _units;
     private readonly ImmutableDictionary<EntityId, int> _initialHealth;
     private readonly ImmutableDictionary<EntityId, SimVector> _initialPositions;
 
@@ -35,7 +35,7 @@ public sealed class GameSimulation : IGameSimulation
         _initialSectors = _entities.Sectors.OrderBy(sector => sector.Id.Value)
             .Select(sector => new SectorState(sector.Id, sector.Position, sector.Owner, null, 0, false))
             .ToImmutableArray();
-        _unitOwners = _entities.Units.ToImmutableDictionary(unit => unit.Id, unit => unit.Owner!.Value);
+        _units = _entities.Units.ToImmutableDictionary(unit => unit.Id);
         World = Snapshot(0);
     }
 
@@ -117,7 +117,7 @@ public sealed class GameSimulation : IGameSimulation
                 _production.Advance(tick, events);
                 _economy.PublishChanges(tick, startingBalances, events);
                 foreach (var spawn in events.OfType<UnitSpawned>())
-                    _unitOwners = _unitOwners.Add(spawn.Unit.Id, spawn.Unit.Owner!.Value);
+                    _units = _units.Add(spawn.Unit.Id, spawn.Unit);
             }
         }
 
@@ -126,14 +126,15 @@ public sealed class GameSimulation : IGameSimulation
     }
 
     private WorldSnapshot Snapshot(long tick) => new(
-        tick, _movement?.Positions ?? _initialPositions, _combat?.Health ?? _initialHealth, _unitOwners,
+        tick, _movement?.Positions ?? _initialPositions, _combat?.Health ?? _initialHealth, _units, _entities.CoverZones,
         _economy?.Credits ?? ImmutableDictionary<PlayerId, int>.Empty,
         _economy?.Income ?? ImmutableDictionary<PlayerId, long>.Empty,
         _sectorControl?.Sectors ?? _initialSectors,
         _production?.Queues ?? ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>>.Empty);
 
     private sealed record WorldSnapshot(long Tick, ImmutableDictionary<EntityId, SimVector> Positions,
-        ImmutableDictionary<EntityId, int> Health, ImmutableDictionary<EntityId, PlayerId> UnitOwners,
+        ImmutableDictionary<EntityId, int> Health, ImmutableDictionary<EntityId, Unit> Units,
+        ImmutableArray<CoverZone> CoverZones,
         ImmutableDictionary<PlayerId, int> Balances,
         ImmutableDictionary<PlayerId, long> IncomeRates,
         ImmutableArray<SectorState> Sectors,
@@ -142,7 +143,10 @@ public sealed class GameSimulation : IGameSimulation
         public bool TryGetUnitPosition(EntityId id, out SimVector position) => Positions.TryGetValue(id, out position);
         public bool TryGetHitPoints(EntityId id, out int hitPoints) => Health.TryGetValue(id, out hitPoints);
         public PlayerId? LivingUnitOwner(EntityId id) =>
-            Health.GetValueOrDefault(id) > 0 && UnitOwners.TryGetValue(id, out var owner) ? owner : null;
+            Health.GetValueOrDefault(id) > 0 && Units.TryGetValue(id, out var unit) ? unit.Owner : null;
+        public bool HasCover(EntityId id) =>
+            Health.GetValueOrDefault(id) > 0 && Units.TryGetValue(id, out var unit)
+            && CoverZone.Protects(CoverZones, unit, Positions[id]);
         public int Credits(PlayerId player) => Balances.GetValueOrDefault(player);
         public long IncomePerSecond(PlayerId player) => IncomeRates.GetValueOrDefault(player);
         public IReadOnlyList<TrainingOrder> TrainingQueue(EntityId producer) =>

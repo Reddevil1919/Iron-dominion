@@ -113,6 +113,21 @@ credits nonnegative for large configurations.
 reports the previous and new owners. `CreditsChanged` reports each changed
 player's net balance change for the tick in player ID order.
 
+## RTS-010 static infantry cover
+
+The scene supplies axis-aligned cover rectangles in world coordinates. The
+simulation copies the rectangles at startup. Their boundary counts as
+inside. Cover leaves movement and line of sight available.
+
+After movement, a hit on infantry inside one or more cover rectangles
+uses the configured multiplier once. Round each hit to the nearest integer,
+with halves rounded away from zero, before adding simultaneous damage.
+The attacker's unit type does not affect the reduction. Tanks and
+buildings take full damage even inside a cover rectangle.
+
+`IReadOnlyWorld.HasCover` lets the game show whether a living infantry
+squad is protected in the published snapshot.
+
 ## Godot bridge pseudocode
 ```csharp
 // In a Godot Node: call from _PhysicsProcess or an accumulator.

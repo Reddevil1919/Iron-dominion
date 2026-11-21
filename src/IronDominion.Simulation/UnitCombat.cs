@@ -71,7 +71,7 @@ internal sealed class UnitCombat(
 
             _nextShot[attacker.Id] = tick + definition.CooldownTicks;
             events.Add(new ShotFired(tick, attacker.Id, target.Id));
-            damage[target.Id] = damage.GetValueOrDefault(target.Id) + definition.DamagePerShot;
+            damage[target.Id] = damage.GetValueOrDefault(target.Id) + DamagePerShot(definition, target, positions);
         }
 
         if (damage.Count == 0)
@@ -96,6 +96,18 @@ internal sealed class UnitCombat(
         }
 
         Health = health.ToImmutable();
+    }
+
+    private int DamagePerShot(UnitDefinition definition, WorldEntity target,
+        IReadOnlyDictionary<EntityId, SimVector> positions)
+    {
+        if (target is Unit unit && CoverZone.Protects(world.CoverZones, unit, positions[unit.Id]))
+        {
+            var reduced = definition.DamagePerShot * configuration.InfantryCoverMultiplier;
+            return (int)Math.Round(reduced, MidpointRounding.AwayFromZero);
+        }
+
+        return definition.DamagePerShot;
     }
 
     private WorldEntity? FindTarget(Unit attacker, float range, IReadOnlyDictionary<EntityId, SimVector> positions)
