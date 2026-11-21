@@ -12,6 +12,8 @@ public sealed class CommandScheduler
         _simulation = simulation;
     }
 
+    public PlayerCommands ForPlayer(PlayerId player) => new(this, player);
+
     public MoveCommand ScheduleMove(PlayerId player, IReadOnlyList<EntityId> units, SimVector destination,
         long? executeAtTick = null)
     {

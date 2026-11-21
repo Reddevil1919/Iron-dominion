@@ -3,6 +3,7 @@ namespace IronDominion.Domain;
 public interface IGameSimulation
 {
     IReadOnlyWorld World { get; }
+    PlayerObservation Observe(PlayerId player);
 
     void Schedule(GameCommand command);
 

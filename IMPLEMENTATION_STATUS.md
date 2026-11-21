@@ -193,6 +193,32 @@ The headless renderer returned transparent pixels when reading the health
 texture, so the xUnit suite verifies exact damage. The rendered smoke test
 ran on Linux. Windows runtime verification remains under RTS-015.
 
+## RTS-011 enemy AI
+
+The orange commander makes decisions every 40 ticks. It uses the same
+production, move and attack commands as the player. It trains
+reinforcements, sends its nearest infantry to neutral sectors and
+defends its HQ from visible nearby units. With at least four living
+units and a tank, it advances on a visible enemy HQ. It scouts via public
+sector locations when the HQ is hidden.
+
+The commander receives an immutable player observation. Opponent
+positions and IDs are available only for contacts seen by a living ally.
+The source of visibility is the same line-of-sight check that validates
+attack orders. On-screen fog rendering follows in RTS-016.
+
+### Verification on 21 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` and `dotnet build IronDominion.sln --configuration Release --no-restore` | Restore and Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 108 xUnit cases passed. Nine new cases verify scheduling, affordable production, capture, defense, assault, path retry and hidden contacts for T-014. |
+| `scripts/validate-godot.sh` | Godot 4.6.3 .NET imported and launched the scene headlessly. All eight smoke checks passed. The default AI trained an orange tank, took sector C and destroyed the blue HQ without human orders. The seven focused gameplay checks use a passive opponent in Debug. |
+| Graphical Linux smoke test | Saw the orange infantry capture C and B, and saw orange reinforcements advance toward the blue side. |
+
+The rendered check ran on Linux. Windows runtime verification remains
+under RTS-015. Match outcomes and restart follow in RTS-013.
+
 ## RTS-001 bootstrap
 
 RTS-001 adds the Godot 4.6.3 .NET project, the .NET SDK 10.0.404 solution and
@@ -235,4 +261,4 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-011 adds enemy AI. Victory and defeat remain under RTS-013.
+RTS-012 expands the HUD and feedback. Victory and defeat remain under RTS-013.

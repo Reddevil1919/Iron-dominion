@@ -58,6 +58,29 @@ public sealed class GameSimulation : IGameSimulation
 
     public IReadOnlyWorld World { get; private set; }
 
+    public PlayerObservation Observe(PlayerId player)
+    {
+        var units = _entities.Units.Where(unit => World.LivingUnitOwner(unit.Id) == player)
+            .OrderBy(unit => unit.Id.Value)
+            .Select(unit =>
+            {
+                World.TryGetUnitPosition(unit.Id, out var position);
+                return new FriendlyUnit(unit.Id, unit.Kind, position, _movement?.IsMoving(unit.Id) == true);
+            }).ToImmutableArray();
+        var buildings = _entities.Buildings.Where(building => building.Owner == player
+                && World.TryGetHitPoints(building.Id, out var hp) && hp > 0)
+            .OrderBy(building => building.Id.Value)
+            .Select(building => new FriendlyBuilding(building.Id, building.Kind, building.Position,
+                building.TrainedUnitKind, building.ProductionExit, World.TrainingQueue(building.Id).Count > 0))
+            .ToImmutableArray();
+        var contacts = _combat is not null && _movement is not null
+            ? _combat.ObserveEnemies(player, _movement.Positions)
+            : [];
+        var sectors = World.Sectors.Select(sector => new SectorSite(sector.Id, sector.Position, sector.Owner))
+            .ToImmutableArray();
+        return new PlayerObservation(World.Tick, player, World.Credits(player), units, buildings, contacts, sectors);
+    }
+
     public void Schedule(GameCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
