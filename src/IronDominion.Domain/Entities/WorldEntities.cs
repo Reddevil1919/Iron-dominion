@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace IronDominion.Domain;
 
 public sealed class WorldEntities
@@ -5,9 +7,10 @@ public sealed class WorldEntities
     private readonly Dictionary<EntityId, WorldEntity> _entities = new();
     private int _lastId;
 
-    public WorldEntities(IEnumerable<WorldEntity> entities)
+    public WorldEntities(IEnumerable<WorldEntity> entities, IEnumerable<CoverZone>? coverZones = null)
     {
         ArgumentNullException.ThrowIfNull(entities);
+        CoverZones = coverZones?.ToImmutableArray() ?? [];
 
         foreach (var entity in entities)
         {
@@ -21,10 +24,11 @@ public sealed class WorldEntities
     public IEnumerable<Unit> Units => _entities.Values.OfType<Unit>();
     public IEnumerable<Building> Buildings => _entities.Values.OfType<Building>();
     public IEnumerable<Sector> Sectors => _entities.Values.OfType<Sector>();
+    public ImmutableArray<CoverZone> CoverZones { get; }
 
     public WorldEntity? Find(EntityId id) => _entities.GetValueOrDefault(id);
 
-    public WorldEntities Copy() => new(_entities.Values);
+    public WorldEntities Copy() => new(_entities.Values, CoverZones);
 
     public Unit SpawnUnit(PlayerId owner, SimVector position, UnitKind kind, int hitPoints)
     {

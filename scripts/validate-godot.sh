@@ -40,3 +40,4 @@ run_smoke_test unit_movement_smoke.gd 'Unit movement smoke checks passed.' 1500
 run_smoke_test unit_combat_smoke.gd 'Unit combat smoke checks passed.' 2800
 run_smoke_test unit_production_smoke.gd 'Unit production smoke checks passed.' 3000
 run_smoke_test sector_capture_smoke.gd 'Sector capture smoke checks passed.' 1500
+run_smoke_test infantry_cover_smoke.gd 'Infantry cover smoke checks passed.' 1600

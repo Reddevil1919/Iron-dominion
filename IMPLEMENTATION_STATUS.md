@@ -171,6 +171,28 @@ panel show ownership, progress and contested states.
 The graphical check ran in the Linux cloud environment. Windows runtime
 verification remains under RTS-015.
 
+## RTS-010 static infantry cover
+
+Two traversable ochre rectangles mark cover on the battlefield. A living
+infantry squad inside either zone shows **COVER** above its health bar.
+The simulation applies the configured 0.7 multiplier to each incoming
+hit after movement and rounds halves away from zero before aggregating
+damage. A 10-damage hit deals 7 HP, and a 45-damage hit deals 32 HP. Tanks
+and buildings take full damage.
+
+### Verification on 21 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` and `dotnet build IronDominion.sln --configuration Release --no-restore` | Restore and Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 99 xUnit cases passed. Eight new cases cover BR-008 and T-006, including inclusive borders, overlapping zones, per-hit rounding, moving into and out of cover, and full damage to tanks and buildings. |
+| `scripts/validate-godot.sh` | Godot 4.6.3 .NET imported and launched the scene headlessly. All seven smoke checks passed. The cover check moved an infantry squad into the east zone and out again, and verified the indicator in both positions. |
+| Graphical Linux smoke test | Moved a blue infantry squad into and out of the west rectangle and observed the **COVER** label appear and disappear. |
+
+The headless renderer returned transparent pixels when reading the health
+texture, so the xUnit suite verifies exact damage. The rendered smoke test
+ran on Linux. Windows runtime verification remains under RTS-015.
+
 ## RTS-001 bootstrap
 
 RTS-001 adds the Godot 4.6.3 .NET project, the .NET SDK 10.0.404 solution and
@@ -213,4 +235,4 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-010 adds static infantry cover. Victory and defeat remain under RTS-013.
+RTS-011 adds enemy AI. Victory and defeat remain under RTS-013.

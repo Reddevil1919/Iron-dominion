@@ -133,6 +133,85 @@ public sealed class UnitCombatTests
         Assert.Equal(new CommandResult(false, "invalid_target"), result.Result);
     }
 
+    [Theory]
+    [InlineData(0f, 7)]
+    [InlineData(2f, 7)]
+    [InlineData(2.01f, 10)]
+    public void InfantryReceivesSevenDamageInsideCoverIncludingItsEdge(float x, int expectedDamage)
+    {
+        var match = MatchWithCover([CentralCover, CentralCover], Infantry(First, Blue, x), Infantry(Second, Orange, 8));
+
+        var damage = Assert.Single(match.Tick().OfType<EntityDamaged>(), hit => hit.Entity == First);
+        Assert.Equal(expectedDamage, damage.Damage);
+        Assert.Equal(400 - expectedDamage, HitPoints(match.World, First));
+        Assert.Equal(expectedDamage == 7, match.World.HasCover(First));
+    }
+
+    [Fact]
+    public void TankHitsRoundIndividuallyBeforeSimultaneousDamageIsCombined()
+    {
+        var match = MatchWithCover([CentralCover],
+            Infantry(First, Blue, 0), Tank(Second, Orange, 8), Tank(Third, Orange, 9));
+
+        var damage = Assert.Single(match.Tick().OfType<EntityDamaged>(), hit => hit.Entity == First);
+        Assert.Equal(new EntityDamaged(1, First, 64, 336), damage);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TanksAndBuildingsTakeFullDamageInsideCover(bool tank)
+    {
+        WorldEntity target = tank
+            ? Tank(First, Blue, 0)
+            : new Building(First, Blue, default, BuildingKind.Barracks, 700);
+        var match = MatchWithCover([CentralCover], target, Infantry(Second, Orange, 8));
+
+        var damage = Assert.Single(match.Tick().OfType<EntityDamaged>(), hit => hit.Entity == First);
+        Assert.Equal(10, damage.Damage);
+        Assert.False(match.World.HasCover(First));
+    }
+
+    [Fact]
+    public void MovementUpdatesProtectionBeforeFireAndOlderSnapshotsRetainTheirState()
+    {
+        var match = MatchWithCover([CentralCover], Infantry(First, Blue, 2.1f), Infantry(Second, Orange, 8));
+        var before = match.World;
+        match.Schedule(new MoveCommand(Blue, 1, 1, [First], new SimVector(2, 0)));
+
+        var inCover = Assert.Single(match.Tick().OfType<EntityDamaged>(), hit => hit.Entity == First);
+        Assert.Equal(7, inCover.Damage);
+        var covered = match.World;
+        Assert.True(covered.HasCover(First));
+        Assert.False(before.HasCover(First));
+
+        match.Schedule(new MoveCommand(Blue, 21, 2, [First], new SimVector(2.2f, 0)));
+        for (var tick = 0; tick < 19; tick++)
+            match.Tick();
+        var exposed = Assert.Single(match.Tick().OfType<EntityDamaged>(), hit => hit.Entity == First);
+        Assert.Equal(10, exposed.Damage);
+        Assert.False(match.World.HasCover(First));
+        Assert.True(covered.HasCover(First));
+    }
+
+    [Fact]
+    public void DestroyedInfantryHasNoCoverInThePublishedSnapshot()
+    {
+        var match = MatchWithCover([CentralCover], Infantry(First, Blue, 0, 10), Tank(Second, Orange, 8));
+        Assert.True(match.World.HasCover(First));
+
+        Assert.Equal(new EntityDestroyed(1, First), Assert.Single(match.Tick().OfType<EntityDestroyed>()));
+        Assert.False(match.World.HasCover(First));
+    }
+
+    private static readonly CoverZone CentralCover = new(new SimVector(-2, -2), new SimVector(2, 2));
+
+    private static Unit Infantry(EntityId id, PlayerId player, float x, int hp = 400) =>
+        new(id, player, new SimVector(x, 0), UnitKind.InfantrySquad, hp);
+
+    private static GameSimulation MatchWithCover(CoverZone[] coverZones, params WorldEntity[] entities) =>
+        new(new WorldEntities(entities, coverZones), Configuration, new StraightNavigation(), new Sight());
+
     private static Unit Tank(EntityId id, PlayerId player, float x, int hp = 600) =>
         new(id, player, new SimVector(x, 0), UnitKind.Tank, hp);
 
