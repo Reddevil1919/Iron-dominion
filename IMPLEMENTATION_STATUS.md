@@ -267,6 +267,33 @@ selection, queued commands and AI.
 The Linux graphics driver reported that changing VSync is unsupported.
 Windows runtime verification remains under RTS-015.
 
+## RTS-014 golden match and deterministic replay
+
+The xUnit integration project runs a complete match through
+`GameSession` and the orange AI with deterministic navigation and line
+of sight. It checks selection and order validation, an obstacle detour,
+income from captured sectors, a blocked production exit and its
+recovery, combat and a frozen victory result.
+
+The recorded configuration schema, seed and processed orders round-trip
+through JSON. Two fresh simulations replay the orders in recorded and
+reverse arrival order. Both match the original per-tick snapshots and
+event order. The golden result is a blue victory at tick 855 after 34
+processed orders, with timeline SHA-256
+`DD3E9A65A582A55322AEFA4A0B3C58E9EEF2B7F0A1FC2C5B03B5EF899B37819F`.
+
+### Verification on 21 November 2026
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` and `dotnet build IronDominion.sln --configuration Release --no-restore` | Restore and Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 116 xUnit cases passed, including the golden scenario and both replay orders. |
+| `scripts/validate-godot.sh` | Godot 4.6.3 .NET imported and launched the game headlessly. All ten smoke checks passed, including AI and match lifecycle. |
+
+The replay guarantee applies to the test adapters. Godot navigation is
+covered by the separate Linux headless checks. Windows export and
+runtime profiling are tracked in RTS-015.
+
 ## RTS-001 bootstrap
 
 RTS-001 adds the Godot 4.6.3 .NET project, the .NET SDK 10.0.404 solution and
@@ -309,4 +336,4 @@ playtesting remains under RTS-015.
 
 ## Next
 
-RTS-014 adds an automated integration scenario and deterministic replay tests.
+RTS-015 adds the Windows build and performance profiling.

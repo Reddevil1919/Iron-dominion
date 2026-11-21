@@ -35,10 +35,37 @@ public void HeadquartersIncome_AfterTwentyTicks_AddsFiveCredits()
 `TestWorldFactory` is to be implemented; this is illustrative test code, not a runnable file yet.
 
 ## Deterministic replay protocol
-Serialize initial config version, random seed and ordered commands; use fake deterministic navigation and LOS services; hash canonical world projections sorted by ID. Floating-point positions require quantization in canonical hash. Do not promise bit-identical replay across Godot/CPU versions without a stronger deterministic math design.
+RTS-014 runs a golden match through `GameSession`, including the shared
+command scheduler and the orange AI. A fixture supplies two HQs,
+production exits, neutral sectors, cover and a wall. Its seed chooses
+one of two navigation detours. The orange HQ starts damaged so the
+scenario reaches a result quickly.
+
+The integration suite records the configuration schema version, seed
+and processed orders as JSON, including rejected orders. It replays
+them in fresh simulations with deterministic navigation and line of
+sight, once in the recorded order and once in reverse arrival order.
+Every simulation tick is hashed with SHA-256 using ID-sorted actors
+and sectors, positions rounded to centimeters, balance, income,
+health, training, capture state, result and the ordered events. The
+golden match also checks a fixed timeline hash. When a gameplay
+change affects the replay, review the scenario's checkpoints and
+update the reference hash only after reviewing the new outcome.
+
+Run the integration suite by itself with the following command.
+
+```bash
+dotnet test tests/IronDominion.Integration.Tests --configuration Release
+```
+
+The replay checks simulation behavior against the deterministic adapters.
+Godot scene import, input and navigation have separate smoke tests.
+Cross-platform bitwise equivalence with Godot navigation is outside this
+test's guarantee.
 
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.
 
 ## CI gates
-GitHub Actions runs `dotnet restore`, `dotnet build --configuration Release` and `dotnet test --configuration Release`. A second job imports the project and launches the main scene headlessly with the pinned Godot .NET editor. Asset licenses are reviewed with the PR. See [Development setup](08-SETUP.md) for the Windows export smoke test.
+GitHub Actions runs `dotnet restore`, `dotnet build --configuration Release` and `dotnet test --configuration Release`. The solution includes the golden match and replay suite.
+A second job imports the project and launches the main scene headlessly with the pinned Godot .NET editor. Asset licenses are reviewed with the PR. See [Development setup](08-SETUP.md) for the Windows export smoke test.
