@@ -7,7 +7,6 @@ internal sealed class HealthBar
     private const int Width = 64;
     private const int Height = 8;
     private static readonly Color TrackColor = new("172331");
-    private static readonly Color FillColor = new("a9e66f");
 
     private readonly int _maxHp;
     private readonly Image _image;
@@ -40,9 +39,10 @@ internal sealed class HealthBar
 
         _lastHp = hitPoints;
         _image.Fill(TrackColor);
-        var fill = (int)Math.Ceiling((Width - 4) * ((double)hitPoints / _maxHp));
+        var remaining = Math.Clamp((double)hitPoints / _maxHp, 0, 1);
+        var fill = (int)Math.Ceiling((Width - 4) * remaining);
         if (fill > 0)
-            _image.FillRect(new Rect2I(2, 2, fill, Height - 4), FillColor);
+            _image.FillRect(new Rect2I(2, 2, fill, Height - 4), HudStyle.HealthColor(remaining));
 
         _texture.Update(_image);
     }

@@ -11,6 +11,7 @@ public partial class UnitView : StaticBody3D
     private Label3D? _coverIndicator;
 
     public EntityId Id { get; private set; }
+    public UnitKind Kind { get; private set; }
 
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;
 
@@ -21,6 +22,7 @@ public partial class UnitView : StaticBody3D
         {
             Name = $"Unit{unit.Id.Value}",
             Id = unit.Id,
+            Kind = unit.Kind,
             Position = new Vector3(unit.Position.X, 0f, unit.Position.Z),
             CollisionLayer = PickingLayer,
             CollisionMask = 0

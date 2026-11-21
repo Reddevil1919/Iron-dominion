@@ -24,6 +24,7 @@ func _run() -> void:
 	var income := production.find_child("Income", true, false) as Label
 	var sector_panel := current_scene.get_node("SelectionLayer/SectorPanel")
 	var status := sector_panel.find_child("Alpha", true, false) as Label
+	var progress := sector_panel.find_child("AlphaProgress", true, false) as ProgressBar
 	assert(sector_panel.find_child("Bravo", true, false) != null, "Sector B is displayed")
 	assert(sector_panel.find_child("Charlie", true, false) != null, "Sector C is displayed")
 	assert(status.text == "A   Neutral" and income.text == "+5 credits/s", "The HQ earns before sectors are captured")
@@ -42,13 +43,14 @@ func _run() -> void:
 	var saw_progress := false
 	for tick in range(370):
 		await physics_frame
-		if status.text.contains("%"):
+		if status.text.contains("%") and progress.value > 0.0:
 			saw_progress = true
 		if status.text == "A   Blue":
 			break
 
 	assert(saw_progress, "The HUD reports capture progress")
 	assert(status.text == "A   Blue", "Moving an infantry squad into the zone captures it")
+	assert(progress.value == 0, "The capture bar clears when blue owns the sector")
 	assert(ring.material_override.albedo_color != neutral_color, "The sector marker changes color")
 	assert(income.text == "+7 credits/s", "Holding the sector adds two credits per second")
 	balance = _balance(credits)

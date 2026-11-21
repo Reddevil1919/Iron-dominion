@@ -69,7 +69,7 @@ exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
 
 The script also runs headless camera, selection, movement, combat,
-production, sector capture, infantry cover and enemy AI checks against the main scene. They send keyboard and mouse
+production, sector capture, infantry cover, enemy AI and HUD checks against the main scene. They send keyboard and mouse
 events to verify camera bounds, selection ownership, control groups,
 obstacle navigation, a focused attack, a tank spawning at the HQ and
 a blocked barracks queue resuming after a trained squad moves away. The
@@ -79,7 +79,8 @@ cover rectangle and verifies its indicator. The xUnit combat cases verify
 the exact damage per hit. The focused checks launch a passive opponent
 with `-- --passive-opponent` in the Debug game. The enemy AI smoke runs
 the default scene and observes the orange side train a tank, capture
-a sector and advance on the blue HQ.
+a sector and advance on the blue HQ. The HUD check verifies selection
+health, compact window layout, rejected orders and temporary shot traces.
 
 For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
@@ -139,21 +140,25 @@ through each other in this milestone.
 Right-click an orange unit or building to focus fire. An accepted attack order
 stops the selected units. Move them within weapon range for the shot to
 fire. Units also fire automatically at visible enemies in range.
-The roadblock and buildings block line of sight. Health bars shrink as
-damage is applied. Destroyed units leave the battlefield and destroyed
-buildings leave solid ruins.
+The roadblock and buildings block line of sight. Brief shot traces show
+where units are firing. Health bars shrink and change from green to amber
+at 60% health, then red at 25%. The bottom-right panel shows exact hit
+points, group composition and cover for the current selection. Rejected
+orders briefly display a reason at the top right. Destroyed units leave
+the battlefield and destroyed buildings leave solid ruins.
 
 Use the panel at the bottom left to train infantry at the barracks for
 100 credits (8 seconds) or a tank at the HQ for 500 credits (20 seconds).
 You start with 500 credits. Costs are deducted when orders enter the
-queue. If the panel shows **Exit blocked**, move units away from the
+queue. The bar shows progress for the first order. A full amber bar and
+**Exit blocked** mean training is complete. Move units away from the
 producer's exit to let the finished unit spawn.
 
 Each living HQ earns 5 credits per second. To capture one of the three
 marked sectors, move an infantry squad inside its ring and hold it for
 10 seconds uncontested. Tanks can fight in the area. Living infantry
-determines capture. The top-left panel shows ownership, progress and
-contested sectors. Each owned sector adds 2 credits per second to the
+determines capture. The top-left panel shows ownership, the progress bar
+for each sector and contested sectors. Each owned sector adds 2 credits per second to the
 rate shown next to your balance.
 
 The two ochre rectangles provide cover. Move infantry inside one to

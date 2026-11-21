@@ -36,6 +36,7 @@ func _check_infantry_queue() -> void:
 	var tank := panel.find_child("TrainTank", true, false) as Button
 	var credits := panel.find_child("Credits", true, false) as Label
 	var queue := panel.find_child("InfantryQueue", true, false) as Label
+	var progress := panel.find_child("InfantryProgress", true, false) as ProgressBar
 	var units := current_scene.get_node("Units")
 	var exit := current_scene.get_node("BlueBarracks/ProductionExit") as Marker3D
 	await process_frame
@@ -48,6 +49,7 @@ func _check_infantry_queue() -> void:
 	assert(reserved_balance >= 300 and reserved_balance < 305, "Both clicks immediately reserve their cost")
 	assert(tank.disabled, "The tank becomes unaffordable")
 	assert(queue.text.begins_with("2 queued"), "Both squads enter the same FIFO queue")
+	assert(progress.value > 0 and progress.value < progress.max_value, "Training advances its progress bar")
 	assert(units.get_child_count() == 6, "Nothing spawns before training")
 
 	for tick in range(160):
@@ -62,6 +64,7 @@ func _check_infantry_queue() -> void:
 		if queue.text.contains("Exit blocked"):
 			break
 	assert(queue.text.contains("Exit blocked"), "The next squad waits at the occupied exit")
+	assert(progress.value == progress.max_value, "A blocked exit shows completed training")
 	assert(units.get_child_count() == 7, "The blocked order does not place another unit")
 
 	var camera := root.get_camera_3d()
@@ -77,6 +80,7 @@ func _check_infantry_queue() -> void:
 	assert(second.global_position.is_equal_approx(exit.global_position), "The next squad spawns after the exit clears")
 	assert(units.get_child_count() == 8, "Each training order spawns exactly one squad")
 	assert(queue.text == "Idle", "Spawning empties the queue")
+	assert(progress.value == 0, "The empty queue resets its progress bar")
 	assert(_balance(credits) > reserved_balance, "The HQ keeps paying without a second training charge")
 
 

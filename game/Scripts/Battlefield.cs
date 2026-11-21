@@ -22,6 +22,8 @@ public partial class Battlefield : Node3D
     private readonly Dictionary<PlayerId, StandardMaterial3D> _teamMaterials = new();
     private ProductionPanel? _productionPanel;
     private SectorBoard? _sectorBoard;
+    private SelectionPanel? _selectionPanel;
+    private BattlefieldFeedback? _feedback;
     private GameSession? _session;
     private EnemyCommander? _enemyCommander;
     private PlayerCommands? _enemyCommands;
@@ -86,9 +88,11 @@ public partial class Battlefield : Node3D
         }
         var enemyBuildings = new[] { orangeHq, orangeBarracks }.ToDictionary(building => _buildings[building.Id],
             building => building.Id);
-        _unitSelection.Initialize(
-            new UnitSelection(LocalPlayer, id => session.World.LivingUnitOwner(id)),
-            _views, ground,
+        var selection = new UnitSelection(LocalPlayer, id => session.World.LivingUnitOwner(id));
+        var feedback = new BattlefieldFeedback(this, canvas);
+        _feedback = feedback;
+        _selectionPanel = new SelectionPanel(canvas, selection, configuration);
+        _unitSelection.Initialize(selection, _views, ground,
             (selected, destination) => session.Commands.ScheduleMove(LocalPlayer, selected, destination),
             actor => actor switch
             {
@@ -97,7 +101,8 @@ public partial class Battlefield : Node3D
                     && session.World.TryGetHitPoints(id, out var hp) && hp > 0 => id,
                 _ => null
             },
-            (selected, target) => session.Commands.ScheduleAttack(LocalPlayer, selected, target));
+            (selected, target) => session.Commands.ScheduleAttack(LocalPlayer, selected, target),
+            reason => feedback.Reject(reason, session.World.Tick));
         _productionPanel = new ProductionPanel(canvas, LocalPlayer, configuration,
             [blueBarracks, blueHq], (producer, kind) => session.Commands.ScheduleTraining(LocalPlayer, producer, kind));
         _productionPanel.Update(session.World);
@@ -149,6 +154,11 @@ public partial class Battlefield : Node3D
         var destroyed = false;
         foreach (var gameEvent in events)
         {
+            if (gameEvent is CommandProcessed order && order.Command.Player == LocalPlayer && !order.Result.Accepted)
+                _feedback?.Reject(order.Result.RejectionCode, order.Tick);
+            if (gameEvent is ShotFired shot && FindActorPosition(shot.Attacker, session.World) is { } origin
+                && FindActorPosition(shot.Target, session.World) is { } target)
+                _feedback?.Trace(origin, target, shot.Tick);
             if (gameEvent is EntityDamaged damage && _healthBars.TryGetValue(damage.Entity, out var bar))
                 bar.SetHitPoints(damage.RemainingHitPoints);
             if (gameEvent is UnitSpawned spawn)
@@ -165,7 +175,21 @@ public partial class Battlefield : Node3D
 
         _productionPanel?.Update(session.World);
         _sectorBoard?.Update(session.World);
+        _selectionPanel?.Update(session.World, _views);
+        _feedback?.Update(session.World.Tick);
         UpdateUnitViews(session.World);
+    }
+
+    private Vector3? FindActorPosition(EntityId id, IReadOnlyWorld world)
+    {
+        var height = Vector3.Up * 1.75f;
+        if (world.TryGetUnitPosition(id, out var position))
+            return new Vector3(position.X, height.Y, position.Z);
+        if (_buildings.TryGetValue(id, out var building))
+            return building.GlobalPosition + height;
+        if (_views.Find(view => view.Id == id) is { } lastView)
+            return lastView.GlobalPosition + height;
+        return null;
     }
 
     private void UpdateUnitViews(IReadOnlyWorld world)
