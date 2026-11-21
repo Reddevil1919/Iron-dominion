@@ -24,8 +24,11 @@ internal sealed class BattlefieldNavigation : INavigationService
         _region.NavigationMesh = CreateMesh(floor, holes);
     }
 
+    public long PathRequests { get; private set; }
+
     public IReadOnlyList<SimVector> FindPath(SimVector start, SimVector destination, int movementMask)
     {
+        PathRequests++;
         var map = _region.GetNavigationMap();
         if (NavigationServer3D.MapGetIterationId(map) == 0)
             return [];
