@@ -1,0 +1,44 @@
+name: Attach verified RTS-015 Windows archive
+
+on:
+  push:
+    branches: [codex/package-rts-015-windows]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  attach:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-x64-package
+          github-token: ${{ github.token }}
+          run-id: 44959635143
+          path: ${{ runner.temp }}/verified-package
+      - name: Attach the native-tested archive to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: c6fa9841cad0743bf5c56d49699697af9ce110b8
+          PACKAGE_SHA: 8fffd961d2fe22373952c4b1b56050c3b91e676c81301879a46c6613c0df3e46
+          RELEASE_ID: '454046678'
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/verified-package"
+          sha256sum -c SHA256SUMS.txt
+          printf '%s  %s\n' "$PACKAGE_SHA" IronDominion-Windows-x64.zip | sha256sum -c -
+          unzip -p IronDominion-Windows-x64.zip IronDominion/BUILD.txt | grep -Fx "Commit $SOURCE_SHA"
+          release="/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID"
+          gh api "$release" | jq -e --arg sha "$SOURCE_SHA" '.draft and .target_commitish == $sha'
+          for asset in IronDominion-Windows-x64.zip SHA256SUMS.txt; do
+              curl --fail-with-body --silent --show-error \
+                  -H "Authorization: Bearer $GH_TOKEN" \
+                  -H 'Accept: application/vnd.github+json' \
+                  -H 'Content-Type: application/octet-stream' \
+                  --data-binary "@$asset" \
+                  "https://uploads.github.com$release/assets?name=$asset" |
+                  jq -e --arg name "$asset" '.name == $name and .state == "uploaded"'
+          done
