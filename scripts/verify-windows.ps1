@@ -41,7 +41,8 @@ function Invoke-CheckedGame([string] $Log, [string[]] $Arguments) {
 
 $startup = Join-Path $reports 'windows-startup.log'
 Invoke-CheckedGame $startup @('--verbose', '--quit-after', '180')
-if (-not (Select-String -Path $startup -SimpleMatch 'res://Scenes/Battlefield.tscn' -Quiet)) {
+$exportedScene = '^Loading resource: res://\.godot/exported/[^/]+/export-[0-9a-f]+-Battlefield\.scn$'
+if (-not (Select-String -Path $startup -Pattern $exportedScene -Quiet)) {
     throw 'The default run did not report loading the battlefield.'
 }
 
