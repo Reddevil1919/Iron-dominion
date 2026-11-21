@@ -128,6 +128,28 @@ buildings take full damage even inside a cover rectangle.
 `IReadOnlyWorld.HasCover` lets the game show whether a living infantry
 squad is protected in the published snapshot.
 
+## RTS-011 enemy commander
+
+Every 40 ticks, the game asks `GameSession.Observe` for the enemy
+commander's `PlayerObservation`. It contains living friendly units and
+buildings, the player's credits, public sector locations and ownership,
+and hostile contacts that at least one living ally can see. The same
+line-of-sight rule validates player and AI attack orders. Each contact
+lists its observing allies, which lets the commander check individual
+firing positions. This projection applies to AI decisions. On-screen
+fog rendering follows in RTS-016.
+
+The commander uses `CommandScheduler.ForPlayer` to submit orders for its
+side on the next tick. It trains up to two tanks and four infantry
+squads through the ordinary queues, spending on a tank first when
+affordable. It prioritizes hostile units within 18 m of a friendly HQ
+and otherwise assigns the nearest infantry squad to a neutral sector.
+With at least four units including a tank, it sends the remaining
+units toward a visible hostile HQ. If the HQ is hidden, it scouts
+public sector locations until a contact is available. An assault unit
+moves to firing range before taking aim and tries another position
+if its path was rejected.
+
 ## Godot bridge pseudocode
 ```csharp
 // In a Godot Node: call from _PhysicsProcess or an accumulator.

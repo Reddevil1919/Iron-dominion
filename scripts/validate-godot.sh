@@ -27,7 +27,12 @@ run_smoke_test() {
     local script=$1
     local success=$2
     local frame_limit=${3:-600}
-    run_godot --fixed-fps 60 --quit-after "$frame_limit" --script "$repo_root/tests/godot/$script"
+    local mode=${4:-passive}
+    local user_args=()
+    if [[ $mode == passive ]]; then
+        user_args=(-- --passive-opponent)
+    fi
+    run_godot --fixed-fps 60 --quit-after "$frame_limit" --script "$repo_root/tests/godot/$script" "${user_args[@]}"
     if ! grep -Fxq "$success" "$log"; then
         printf 'The Godot smoke test %s did not finish.\n' "$script" >&2
         return 1
@@ -41,3 +46,4 @@ run_smoke_test unit_combat_smoke.gd 'Unit combat smoke checks passed.' 2800
 run_smoke_test unit_production_smoke.gd 'Unit production smoke checks passed.' 3000
 run_smoke_test sector_capture_smoke.gd 'Sector capture smoke checks passed.' 1500
 run_smoke_test infantry_cover_smoke.gd 'Infantry cover smoke checks passed.' 1600
+run_smoke_test enemy_ai_smoke.gd 'Enemy AI smoke checks passed.' 8500 active

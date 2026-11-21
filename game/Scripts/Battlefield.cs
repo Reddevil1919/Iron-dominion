@@ -1,4 +1,5 @@
 using Godot;
+using IronDominion.AI;
 using IronDominion.Application;
 using IronDominion.Domain;
 using IronDominion.Infrastructure.Configuration;
@@ -22,6 +23,8 @@ public partial class Battlefield : Node3D
     private ProductionPanel? _productionPanel;
     private SectorBoard? _sectorBoard;
     private GameSession? _session;
+    private EnemyCommander? _enemyCommander;
+    private PlayerCommands? _enemyCommands;
 
     public override void _Ready()
     {
@@ -76,6 +79,11 @@ public partial class Battlefield : Node3D
         var sight = new BattlefieldSight(GetWorld3D(), ground.CollisionLayer, _buildings);
         var session = new GameSession(world, configuration, navigation, sight);
         _session = session;
+        if (!OS.IsDebugBuild() || !OS.GetCmdlineUserArgs().Contains("--passive-opponent"))
+        {
+            _enemyCommander = new EnemyCommander(configuration);
+            _enemyCommands = session.Commands.ForPlayer(Opponent);
+        }
         var enemyBuildings = new[] { orangeHq, orangeBarracks }.ToDictionary(building => _buildings[building.Id],
             building => building.Id);
         _unitSelection.Initialize(
@@ -132,6 +140,12 @@ public partial class Battlefield : Node3D
             return;
 
         var events = session.AdvanceOneTick();
+        if (_enemyCommander is { } commander && _enemyCommands is { } commands
+            && EnemyCommander.IsDecisionTick(session.World.Tick))
+        {
+            commander.Plan(session.Observe(Opponent), commands);
+        }
+
         var destroyed = false;
         foreach (var gameEvent in events)
         {

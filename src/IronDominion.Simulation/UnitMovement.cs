@@ -44,6 +44,8 @@ internal sealed class UnitMovement(
         return Accepted;
     }
 
+    public bool IsMoving(EntityId id) => _routes.ContainsKey(id);
+
     public void Register(Unit unit) => Positions = Positions.Add(unit.Id, unit.Position);
 
     public void Stop(IEnumerable<EntityId> ids)

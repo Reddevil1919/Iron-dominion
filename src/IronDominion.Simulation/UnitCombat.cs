@@ -38,9 +38,7 @@ internal sealed class UnitCombat(
             || owner == command.Player || !Alive(target.Id))
             return new(false, "invalid_target");
 
-        var targetPosition = PositionOf(target, positions);
-        if (!_units.Any(unit => unit.Owner == command.Player && Alive(unit.Id)
-                && sight.HasLineOfSight(positions[unit.Id], targetPosition, target.Id)))
+        if (!LivingUnits(command.Player).Any(unit => CanSee(unit, target, positions)))
             return new(false, "target_not_visible");
 
         foreach (var unit in command.Units)
@@ -48,6 +46,41 @@ internal sealed class UnitCombat(
 
         return Accepted;
     }
+
+    public ImmutableArray<EnemyContact> ObserveEnemies(PlayerId player, IReadOnlyDictionary<EntityId, SimVector> positions)
+    {
+        var ownUnits = LivingUnits(player).ToArray();
+        if (ownUnits.Length == 0)
+            return [];
+
+        var contacts = ImmutableArray.CreateBuilder<EnemyContact>();
+        foreach (var target in _targets)
+        {
+            if (target.Owner == player || !Alive(target.Id))
+                continue;
+
+            var observers = ownUnits.Where(unit => CanSee(unit, target, positions))
+                .Select(unit => unit.Id).ToImmutableArray();
+            if (observers.IsEmpty)
+                continue;
+
+            var kind = target switch
+            {
+                Building { Kind: BuildingKind.Headquarters } => EnemyContactKind.Headquarters,
+                Building => EnemyContactKind.Barracks,
+                _ => EnemyContactKind.Unit
+            };
+            contacts.Add(new EnemyContact(target.Id, kind, PositionOf(target, positions), observers));
+        }
+
+        return contacts.ToImmutable();
+    }
+
+    private IEnumerable<Unit> LivingUnits(PlayerId player) =>
+        _units.Where(unit => unit.Owner == player && Alive(unit.Id));
+
+    private bool CanSee(Unit observer, WorldEntity target, IReadOnlyDictionary<EntityId, SimVector> positions) =>
+        sight.HasLineOfSight(positions[observer.Id], PositionOf(target, positions), target.Id);
 
     public void CancelOrders(IEnumerable<EntityId> units)
     {

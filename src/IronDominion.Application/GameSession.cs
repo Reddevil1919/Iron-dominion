@@ -35,6 +35,7 @@ public sealed class GameSession
 
     public CommandScheduler Commands { get; }
     public IReadOnlyWorld World => _simulation.World;
+    public PlayerObservation Observe(PlayerId player) => _simulation.Observe(player);
 
     public IReadOnlyList<IGameEvent> AdvanceOneTick() => _simulation.Tick();
 }
