@@ -63,9 +63,17 @@ Godot scene import, input and navigation have separate smoke tests.
 Cross-platform bitwise equivalence with Godot navigation is outside this
 test's guarantee.
 
+## Performance scenario T-015
+
+The Release benchmark runs 50 active units for five minutes after a five-second
+warm-up. It sends move orders, records fire and reports frame and simulation
+tick percentiles, process memory and path requests as JSON. The [performance
+report](09-PERFORMANCE.md) gives the launch commands, workload and observed
+results at 50, 100 and 200 units.
+
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.
 
 ## CI gates
 GitHub Actions runs `dotnet restore`, `dotnet build --configuration Release` and `dotnet test --configuration Release`. The solution includes the golden match and replay suite.
-A second job imports the project and launches the main scene headlessly with the pinned Godot .NET editor. Asset licenses are reviewed with the PR. See [Development setup](08-SETUP.md) for the Windows export smoke test.
+A second job imports the project and launches the main scene headlessly with the pinned Godot .NET editor. The Windows x64 workflow exports the distributable ZIP and verifies the packaged game on a native Windows runner. Asset licenses are reviewed with the PR. See [Development setup](08-SETUP.md) for the Windows package.

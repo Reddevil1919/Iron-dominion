@@ -187,9 +187,17 @@ internal sealed record BenchmarkOptions(int Units, int Seconds, string ReportPat
             || !int.TryParse(args[index + 1], NumberStyles.None, CultureInfo.InvariantCulture, out var units)
             || units is not (50 or 100 or 200)
             || !int.TryParse(args[index + 2], NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
-            || seconds <= 0)
+            || seconds <= 0
+            || string.IsNullOrWhiteSpace(args[index + 3]))
             throw new InvalidDataException("Usage: -- --benchmark <50|100|200> <seconds> <report.json>");
 
-        return new BenchmarkOptions(units, seconds, Path.GetFullPath(args[index + 3]));
+        try
+        {
+            return new BenchmarkOptions(units, seconds, Path.GetFullPath(args[index + 3]));
+        }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidDataException("Invalid benchmark report path.", exception);
+        }
     }
 }

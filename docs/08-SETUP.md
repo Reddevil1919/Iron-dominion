@@ -89,31 +89,25 @@ For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
 then import `game/project.godot` in the project manager and run the main scene.
 
-## Windows x86-64 export smoke test from Linux
+## Windows x64 package
 
-Install the matching .NET export templates in the current shell's Godot
-data directory. Then export the included Windows Desktop preset into the
-ignored `dist/` directory.
+Download the `windows-x64-package` artifact from the **Windows x64 Build**
+GitHub Actions workflow. Open the artifact and extract all of
+`IronDominion-Windows-x64.zip`, then double-click `IronDominion.exe` inside
+`IronDominion`. Keep the PCK and `data_IronDominion.Game_windows_x86_64`
+directory alongside the executable. The package includes the .NET runtime.
+`BUILD.txt` identifies the source commit.
 
-```bash
-templates_archive=Godot_v4.6.3-stable_mono_export_templates.tpz
-templates_sha256=6436f474ee085fb0a94d3d296b9821736bdd663b6e91b2228fdf77066f1d1400
-curl -fLsS --retry 3 \
-  "https://github.com/godotengine/godot-builds/releases/download/4.6.3-stable/$templates_archive" \
-  -o "$toolchain_dir/$templates_archive"
-printf '%s  %s\n' "$templates_sha256" "$toolchain_dir/$templates_archive" | sha256sum -c -
-templates_scratch="$(mktemp -d "$toolchain_dir/templates.XXXXXX")"
-unzip -q "$toolchain_dir/$templates_archive" -d "$templates_scratch"
-mkdir -p "$XDG_DATA_HOME/godot/export_templates/4.6.3.stable.mono" "$PWD/dist/windows"
-cp -a "$templates_scratch/templates/." "$XDG_DATA_HOME/godot/export_templates/4.6.3.stable.mono/"
-rm -rf "$templates_scratch"
+To create the same package from Linux, set up the pinned editor and SDK above
+and run `scripts/export-windows.sh`. The script installs the matching Windows
+export templates with a checksum check if needed, imports the Godot project,
+exports in Release and records the archive SHA-256 in `dist/windows/`.
+Pass an output directory as the first argument to choose another location.
 
-"$GODOT_BIN" --headless --path game --export-release "Windows Desktop" \
-  "$PWD/dist/windows/IronDominion.exe"
-```
-
-Keep the executable, PCK and managed files together to run the export on
-Windows. RTS-015 tracks Windows playtesting and profiling.
+The Windows CI job verifies the archive's checksum and source commit before
+launching the default battlefield and a 50-unit headless load check on native
+Windows x64. See the [performance report](09-PERFORMANCE.md) for the graphical
+profile and commands to reproduce it.
 
 ## First playable milestone
 

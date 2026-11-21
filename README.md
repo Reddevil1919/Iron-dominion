@@ -14,6 +14,7 @@ Windows desktop; Godot 4 .NET; C#; single player versus AI; 128m × 128m arena; 
 - [Test plan](docs/06-TESTS.md)
 - [Copilot agent playbook](docs/07-COPILOT-AGENTS.md)
 - [Development setup](docs/08-SETUP.md)
+- [Performance report](docs/09-PERFORMANCE.md)
 
 ## Key architectural decisions
 Simulation is pure C# and never references Godot. Godot presents world state and supplies user commands and pathfinding through an adapter. Single authoritative simulation tick; all state mutation happens inside the tick. MVP pathfinding need not be bitwise deterministic across platforms; reproducibility testing must use a deterministic fake navigation adapter. Networked lockstep is out of scope.

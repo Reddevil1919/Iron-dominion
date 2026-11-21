@@ -213,7 +213,7 @@ public partial class Battlefield : Node3D
             if (_benchmark.RecordFrame(_views.Count, _navigation.PathRequests))
                 GetTree().Quit();
         }
-        catch (IOException exception)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             GD.PushError(exception.Message);
             GetTree().Quit(1);
