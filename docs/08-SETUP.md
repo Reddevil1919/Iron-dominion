@@ -69,7 +69,7 @@ exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
 
 The script also runs headless camera, selection, movement, combat,
-production, sector capture, infantry cover, enemy AI and HUD checks against the main scene. They send keyboard and mouse
+production, sector capture, infantry cover, enemy AI, HUD and match lifecycle checks against the main scene. They send keyboard and mouse
 events to verify camera bounds, selection ownership, control groups,
 obstacle navigation, a focused attack, a tank spawning at the HQ and
 a blocked barracks queue resuming after a trained squad moves away. The
@@ -81,6 +81,9 @@ with `-- --passive-opponent` in the Debug game. The enemy AI smoke runs
 the default scene and observes the orange side train a tank, capture
 a sector and advance on the blue HQ. The HUD check verifies selection
 health, compact window layout, rejected orders and temporary shot traces.
+The lifecycle checks pause and resume through the UI, win by destroying
+the enemy HQ, restart from the result screen and confirm defeat against
+the active opponent.
 
 For a graphical launch on Linux, run `"$GODOT_BIN" --path game` after the
 Debug build. On Windows, install the pinned .NET SDK and Godot .NET editor,
@@ -168,4 +171,9 @@ Tanks and buildings take full damage.
 
 The orange commander trains reinforcements, claims neutral sectors
 and launches an attack once it has enough units. It responds to visible
-threats near its HQ. Victory and defeat follow in RTS-013.
+threats near its HQ.
+
+Destroy the orange HQ to win. If your HQ falls, the match ends in defeat.
+If both fall on the same simulation tick, the match is a draw. Press
+**Esc** or click **Pause** to freeze the match. The pause menu lets you
+resume, restart or quit. The result screen lets you restart or quit.

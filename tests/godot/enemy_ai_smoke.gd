@@ -41,6 +41,10 @@ func _run() -> void:
 		if not blue_hq.has_node("HealthBar"):
 			break
 	assert(not blue_hq.has_node("HealthBar"), "Orange advances and destroys the blue HQ without player input")
+	var menu := current_scene.get_node("MatchMenuLayer/MatchMenu")
+	var title := menu.find_child("MatchTitle", true, false) as Label
+	var resume := menu.find_child("ResumeButton", true, false) as Button
+	assert(paused and title.text == "Defeat" and not resume.visible, "Losing ends the game with a defeat screen")
 
 	print("Enemy AI smoke checks passed.")
 	quit()

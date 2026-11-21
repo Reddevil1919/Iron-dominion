@@ -49,7 +49,7 @@ internal sealed class ProductionPanel
                 Text = infantry ? $"Infantry · {unit.Cost}" : $"Tank · {unit.Cost}",
                 CustomMinimumSize = new Vector2(136, 34)
             };
-            HudStyle.StyleTrainingButton(button);
+            HudStyle.StyleButton(button);
             button.Pressed += () => train(producer.Id, unit.Kind);
             row.AddChild(button);
 

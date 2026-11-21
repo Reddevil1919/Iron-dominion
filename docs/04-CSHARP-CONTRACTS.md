@@ -163,6 +163,22 @@ The Godot scene turns `ShotFired` events into brief traces and uses
 Blocked clicks receive feedback at the input boundary. These effects
 read simulation state and leave gameplay rules in the simulation.
 
+## RTS-013 match lifecycle
+
+Competitive sessions start with a headquarters for both players. After
+movement, combat and the remaining systems for the tick, the simulation
+checks both headquarters. The last HQ falling for a side ends the
+match. If both sides lose their last HQ on the same tick, the result is
+a draw. The terminal snapshot and one `MatchEnded` event share that tick.
+After completion, the snapshot stays frozen and scheduled commands are
+ignored.
+
+`GameSession.SetPaused` holds simulation advancement while a running
+match is paused. Previously scheduled commands remain queued for the
+same simulation tick. The Godot pause menu also stops battlefield input
+and camera processing. Restart reloads the battlefield, which constructs
+a new session, scheduler, AI and HUD.
+
 ## Godot bridge pseudocode
 ```csharp
 // In a Godot Node: call from _PhysicsProcess or an accumulator.

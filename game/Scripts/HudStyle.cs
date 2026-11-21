@@ -44,7 +44,7 @@ internal static class HudStyle
         return progress;
     }
 
-    public static void StyleTrainingButton(Button button)
+    public static void StyleButton(Button button)
     {
         button.AddThemeStyleboxOverride("normal", Box(new Color("1e3a53"), new Color("466780"), 5));
         button.AddThemeStyleboxOverride("hover", Box(new Color("2a4e6c"), new Color("6595b1"), 5));
