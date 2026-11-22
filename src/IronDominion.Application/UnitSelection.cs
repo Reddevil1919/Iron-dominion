@@ -26,6 +26,12 @@ public sealed class UnitSelection(PlayerId player, Func<EntityId, PlayerId?> liv
         Selected = selection.OrderBy(id => id.Value).ToImmutableArray();
     }
 
+    public void Reset()
+    {
+        Selected = [];
+        _groups.Clear();
+    }
+
     public void AssignGroup(int number)
     {
         ValidateGroup(number);

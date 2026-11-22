@@ -4,6 +4,7 @@ using IronDominion.AI;
 using IronDominion.Application;
 using IronDominion.Domain;
 using IronDominion.Infrastructure.Configuration;
+using IronDominion.Infrastructure.Persistence;
 
 namespace IronDominion.Game;
 
@@ -99,6 +100,12 @@ public partial class Battlefield : Node3D
         var menuLayer = new CanvasLayer { Name = "MatchMenuLayer", Layer = 2, ProcessMode = ProcessModeEnum.Always };
         var menu = new MatchMenu { Name = "MatchMenu" };
         menu.Initialize(session, LocalPlayer);
+        if (benchmark is null)
+        {
+            var save = new MatchSaveFile(ProjectSettings.GlobalizePath("user://match-save.json"), "battlefield-1", configuration);
+            menu.EnablePersistence(() => SaveMatch(save, fog),
+                () => LoadMatch(save, world, configuration, navigation, sight, fog), () => save.Exists);
+        }
         _matchMenu = menu;
         AddChild(menuLayer);
         menuLayer.AddChild(menu);
@@ -108,7 +115,7 @@ public partial class Battlefield : Node3D
             _enemyCommander = new EnemyCommander(configuration);
             _enemyCommands = session.Commands.ForPlayer(Opponent);
         }
-        var selection = new UnitSelection(LocalPlayer, id => session.World.LivingUnitOwner(id));
+        var selection = new UnitSelection(LocalPlayer, id => _session!.World.LivingUnitOwner(id));
         var feedback = new BattlefieldFeedback(this, canvas);
         _feedback = feedback;
         _selectionPanel = new SelectionPanel(canvas, selection, configuration, _unitSelection);
@@ -116,11 +123,11 @@ public partial class Battlefield : Node3D
             (selected, destination, attackMove) =>
             {
                 if (attackMove)
-                    session.Commands.ScheduleAttackMove(LocalPlayer, selected, destination);
+                    _session!.Commands.ScheduleAttackMove(LocalPlayer, selected, destination);
                 else
-                    session.Commands.ScheduleMove(LocalPlayer, selected, destination);
+                    _session!.Commands.ScheduleMove(LocalPlayer, selected, destination);
             },
-            selected => session.Commands.ScheduleHoldPosition(LocalPlayer, selected),
+            selected => _session!.Commands.ScheduleHoldPosition(LocalPlayer, selected),
             actor => actor switch
             {
                 UnitView view when view.Player == Opponent && fog.VisibleActors.Contains(view.Id) => view.Id,
@@ -128,10 +135,10 @@ public partial class Battlefield : Node3D
                     && fog.VisibleActors.Contains(id) => id,
                 _ => null
             },
-            (selected, target) => session.Commands.ScheduleAttack(LocalPlayer, selected, target),
-            reason => feedback.Reject(reason, session.World.Tick));
+            (selected, target) => _session!.Commands.ScheduleAttack(LocalPlayer, selected, target),
+            reason => feedback.Reject(reason, _session!.World.Tick));
         _productionPanel = new ProductionPanel(canvas, LocalPlayer, configuration,
-            [blueBarracks, blueHq], (producer, kind) => session.Commands.ScheduleTraining(LocalPlayer, producer, kind));
+            [blueBarracks, blueHq], (producer, kind) => _session!.Commands.ScheduleTraining(LocalPlayer, producer, kind));
         _productionPanel.Update(session.World);
         sectorBoard.Update(session.World, fog.CanSeeSector);
         UpdateActorVisibility(fog.VisibleActors);
@@ -152,6 +159,8 @@ public partial class Battlefield : Node3D
         var body = GetNode<StaticBody3D>(path);
         var exit = body.GetNode<Marker3D>("ProductionExit").GlobalPosition;
         _buildings.Add(id, body);
+        _buildingMaterials.Add(id, (body.GetNode<MeshInstance3D>("Base").MaterialOverride,
+            body.GetNode<MeshInstance3D>("Roof").MaterialOverride));
         if (owner == Opponent)
             _enemyBuildings.Add(body, id);
         _healthBars.Add(id, new HealthBar(body, definition.MaxHp, 7.3f, 0.14f));
@@ -285,10 +294,8 @@ public partial class Battlefield : Node3D
         _healthBars.Remove(id);
         if (_buildings.TryGetValue(id, out var building))
         {
-            building.GetNode<Sprite3D>("HealthBar").QueueFree();
-            var ruin = new StandardMaterial3D { AlbedoColor = new Color("505862") };
-            building.GetNode<MeshInstance3D>("Base").MaterialOverride = ruin;
-            building.GetNode<MeshInstance3D>("Roof").MaterialOverride = ruin;
+            RemoveBuildingBar(building);
+            ShowBuildingRuin(building);
             return;
         }
 

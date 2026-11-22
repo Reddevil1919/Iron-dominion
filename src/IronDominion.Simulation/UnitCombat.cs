@@ -24,6 +24,23 @@ internal sealed class UnitCombat(
             .Concat(world.Buildings.Select(building => (building.Id, building.HitPoints)))
             .ToImmutableDictionary(entity => entity.Id, entity => entity.HitPoints);
 
+    public EntityId? FocusedTarget(EntityId id) => _orderedTargets.TryGetValue(id, out var target) ? target : null;
+
+    public long? NextShot(EntityId id) => _nextShot.TryGetValue(id, out var tick) ? tick : null;
+
+    public void Restore(ImmutableArray<UnitCheckpoint> units, ImmutableArray<BuildingCheckpoint> buildings)
+    {
+        Health = units.Select(unit => (unit.Id, unit.HitPoints)).Concat(buildings.Select(building => (building.Id, building.HitPoints)))
+            .ToImmutableDictionary(actor => actor.Id, actor => actor.HitPoints);
+        foreach (var unit in units)
+        {
+            if (unit.FocusedTarget is { } target)
+                _orderedTargets.Add(unit.Id, target);
+            if (unit.NextShot is { } tick)
+                _nextShot.Add(unit.Id, tick);
+        }
+    }
+
     public void Register(Unit unit)
     {
         // Spawn IDs are greater than the existing IDs, so appending preserves combat order.

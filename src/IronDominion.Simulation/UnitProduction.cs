@@ -23,6 +23,10 @@ internal sealed class UnitProduction(
     public ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>> Queues { get; private set; } =
         ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>>.Empty;
 
+    public void Restore(ImmutableArray<BuildingCheckpoint> buildings) =>
+        Queues = buildings.Where(building => !building.Queue.IsEmpty)
+            .ToImmutableDictionary(building => building.Id, building => building.Queue.ToImmutableList());
+
     public CommandResult Enqueue(TrainUnitCommand command)
     {
         var producer = (Building)world.Find(command.Producer)!;

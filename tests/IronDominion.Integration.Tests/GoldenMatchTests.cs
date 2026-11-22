@@ -1,8 +1,10 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using IronDominion.AI;
 using IronDominion.Application;
 using IronDominion.Domain;
 using IronDominion.Infrastructure.Configuration;
+using IronDominion.Infrastructure.Persistence;
 using IronDominion.Simulation;
 using Xunit;
 using Xunit.Abstractions;
@@ -101,7 +103,74 @@ public sealed class GoldenMatchTests(ITestOutputHelper output)
         AssertSameTimeline(trace, Replay(recording, recording.Orders.Reverse(), ticks), "reverse tactical arrival");
     }
 
-    private static GoldenRun PlayGoldenMatch()
+    [Theory]
+    [InlineData(213)]
+    [InlineData(331)]
+    [InlineData(795)]
+    public void SavingAndLoadingDuringTheGoldenMatchPreservesItsTimeline(int saveTick)
+    {
+        using var slot = new TemporarySaveSlot();
+        var match = PlayGoldenMatch(saveTick, slot.File);
+
+        Assert.Equal(MatchResult.PlayerOneWon, match.Session.World.Result);
+        Assert.Equal(855, match.Session.World.Tick);
+        Assert.Equal(ExpectedDigest, match.Trace.Digest);
+    }
+
+    [Theory]
+    [InlineData("{", "invalid data")]
+    [InlineData("""{"schemaVersion":9}""", "format 9")]
+    [InlineData("""{"schemaVersion":1}""", "invalid data")]
+    public void InvalidSaveFilesFailWithAControlledError(string contents, string reason)
+    {
+        using var slot = new TemporarySaveSlot();
+        File.WriteAllText(slot.Path, contents);
+
+        var failure = Assert.Throws<InvalidDataException>(() => slot.File.Read<SessionCheckpoint>());
+        Assert.Contains(reason, failure.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SaveSlotReplacesTheFileAndRejectsADifferentBattlefield()
+    {
+        using var slot = new TemporarySaveSlot();
+        var battlefield = new GoldenBattlefield(Seed);
+        var session = new GameSession(CreateWorld(), Configuration, battlefield, battlefield);
+        slot.File.Write(session.Capture());
+        session.AdvanceOneTick();
+        slot.File.Write(session.Capture());
+
+        Assert.Equal(1, slot.File.Read<SessionCheckpoint>().Simulation.Tick);
+        Assert.Single(Directory.GetFiles(Path.GetDirectoryName(slot.Path)!));
+        var wrongMap = new MatchSaveFile(slot.Path, "another-battlefield", Configuration);
+        Assert.Throws<InvalidDataException>(() => wrongMap.Read<SessionCheckpoint>());
+
+        var document = JsonNode.Parse(File.ReadAllText(slot.Path))!.AsObject();
+        document["state"] = null;
+        File.WriteAllText(slot.Path, document.ToJsonString());
+        Assert.Throws<InvalidDataException>(() => slot.File.Read<SessionCheckpoint>());
+    }
+
+    [Fact]
+    public void ACheckpointWithAnInvalidSchedulerOrLiveUnitPositionCannotBeLoaded()
+    {
+        var battlefield = new GoldenBattlefield(Seed);
+        var world = CreateWorld();
+        var session = new GameSession(world, Configuration, battlefield, battlefield);
+        session.Commands.ScheduleAttackMove(Blue, [BlueTank], AcrossWall);
+        var original = session.Capture();
+        Assert.Throws<InvalidDataException>(() => GameSession.Restore(world, Configuration, battlefield, battlefield,
+            original with { Scheduler = [] }));
+        var living = original.Simulation.Units[0];
+        var malformed = original with
+        {
+            Simulation = original.Simulation with { Units = original.Simulation.Units.SetItem(0, living with { Position = null }) }
+        };
+        Assert.Throws<InvalidDataException>(() => GameSession.Restore(world, Configuration, battlefield, battlefield, malformed));
+        Assert.True(Assert.Single(session.AdvanceOneTick().OfType<CommandProcessed>()).Result.Accepted);
+    }
+
+    private static GoldenRun PlayGoldenMatch(int? saveTick = null, MatchSaveFile? save = null)
     {
         var battlefield = new GoldenBattlefield(Seed);
         var initial = CreateWorld();
@@ -172,6 +241,25 @@ public sealed class GoldenMatchTests(ITestOutputHelper output)
                     session.Commands.ScheduleMove(Blue, selection.Selected, new SimVector(-24, 36));
                     break;
             }
+            if (session.World.Tick == saveTick && save is not null)
+            {
+                session.SetPaused(true);
+                save.Write(new SavedRun(session.Capture(), commander.Capture()));
+                var saved = save.Read<SavedRun>();
+                var afterLoad = new GoldenBattlefield(Seed);
+                session = GameSession.Restore(initial, Configuration, afterLoad, afterLoad, saved.Session);
+                Assert.True(session.IsPaused);
+                Assert.Empty(session.AdvanceOneTick());
+                Assert.Equal(saved.Session.Simulation.Tick, session.World.Tick);
+
+                var state = saved.Session.Simulation;
+                commander = EnemyCommander.Restore(Configuration, saved.Enemy,
+                    state.Units.Where(unit => unit.Owner == Orange).Select(unit => unit.Id).ToHashSet(),
+                    state.Units.Select(unit => unit.Id).Concat(state.Buildings.Select(building => building.Id)).ToHashSet(),
+                    state.Sectors.Select(sector => sector.Id).ToHashSet());
+                enemyOrders = session.Commands.ForPlayer(Orange);
+                session.SetPaused(false);
+            }
         }
 
         return new GoldenRun(session, trace, events, new ReplayRecording(Configuration.SchemaVersion, Seed, orders.ToArray()));
@@ -206,6 +294,16 @@ public sealed class GoldenMatchTests(ITestOutputHelper output)
         }
         Assert.Equal(expected.Frames.Count, replay.Frames.Count);
         Assert.Equal(expected.Digest, replay.Digest);
+    }
+
+    private sealed record SavedRun(SessionCheckpoint Session, CommanderCheckpoint Enemy);
+
+    private sealed class TemporarySaveSlot : IDisposable
+    {
+        private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("iron-dominion-save-");
+        public string Path => System.IO.Path.Combine(_directory.FullName, "save.json");
+        public MatchSaveFile File => new(Path, "golden-battlefield", Configuration);
+        public void Dispose() => _directory.Delete(recursive: true);
     }
 
     private sealed record GoldenRun(GameSession Session, ReplayTrace Trace, IReadOnlyList<IGameEvent> Events,

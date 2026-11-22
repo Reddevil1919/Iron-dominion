@@ -405,6 +405,27 @@ position to the current selection.
 The cloud desktop uses Mesa softpipe for graphical checks. Windows graphical
 performance remains unmeasured.
 
+## RTS-018 versioned save and load
+
+The Pause menu saves to a single local JSON slot. Loading restores the saved
+tick and leaves the match paused. The checkpoint includes units, building
+health, cached paths, targets, cooldowns, pending orders, sectors, credits,
+production, AI objectives and explored ground. Loading resets selection
+and control groups.
+
+The game checks the save version, battlefield and configuration before
+replacing the current session. Saving writes the complete file before
+replacing the slot. The UI reports incompatible and corrupt saves.
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 131 xUnit cases passed. Restoring the golden match at ticks 213, 331 and 795 preserved every subsequent tick and the original victory at tick 855. |
+| `scripts/validate-godot.sh` | All 13 Godot headless scenarios passed. The save scenario restored movement, balance and production and preserved the active match when a load was rejected. |
+
+The cloud desktop uses Mesa softpipe for graphical checks. Windows graphical
+performance remains unmeasured.
+
 ## Next
 
-RTS-018 adds versioned save and load.
+RTS-019 adds directional cover and suppression.

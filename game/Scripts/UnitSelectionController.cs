@@ -165,6 +165,13 @@ public partial class UnitSelectionController : Control
         });
     }
 
+    public void ResetForLoad()
+    {
+        _pending.Clear();
+        CancelInput();
+        _selection?.Reset();
+    }
+
     public void RefreshSelection()
     {
         if (_selection is not { } selection)

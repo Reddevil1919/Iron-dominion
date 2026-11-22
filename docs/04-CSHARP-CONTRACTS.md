@@ -243,3 +243,19 @@ Automatic fire and normal cooldowns apply from the held position. Both
 orders use the existing tick, player and sequence ordering and validate
 all selected units before applying an effect. The replay test format records
 both modes along with the existing move, attack and training orders.
+
+## RTS-018 versioned match saves
+
+`GameSession.Capture` and `GameSession.Restore` operate on a checkpoint of the
+current tick and the state required to advance the next one. The checkpoint
+includes living and destroyed units, health, cached waypoints, focused targets,
+cooldowns, production queues, fractional income, sector progress, pending
+orders and sequence state. Restore uses the current battlefield's static
+geometry and recreates the simulation before exposing it to callers. The Godot
+adapter also saves the enemy commander's tactical state and explored terrain.
+
+The first JSON format includes its schema version, the battlefield ID, and
+the game configuration version and fingerprint. The game validates the file
+and creates a replacement session before applying it to the scene. Disk
+writes use a temporary file in the same directory and replace the slot only
+after a complete write.

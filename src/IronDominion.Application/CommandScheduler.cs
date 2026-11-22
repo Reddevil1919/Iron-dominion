@@ -1,4 +1,6 @@
+using System.Collections.Immutable;
 using IronDominion.Domain;
+using IronDominion.Simulation;
 
 namespace IronDominion.Application;
 
@@ -43,6 +45,21 @@ public sealed class CommandScheduler
         long? executeAtTick = null)
     {
         return Schedule(player, executeAtTick, (tick, sequence) => new TrainUnitCommand(player, tick, sequence, producer, kind));
+    }
+
+    internal ImmutableArray<CommandSequence> Capture() => _lastSequences.OrderBy(item => item.Key.Value)
+        .Select(item => new CommandSequence(item.Key, item.Value)).ToImmutableArray();
+
+    internal void Restore(ImmutableArray<CommandSequence> sequences)
+    {
+        if (sequences.IsDefault)
+            throw new InvalidDataException("The saved scheduler is missing.");
+        foreach (var sequence in sequences)
+        {
+            if (sequence.Player.Value <= 0 || sequence.Sequence is <= 0 or long.MaxValue
+                || !_lastSequences.TryAdd(sequence.Player, sequence.Sequence))
+                throw new InvalidDataException("Invalid saved scheduler sequence.");
+        }
     }
 
     private TCommand Schedule<TCommand>(PlayerId player, long? executeAtTick, Func<long, long, TCommand> createCommand)
