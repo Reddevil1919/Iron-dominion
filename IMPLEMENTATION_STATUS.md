@@ -426,6 +426,28 @@ replacing the slot. The UI reports incompatible and corrupt saves.
 The cloud desktop uses Mesa softpipe for graphical checks. Windows graphical
 performance remains unmeasured.
 
+## RTS-019 directional cover and suppression
+
+The dark stripe on a cover zone marks the protected side. Infantry inside
+takes 30% less damage from shots within 45° of that direction. Flank shots
+deal full damage. A damaging hit slows surviving infantry to 65% of normal
+movement speed for 24 ticks and refreshes the timer on further hits.
+The unit marker and selection HUD show suppression. These values are the
+initial balance for the feature.
+
+New saves use format 2 and store active suppression timers. Format 1 saves
+with the prior balance remain loadable. They resume under the current
+battlefield rules.
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 145 xUnit cases passed. New cases cover protected and exposed angles, suppression timing and refresh, and restoration of both save formats. |
+| Godot infantry cover scenario | The scenario found the marked edge, moved a squad into cover, checked suppression in the unit marker and selection HUD, and moved the squad out. |
+
+The desktop verification uses Mesa softpipe. Windows graphical performance
+remains unmeasured.
+
 ## Next
 
-RTS-019 adds directional cover and suppression.
+RTS-020 starts with a separate multiplayer architecture review.

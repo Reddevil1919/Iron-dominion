@@ -171,8 +171,12 @@ public partial class Battlefield : Node3D
     private static CoverZone ReadCoverZone(MeshInstance3D mesh)
     {
         var bounds = mesh.GlobalTransform * mesh.GetAabb();
+        if (!Enum.TryParse<CoverFacing>(mesh.GetMeta("cover_facing", "AllDirections").AsString(), out var facing)
+            || !Enum.IsDefined(facing))
+            throw new InvalidDataException($"Unknown cover direction for {mesh.Name}.");
+
         return new CoverZone(new SimVector(bounds.Position.X, bounds.Position.Z),
-            new SimVector(bounds.End.X, bounds.End.Z));
+            new SimVector(bounds.End.X, bounds.End.Z), facing);
     }
 
     private static Unit CreateUnit(int id, PlayerId player, UnitDefinition definition, float x, float z) =>
@@ -285,7 +289,7 @@ public partial class Battlefield : Node3D
                 continue;
 
             view.Position = new Vector3(position.X, 0f, position.Z);
-            view.ShowCover(world.HasCover(view.Id));
+            view.ShowInfantryStatus(world.HasCover(view.Id), world.IsSuppressed(view.Id));
         }
     }
 

@@ -7,6 +7,7 @@
   "captureSeconds": 10,
   "captureRadiusMeters": 6,
   "infantryCoverMultiplier": 0.7,
+  "suppression": { "durationTicks": 24, "movementMultiplier": 0.65 },
   "units": [
     {
       "kind": "infantrySquad",

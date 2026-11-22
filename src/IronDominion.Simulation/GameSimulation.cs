@@ -145,7 +145,7 @@ public sealed partial class GameSimulation : IGameSimulation
             events.Add(new CommandProcessed(tick, command, result));
         }
 
-        _movement?.Advance(_combat);
+        _movement?.Advance(_combat, tick);
         if (_combat is not null && _movement is not null)
         {
             events ??= new List<IGameEvent>();
@@ -194,6 +194,7 @@ public sealed partial class GameSimulation : IGameSimulation
 
     private WorldSnapshot Snapshot(long tick, MatchResult result = MatchResult.Running) => new(
         tick, result, _movement?.Positions ?? _initialPositions, _combat?.Health ?? _initialHealth, _units, _entities.CoverZones,
+        _combat?.Suppression ?? ImmutableDictionary<EntityId, long>.Empty,
         _economy?.Credits ?? ImmutableDictionary<PlayerId, int>.Empty,
         _economy?.Income ?? ImmutableDictionary<PlayerId, long>.Empty,
         _sectorControl?.Sectors ?? _initialSectors,
@@ -202,6 +203,7 @@ public sealed partial class GameSimulation : IGameSimulation
     private sealed record WorldSnapshot(long Tick, MatchResult Result, ImmutableDictionary<EntityId, SimVector> Positions,
         ImmutableDictionary<EntityId, int> Health, ImmutableDictionary<EntityId, Unit> Units,
         ImmutableArray<CoverZone> CoverZones,
+        ImmutableDictionary<EntityId, long> Suppression,
         ImmutableDictionary<PlayerId, int> Balances,
         ImmutableDictionary<PlayerId, long> IncomeRates,
         ImmutableArray<SectorState> Sectors,
@@ -214,6 +216,7 @@ public sealed partial class GameSimulation : IGameSimulation
         public bool HasCover(EntityId id) =>
             Health.GetValueOrDefault(id) > 0 && Units.TryGetValue(id, out var unit)
             && CoverZone.Protects(CoverZones, unit, Positions[id]);
+        public bool IsSuppressed(EntityId id) => Suppression.TryGetValue(id, out var through) && Tick <= through;
         public int Credits(PlayerId player) => Balances.GetValueOrDefault(player);
         public long IncomePerSecond(PlayerId player) => IncomeRates.GetValueOrDefault(player);
         public IReadOnlyList<TrainingOrder> TrainingQueue(EntityId producer) =>

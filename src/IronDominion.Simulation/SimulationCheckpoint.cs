@@ -10,7 +10,7 @@ public sealed record SimulationCheckpoint(long Tick, MatchResult Result,
 
 public readonly record struct UnitCheckpoint(EntityId Id, PlayerId Owner, UnitKind Kind,
     SimVector SpawnPosition, int StartingHitPoints, int HitPoints, SimVector? Position, RouteCheckpoint? Route,
-    EntityId? FocusedTarget, long? NextShot)
+    EntityId? FocusedTarget, long? NextShot, long? SuppressedThrough = null)
 {
     public Unit CreateUnit() => new(Id, Owner, SpawnPosition, Kind, StartingHitPoints);
 }

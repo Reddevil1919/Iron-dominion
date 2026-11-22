@@ -27,7 +27,11 @@ HQ: 1500 HP, passive +5 credits/s, sector capture not available to buildings. Ba
 Three capturable sectors. Infantry captures an uncontested sector by standing within 6m for 10s; enemy presence pauses capture and can reverse progress. Captured sector grants +2 credits/s. Income accrues in integer credits using fixed-point accumulator; no floating-point currency. Sector ownership shown on HUD and minimap (minimap post-MVP).
 
 ## Cover and combat
-Static cover zones with a 0.7 incoming-damage multiplier for infantry squads positioned inside. No directional cover in MVP; directional cover, suppression, flanking bonuses, and destructible cover are post-MVP. Line of sight blocked by marked solid obstacles; shots require visibility and line of sight. No friendly fire in MVP. Cooldown is tick-based. Damage rounded using an explicit deterministic rule (round half away from zero).
+Marked cover zones apply a 0.7 incoming-damage multiplier to infantry inside
+when the attacker lies within 45° of the protected side. A damaging hit
+slows surviving infantry to 65% speed for 1.2 seconds. Repeated hits
+refresh the timer. Additional flanking bonuses and destructible cover
+are future work. Line of sight blocked by marked solid obstacles; shots require visibility and line of sight. No friendly fire in MVP. Cooldown is tick-based. Damage rounded using an explicit deterministic rule (round half away from zero).
 
 ## AI
 Rules/utility hybrid: produce units when affordable, capture nearest neutral sector, defend HQ when threatened, attack enemy HQ when force threshold met. Decision every 40 ticks. AI must respect fog-of-war visibility.

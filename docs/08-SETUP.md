@@ -169,10 +169,13 @@ determines capture. The top-left panel shows ownership, the progress bar
 for each sector and contested sectors. Each owned sector adds 2 credits per second to the
 rate shown next to your balance.
 
-The two ochre rectangles provide cover. Move infantry inside one to
-display **COVER** above its health bar and reduce incoming damage. A
-10-damage hit deals 7 HP, and a 45-damage hit deals 32 HP after rounding.
-Tanks and buildings take full damage.
+The two ochre rectangles provide directional cover. Move infantry inside
+one and keep threats on the side with the dark stripe for damage reduction. Incoming
+shots within 45° of that side deal reduced damage, so a 10-damage hit
+deals 7 HP and a 45-damage hit deals 32 HP. Flank shots deal full damage.
+A damaging hit marks surviving infantry **SUPPRESSED** and slows them to
+65% speed for 1.2 seconds. Further hits refresh the duration. Tanks and
+buildings take full damage and are unaffected by suppression.
 
 The orange commander trains reinforcements, claims neutral sectors
 and launches an attack once it has enough units. It responds to visible
@@ -190,7 +193,8 @@ resume, save, load, restart or quit. **Save match** replaces the local
 slot. **Load saved match** restores the saved tick and leaves the game
 paused so you can inspect it before clicking **Resume**. Loading resets
 selection and control groups. The result screen can load the slot, start
-a new match or quit.
+a new match or quit. Format 1 saves open with the current battlefield
+rules. New saves use format 2 and retain active suppression timers.
 
 The local slot is `user://match-save.json`. Godot resolves this path in the
 application data directory for the signed-in system user. On Windows it is

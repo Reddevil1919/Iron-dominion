@@ -22,6 +22,7 @@ public sealed class GameConfigurationTests
         Assert.Equal(10, configuration.CaptureSeconds);
         Assert.Equal(6f, configuration.CaptureRadiusMeters);
         Assert.Equal(0.7m, configuration.InfantryCoverMultiplier);
+        Assert.Equal(new SuppressionRules(24, 0.65m), configuration.Suppression);
         Assert.Collection(configuration.Units,
             unit => Assert.Equal(new UnitDefinition(UnitKind.InfantrySquad, 400, 100, 160, 4, 12, 10, 20), unit),
             unit => Assert.Equal(new UnitDefinition(UnitKind.Tank, 600, 500, 400, 3, 16, 45, 40), unit));
@@ -46,6 +47,17 @@ public sealed class GameConfigurationTests
         var json = DefaultJson();
         json[field] = JsonNode.Parse(value);
 
+        AssertInvalid(json.ToJsonString(), field);
+    }
+
+    [Theory]
+    [InlineData("durationTicks", "0")]
+    [InlineData("movementMultiplier", "0")]
+    [InlineData("movementMultiplier", "1.01")]
+    public void Load_ValidatesSuppressionWhenConfigured(string field, string value)
+    {
+        var json = DefaultJson();
+        json["suppression"]![field] = JsonNode.Parse(value);
         AssertInvalid(json.ToJsonString(), field);
     }
 
