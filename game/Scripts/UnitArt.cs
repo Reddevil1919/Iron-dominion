@@ -7,72 +7,17 @@ internal sealed class UnitArt
     private static readonly Basis AlongZ = new(Vector3.Right, Mathf.Pi / 2f);
     private static readonly Basis AlongX = new(Vector3.Forward, Mathf.Pi / 2f);
 
-    public Mesh InfantryTorso { get; }
-    public Mesh InfantryArms { get; }
-    public Mesh InfantryThigh { get; }
-    public Mesh InfantryBoot { get; }
+    public InfantryArt Infantry { get; }
     public Mesh TankHull { get; }
     public Mesh TankTurret { get; }
     public Mesh TankGun { get; }
 
     public UnitArt(Color identification, bool local)
     {
-        var fabric = local ? "687459" : "86775f";
-        var undersuit = local ? "414a39" : "54473b";
-        var armor = local ? "484f39" : "746047";
-        InfantryTorso = SoldierTorso(identification, fabric, armor);
-        InfantryArms = SoldierArms(fabric, armor);
-        InfantryThigh = SoldierThigh(fabric);
-        InfantryBoot = SoldierBoot(fabric, undersuit);
+        Infantry = new InfantryArt(identification, local);
         TankHull = VehicleHull(identification, local ? "626b50" : "8c7861");
         TankTurret = VehicleTurret(identification, local ? "586346" : "7c6a53");
         TankGun = VehicleGun(local ? "586346" : "7c6a53");
-    }
-
-    private static Mesh SoldierTorso(Color identification, string fabric, string armor)
-    {
-        var mesh = new ArtMesh();
-        mesh.Ellipsoid(new(0, 0.51f, 0), new(0.64f, 0.95f, 0.40f), fabric);
-        mesh.Box(new(0, 0.47f, -0.13f), new(0.54f, 0.53f, 0.27f), armor);
-        mesh.Box(new(0, 0.52f, 0.28f), new(0.51f, 0.68f, 0.36f), armor);
-        mesh.Box(new(0, 0.78f, 0.47f), new(0.38f, 0.16f, 0.09f), identification);
-        for (var i = -1; i <= 1; i++)
-            mesh.Box(new(0.16f * i, 0.32f, -0.28f), new(0.14f, 0.28f, 0.10f), "3c4034");
-
-        mesh.Ellipsoid(new(0, 1.01f, -0.035f), new(0.36f, 0.43f, 0.36f), "a18a71");
-        mesh.Ellipsoid(new(0, 1.15f, -0.01f), new(0.51f, 0.37f, 0.53f), armor);
-        mesh.Box(new(0, 1.02f, -0.205f), new(0.37f, 0.12f, 0.12f), "383a35");
-        return mesh.Build();
-    }
-
-    private static Mesh SoldierArms(string fabric, string armor)
-    {
-        var mesh = new ArtMesh();
-        mesh.Ellipsoid(new(-0.34f, -0.13f, -0.07f), new(0.23f, 0.46f, 0.24f), fabric, new Basis(Vector3.Right, 0.4f));
-        mesh.Ellipsoid(new(0.34f, -0.17f, -0.03f), new(0.23f, 0.51f, 0.24f), fabric, new Basis(Vector3.Right, 0.3f));
-        mesh.Ellipsoid(new(-0.22f, -0.30f, -0.35f), new(0.20f, 0.23f, 0.49f), armor, new Basis(Vector3.Up, -0.33f));
-        mesh.Ellipsoid(new(0.24f, -0.28f, -0.20f), new(0.20f, 0.24f, 0.40f), armor, new Basis(Vector3.Up, 0.3f));
-        mesh.Box(new(0.12f, -0.23f, -0.41f), new(0.105f, 0.14f, 0.63f), "272d2b");
-        mesh.Box(new(0.12f, -0.28f, -0.28f), new(0.12f, 0.20f, 0.13f), "353c37");
-        mesh.Box(new(0.12f, -0.13f, -0.36f), new(0.09f, 0.08f, 0.12f), "383e38");
-        mesh.Cylinder(new(0.12f, -0.21f, -0.80f), new(0.054f, 0.25f, 0.054f), new Color("262a28"), AlongZ);
-        return mesh.Build();
-    }
-
-    private static Mesh SoldierThigh(string fabric)
-    {
-        var mesh = new ArtMesh();
-        mesh.Ellipsoid(new(0, -0.26f, 0), new(0.29f, 0.62f, 0.32f), fabric);
-        mesh.Box(new(0, -0.47f, -0.12f), new(0.23f, 0.21f, 0.15f), "494b3f");
-        return mesh.Build();
-    }
-
-    private static Mesh SoldierBoot(string fabric, string boot)
-    {
-        var mesh = new ArtMesh();
-        mesh.Ellipsoid(new(0, -0.24f, 0), new(0.24f, 0.57f, 0.26f), fabric);
-        mesh.Box(new(0, -0.48f, -0.065f), new(0.23f, 0.20f, 0.37f), boot);
-        return mesh.Build();
     }
 
     private static Mesh VehicleHull(Color identification, string armor)

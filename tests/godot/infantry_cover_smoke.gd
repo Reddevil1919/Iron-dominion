@@ -21,6 +21,17 @@ func _run() -> void:
 
 	var squad := current_scene.get_node("Units/Unit1") as Node3D
 	var marker := squad.get_node("CoverIndicator") as Label3D
+	var rig := squad.get_node("Model/InfantryRig") as Skeleton3D
+	var skin_view := rig.get_node("InfantrySkin") as MeshInstance3D
+	assert(skin_view.skin.get_bind_count() == rig.get_bone_count(), "Every joint has a skin bind")
+	assert((skin_view.mesh.surface_get_format(0) & Mesh.ARRAY_FORMAT_WEIGHTS) != 0, "The mesh has vertex weights")
+	var ankle_l := rig.find_bone("S0_AnkleL")
+	var ankle_r := rig.find_bone("S0_AnkleR")
+	var pelvis := rig.find_bone("S0_Pelvis")
+	var equipment := rig.find_bone("S0_Equipment")
+	var rest_height := rig.get_bone_global_pose(pelvis).origin.y
+	var idle_ankle := rig.get_bone_global_pose(ankle_l).origin.y
+	assert(abs(idle_ankle - 0.09) < 0.008, "The idle foot rests on the terrain")
 	var patch := current_scene.get_node("CoverZones/East") as MeshInstance3D
 	var camera := root.get_camera_3d()
 	var edge := patch.get_node("ProtectedEdge") as MeshInstance3D
@@ -33,11 +44,18 @@ func _run() -> void:
 
 	var covered := Vector3(patch.global_position.x, 0.0, patch.global_position.z)
 	await _click(camera.unproject_position(covered), MOUSE_BUTTON_RIGHT)
+	var lifted_left := false
+	var lifted_right := false
 	for tick in range(470):
 		await physics_frame
+		var left_height := rig.get_bone_global_pose(ankle_l).origin.y
+		var right_height := rig.get_bone_global_pose(ankle_r).origin.y
+		lifted_left = lifted_left or (left_height > 0.16 and right_height < 0.12)
+		lifted_right = lifted_right or (right_height > 0.16 and left_height < 0.12)
 		if squad.global_position.distance_to(covered) < 0.08:
 			break
 	assert(squad.global_position.distance_to(covered) < 0.08, "Cover ground remains navigable")
+	assert(lifted_left and lifted_right, "Both boots alternate between ground contact and swing")
 	assert(marker.visible and marker.text.begins_with("COVER"), "The indicator shows the squad is in cover")
 	for tick in range(44):
 		if marker.text.contains("SUPPRESSED"):
@@ -45,6 +63,18 @@ func _run() -> void:
 		await physics_frame
 	assert(marker.text == "COVER · SUPPRESSED", "Incoming hits suppress infantry in cover")
 	assert(status.visible and status.text.contains("Suppressed"), "The selection HUD reports suppression")
+
+	for tick in range(8):
+		await physics_frame
+	assert(rig.get_bone_global_pose(pelvis).origin.y < rest_height - 0.11, "Suppression lowers the skeleton")
+
+	var aimed := false
+	for tick in range(44):
+		await physics_frame
+		aimed = abs(rig.get_bone_global_pose(equipment).basis.z.y) < 0.17
+		if aimed:
+			break
+	assert(aimed, "A visible combat shot blends the equipment into the aiming pose")
 
 	var exposed := covered + Vector3(0.0, 0.0, 6.0)
 	await _click(camera.unproject_position(exposed), MOUSE_BUTTON_RIGHT)
