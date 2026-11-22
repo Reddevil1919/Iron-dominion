@@ -16,6 +16,7 @@ internal sealed class UnitMovement(
     private readonly Dictionary<UnitKind, float> _stepSizes = configuration.Units.ToDictionary(
         unit => unit.Kind, unit => unit.SpeedMetersPerSecond / configuration.TickRate);
     private readonly Dictionary<EntityId, Route> _routes = new();
+    private readonly float _suppressedMovement = (float)(configuration.Suppression?.MovementMultiplier ?? 1);
 
     public ImmutableDictionary<EntityId, SimVector> Positions { get; private set; } =
         entities.Units.ToImmutableDictionary(unit => unit.Id, unit => unit.Position);
@@ -74,7 +75,7 @@ internal sealed class UnitMovement(
         Positions = Positions.Remove(id);
     }
 
-    public void Advance(UnitCombat? combat)
+    public void Advance(UnitCombat? combat, long tick)
     {
         if (_routes.Count == 0)
             return;
@@ -90,6 +91,8 @@ internal sealed class UnitMovement(
             var unit = (Unit)entities.Find(id)!;
             var position = positions[id];
             var remaining = _stepSizes[unit.Kind];
+            if (combat?.IsSuppressed(id, tick) == true)
+                remaining *= _suppressedMovement;
             while (route.Waypoints.TryPeek(out var waypoint))
             {
                 var delta = new Vector2(waypoint.X - position.X, waypoint.Z - position.Z);

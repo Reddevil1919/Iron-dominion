@@ -59,7 +59,11 @@ Decision: 20Hz authoritative simulation, rendering interpolation separately. Con
 Decision: infantry squad is one simulation entity; members are visual instances. Consequence: simpler selection/combat; less granular casualty simulation.
 
 ## ADR-004 Simplified cover
-Decision: static cover zones with infantry damage reduction. Consequence: tactical positioning with limited complexity; directional cover deferred.
+Decision: static cover zones with infantry damage reduction. RTS-019
+assigns the battlefield zones a protected direction and stores infantry
+suppression as an absolute expiry tick. Combat evaluates cover per shot
+and combines damage before publishing the snapshot. Movement reads the
+suppression timer before following the existing route.
 
 ## ADR-005 No server in MVP
 Decision: offline single-player, no Spring Boot or database service. Consequence: simpler deployment; multiplayer needs separate design.

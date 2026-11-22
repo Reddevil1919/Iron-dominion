@@ -23,27 +23,37 @@ func _run() -> void:
 	var marker := squad.get_node("CoverIndicator") as Label3D
 	var patch := current_scene.get_node("CoverZones/East") as MeshInstance3D
 	var camera := root.get_camera_3d()
+	var edge := patch.get_node("ProtectedEdge") as MeshInstance3D
+	var hud := current_scene.get_node("SelectionLayer/SelectionPanel")
+	var status := hud.find_child("SelectionCover", true, false) as Label
+	assert(edge.position.x < 0 and patch.get_meta("cover_facing") == "West", "The marked edge matches the protected side")
 	assert(not marker.visible, "Infantry starts exposed")
 	assert(not current_scene.get_node("Units/Unit3").has_node("CoverIndicator"), "Tanks have no cover indicator")
 	await _click(camera.unproject_position(squad.global_position + Vector3.UP), MOUSE_BUTTON_LEFT)
 
 	var covered := Vector3(patch.global_position.x, 0.0, patch.global_position.z)
 	await _click(camera.unproject_position(covered), MOUSE_BUTTON_RIGHT)
-	for tick in range(360):
+	for tick in range(470):
 		await physics_frame
 		if squad.global_position.distance_to(covered) < 0.08:
 			break
 	assert(squad.global_position.distance_to(covered) < 0.08, "Cover ground remains navigable")
-	assert(marker.visible, "Infantry displays its cover indicator after entering")
+	assert(marker.visible and marker.text.begins_with("COVER"), "The indicator shows the squad is in cover")
+	for tick in range(44):
+		if marker.text.contains("SUPPRESSED"):
+			break
+		await physics_frame
+	assert(marker.text == "COVER · SUPPRESSED", "Incoming hits suppress infantry in cover")
+	assert(status.visible and status.text.contains("Suppressed"), "The selection HUD reports suppression")
 
 	var exposed := covered + Vector3(0.0, 0.0, 6.0)
 	await _click(camera.unproject_position(exposed), MOUSE_BUTTON_RIGHT)
-	for tick in range(35):
+	for tick in range(65):
 		await physics_frame
 		if squad.global_position.distance_to(exposed) < 0.08:
 			break
 	assert(squad.global_position.distance_to(exposed) < 0.08, "The squad moves out of cover")
-	assert(not marker.visible, "The cover indicator clears after leaving")
+	assert(not marker.visible or not marker.text.contains("COVER"), "The cover indicator clears after leaving")
 
 	print("Infantry cover smoke checks passed.")
 	quit()

@@ -19,6 +19,11 @@ internal sealed class UnitCombat(
 
     public ImmutableDictionary<EntityId, int> Health { get; private set; } = InitialHealth(world);
 
+    public ImmutableDictionary<EntityId, long> Suppression { get; private set; } = ImmutableDictionary<EntityId, long>.Empty;
+
+    public bool IsSuppressed(EntityId id, long tick) =>
+        Suppression.TryGetValue(id, out var through) && tick <= through;
+
     public static ImmutableDictionary<EntityId, int> InitialHealth(WorldEntities world) =>
         world.Units.Select(unit => (unit.Id, unit.HitPoints))
             .Concat(world.Buildings.Select(building => (building.Id, building.HitPoints)))
@@ -32,6 +37,8 @@ internal sealed class UnitCombat(
     {
         Health = units.Select(unit => (unit.Id, unit.HitPoints)).Concat(buildings.Select(building => (building.Id, building.HitPoints)))
             .ToImmutableDictionary(actor => actor.Id, actor => actor.HitPoints);
+        Suppression = units.Where(unit => unit.SuppressedThrough.HasValue)
+            .ToImmutableDictionary(unit => unit.Id, unit => unit.SuppressedThrough!.Value);
         foreach (var unit in units)
         {
             if (unit.FocusedTarget is { } target)
@@ -121,13 +128,14 @@ internal sealed class UnitCombat(
 
             _nextShot[attacker.Id] = tick + definition.CooldownTicks;
             events.Add(new ShotFired(tick, attacker.Id, target.Id));
-            damage[target.Id] = damage.GetValueOrDefault(target.Id) + DamagePerShot(definition, target, positions);
+            damage[target.Id] = damage.GetValueOrDefault(target.Id) + DamagePerShot(definition, target, positions[attacker.Id], positions);
         }
 
         if (damage.Count == 0)
             return;
 
         var health = Health.ToBuilder();
+        var suppression = Suppression.ToBuilder();
         foreach (var (id, amount) in damage.OrderBy(hit => hit.Key.Value))
         {
             var applied = (int)Math.Min(health[id], amount);
@@ -141,17 +149,23 @@ internal sealed class UnitCombat(
                 events.Add(new EntityDestroyed(tick, id));
                 _orderedTargets.Remove(id);
                 _nextShot.Remove(id);
+                suppression.Remove(id);
                 movement.Remove(id);
+            }
+            else if (configuration.Suppression is { } rules && world.Find(id) is Unit { Kind: UnitKind.InfantrySquad })
+            {
+                suppression[id] = checked(tick + rules.DurationTicks);
             }
         }
 
         Health = health.ToImmutable();
+        Suppression = suppression.ToImmutable();
     }
 
-    private int DamagePerShot(UnitDefinition definition, WorldEntity target,
+    private int DamagePerShot(UnitDefinition definition, WorldEntity target, SimVector origin,
         IReadOnlyDictionary<EntityId, SimVector> positions)
     {
-        if (target is Unit unit && CoverZone.Protects(world.CoverZones, unit, positions[unit.Id]))
+        if (target is Unit unit && CoverZone.Protects(world.CoverZones, unit, positions[unit.Id], origin))
         {
             var reduced = definition.DamagePerShot * configuration.InfantryCoverMultiplier;
             return (int)Math.Round(reduced, MidpointRounding.AwayFromZero);

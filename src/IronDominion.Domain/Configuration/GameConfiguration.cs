@@ -17,7 +17,8 @@ public sealed class GameConfiguration
         float captureRadiusMeters,
         decimal infantryCoverMultiplier,
         ImmutableArray<UnitDefinition> units,
-        ImmutableArray<BuildingDefinition> buildings)
+        ImmutableArray<BuildingDefinition> buildings,
+        SuppressionRules? suppression = null)
     {
         if (schemaVersion != CurrentSchemaVersion)
             throw new ArgumentOutOfRangeException(nameof(schemaVersion), schemaVersion, "Unsupported configuration version.");
@@ -45,6 +46,7 @@ public sealed class GameConfiguration
         InfantryCoverMultiplier = infantryCoverMultiplier;
         Units = units;
         Buildings = buildings;
+        Suppression = suppression;
     }
 
     public int SchemaVersion { get; }
@@ -57,6 +59,7 @@ public sealed class GameConfiguration
     public decimal InfantryCoverMultiplier { get; }
     public ImmutableArray<UnitDefinition> Units { get; }
     public ImmutableArray<BuildingDefinition> Buildings { get; }
+    public SuppressionRules? Suppression { get; }
 
     private static void ValidateUnits(ImmutableArray<UnitDefinition> units)
     {

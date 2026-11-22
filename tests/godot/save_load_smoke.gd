@@ -50,7 +50,7 @@ func _run() -> void:
 	await _click(save.get_global_rect().get_center())
 	assert(status.text == "Match saved." and not load_saved.disabled, "Saving writes and enables the slot")
 	var document = JSON.parse_string(FileAccess.get_file_as_string(SAVE))
-	assert(document is Dictionary and document.get("schemaVersion") == 1, "The slot uses versioned JSON")
+	assert(document is Dictionary and document.get("schemaVersion") == 2, "The slot uses versioned JSON")
 
 	await _click(resume.get_global_rect().get_center())
 	await _wait_ticks(30)

@@ -10,6 +10,7 @@ public interface IReadOnlyWorld
     bool TryGetHitPoints(EntityId id, out int hitPoints);
     PlayerId? LivingUnitOwner(EntityId id);
     bool HasCover(EntityId id);
+    bool IsSuppressed(EntityId id);
     int Credits(PlayerId player);
     long IncomePerSecond(PlayerId player);
     ImmutableArray<SectorState> Sectors { get; }

@@ -11,7 +11,7 @@ Unit tests (xUnit): command validation, income, capture, cooldown, damage, produ
 | T-003 | HQ income 5/s | 20 ticks | credits +5 |
 | T-004 | neutral sector, P1 infantry inside | 200 uncontested ticks | sector belongs to P1 |
 | T-005 | P1 and P2 infantry in sector | 200 ticks | no capture progress |
-| T-006 | infantry in cover | incoming base 10 damage | 7 HP lost |
+| T-006 | infantry in cover | 10 base damage from the protected side | 7 HP lost |
 | T-007 | tank fires | before cooldown expires | no extra shot |
 | T-008 | target behind LOS obstacle | attack issued | no damage |
 | T-009 | target not visible | attack command issued | rejected |
@@ -100,6 +100,14 @@ cases exercise invalid forms, incompatible versions and malformed
 session state. The Godot scenario uses an isolated user directory and
 checks the pause menu, resumed movement and production, and rejection
 of an incompatible file without replacing the live session.
+
+## Directional cover and suppression
+
+The balance tests check protected and exposed angles, diagonal boundaries,
+same-tick shots from different sides, the 24 reduced movement steps,
+refresh and recovery. Integration checks restore active suppression
+and read a format 1 save. The Godot cover scenario checks the map's
+marked edge and the infantry and selection status during combat.
 
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.

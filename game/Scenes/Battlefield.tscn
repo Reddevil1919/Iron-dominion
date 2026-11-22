@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" uid="uid://dv02nqkqukcxa" path="res://Scripts/Battlefield.cs" id="1_battlefield"]
 [ext_resource type="Script" uid="uid://2vc3lmq0l1g8" path="res://Scripts/RtsCamera.cs" id="2_camera"]
@@ -55,6 +55,14 @@ albedo_color = Color(0.57, 0.48, 0.30, 1)
 [sub_resource type="BoxMesh" id="BoxMesh_cover"]
 material = SubResource("Material_cover")
 size = Vector3(9, 0.05, 8)
+
+[sub_resource type="StandardMaterial3D" id="Material_cover_edge"]
+shading_mode = 0
+albedo_color = Color(0.22, 0.12, 0.045, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cover_edge"]
+material = SubResource("Material_cover_edge")
+size = Vector3(0.65, 0.02, 8)
 
 [node name="Battlefield" type="Node3D" node_paths=PackedStringArray("_unitSelection", "_unitRoot", "_navigationRegion")]
 script = ExtResource("1_battlefield")
@@ -206,11 +214,23 @@ position = Vector3(30, 0, 6)
 position = Vector3(-22, 0.013, 2)
 cast_shadow = 0
 mesh = SubResource("BoxMesh_cover")
+metadata/cover_facing = "East"
+
+[node name="ProtectedEdge" type="MeshInstance3D" parent="CoverZones/West"]
+position = Vector3(4.15, 0.034, 0)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_cover_edge")
 
 [node name="East" type="MeshInstance3D" parent="CoverZones"]
 position = Vector3(22, 0.013, -2)
 cast_shadow = 0
 mesh = SubResource("BoxMesh_cover")
+metadata/cover_facing = "West"
+
+[node name="ProtectedEdge" type="MeshInstance3D" parent="CoverZones/East"]
+position = Vector3(-4.15, 0.034, 0)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_cover_edge")
 
 [node name="Units" type="Node3D" parent="."]
 

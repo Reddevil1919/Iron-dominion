@@ -13,7 +13,8 @@ public sealed partial class GameSimulation
         var units = _entities.Units.OrderBy(unit => unit.Id.Value).Select(unit => new UnitCheckpoint(
             unit.Id, unit.Owner!.Value, unit.Kind, unit.Position, unit.HitPoints, combat.Health[unit.Id],
             movement.Positions.TryGetValue(unit.Id, out var position) ? position : null,
-            movement.CaptureRoute(unit.Id), combat.FocusedTarget(unit.Id), combat.NextShot(unit.Id))).ToImmutableArray();
+            movement.CaptureRoute(unit.Id), combat.FocusedTarget(unit.Id), combat.NextShot(unit.Id),
+            combat.IsSuppressed(unit.Id, World.Tick) ? combat.Suppression[unit.Id] : null)).ToImmutableArray();
         var buildings = _entities.Buildings.OrderBy(building => building.Id.Value).Select(building =>
             new BuildingCheckpoint(building.Id, combat.Health[building.Id],
                 World.TrainingQueue(building.Id).ToImmutableArray())).ToImmutableArray();
@@ -31,7 +32,7 @@ public sealed partial class GameSimulation
         ValidateHeader(saved);
         var players = map.Units.Cast<WorldEntity>().Concat(map.Buildings).Concat(map.Sectors)
             .Select(entity => entity.Owner).OfType<PlayerId>().ToHashSet();
-        var world = RestoreEntities(map, players, saved);
+        var world = RestoreEntities(map, players, configuration, saved);
         ValidateMapState(map, players, configuration, saved);
 
         var simulation = new GameSimulation(world, configuration, navigation, sight);
@@ -58,7 +59,8 @@ public sealed partial class GameSimulation
             "A finished match has pending command state.");
     }
 
-    private static WorldEntities RestoreEntities(WorldEntities map, HashSet<PlayerId> players, SimulationCheckpoint saved)
+    private static WorldEntities RestoreEntities(WorldEntities map, HashSet<PlayerId> players,
+        GameConfiguration configuration, SimulationCheckpoint saved)
     {
         var staticActors = map.Buildings.Cast<WorldEntity>().Concat(map.Sectors).ToArray();
         var initialUnits = map.Units.ToDictionary(unit => unit.Id);
@@ -88,6 +90,12 @@ public sealed partial class GameSimulation
                 "Invalid saved unit position.");
             Require(unit.NextShot is null || (alive && unit.NextShot >= 1 && unit.NextShot <= saved.Tick + int.MaxValue),
                 "Invalid saved weapon cooldown.");
+            if (unit.SuppressedThrough is { } through)
+            {
+                Require(alive && unit.Kind == UnitKind.InfantrySquad && configuration.Suppression is { } rules
+                    && saved.Tick > 0 && through >= saved.Tick && through <= saved.Tick + rules.DurationTicks,
+                    "Invalid saved suppression timer.");
+            }
             if (unit.Route is { } route)
             {
                 Require(alive && !route.Waypoints.IsDefaultOrEmpty && route.Waypoints.All(IsFinite),

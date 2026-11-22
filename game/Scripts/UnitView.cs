@@ -60,10 +60,24 @@ public partial class UnitView : StaticBody3D
 
     public void ShowSelection(bool selected) => _ring.Visible = selected;
 
-    public void ShowCover(bool covered)
+    public void ShowInfantryStatus(bool covered, bool suppressed)
     {
-        if (_coverIndicator is { } indicator && indicator.Visible != covered)
-            indicator.Visible = covered;
+        if (_coverIndicator is not { } indicator)
+            return;
+
+        indicator.Visible = covered || suppressed;
+        if (!indicator.Visible)
+            return;
+
+        var status = (covered, suppressed) switch
+        {
+            (true, true) => "COVER · SUPPRESSED",
+            (true, false) => "COVER",
+            _ => "SUPPRESSED"
+        };
+        if (indicator.Text != status)
+            indicator.Text = status;
+        indicator.Modulate = suppressed ? HudStyle.Red : HudStyle.Amber;
     }
 
     private void AddTank(StandardMaterial3D material)

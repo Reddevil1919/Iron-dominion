@@ -11,7 +11,7 @@ All values are configurable and versioned. Rules run only inside the simulation 
 | BR-005 | Attack target must be alive, hostile and currently visible to owner. | Fog target rejected |
 | BR-006 | Fire requires weapon cooldown elapsed, range and line-of-sight. | Cooldown/LOS tests |
 | BR-007 | Damage reduces HP, clamped to [0, MaxHp]; destruction event once. | Duplicate death prevented |
-| BR-008 | Infantry in cover receives multiplier 0.7; tanks receive no bonus. | 10→7 damage |
+| BR-008 | Infantry in cover multiplies damage by 0.7 for attacks from the protected arc. | Front 10→7 and flank 10→10 |
 | BR-009 | Currency cannot become negative. Production reserves full cost on acceptance. | Insufficient funds test |
 | BR-010 | Queue processed FIFO; spawn requires valid free location; blocked spawn waits. | Queue/spawn test |
 | BR-011 | HQ +5 credits/s; owned sector +2 credits/s, credited at fixed tick intervals. | 20 ticks = 5 credits from HQ |
@@ -24,6 +24,7 @@ All values are configurable and versioned. Rules run only inside the simulation 
 | BR-018 | Config loading validates all costs, rates, ranges and HP (nonnegative; max HP > 0). | Invalid config test |
 | BR-019 | AI uses same command validation and visible-world query as human. | AI cheating test |
 | BR-020 | Match ends atomically; later commands are ignored. | Post-game command test |
+| BR-021 | A damaging hit suppresses surviving infantry and refreshes the movement penalty. | Speed is 65% for the next 24 ticks |
 
 ## State machines
 Unit: Idle → Moving → Attacking → Idle; any live state → Dead. AttackMove is a movement mode. Production: Queued → Active → ReadyToSpawn → Completed; invalid enqueue rejected. Sector: Neutral / Owned(P1) / Owned(P2), plus capturing team/progress.

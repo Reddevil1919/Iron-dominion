@@ -298,6 +298,95 @@ public sealed class UnitCombatTests
         Assert.Equal(default, Position(match, First));
     }
 
+    [Theory]
+    [InlineData(5, 0, 7)]
+    [InlineData(5, 5, 7)]
+    [InlineData(4, 5, 10)]
+    [InlineData(-5, 0, 10)]
+    [InlineData(0, 5, 10)]
+    [InlineData(0, 0, 10)]
+    public void DirectionalCoverProtectsOnlyAgainstItsMarkedArc(float x, float z, int expectedDamage)
+    {
+        var cover = new CoverZone(new SimVector(-2, -2), new SimVector(2, 2), CoverFacing.East);
+        var enemy = new Unit(Second, Orange, new SimVector(x, z), UnitKind.InfantrySquad, 400);
+        var match = MatchWithCover([cover], Infantry(First, Blue, 0), enemy);
+        var hit = Assert.Single(match.Tick().OfType<EntityDamaged>(), damage => damage.Entity == First);
+
+        Assert.True(match.World.HasCover(First));
+        Assert.Equal(expectedDamage, hit.Damage);
+    }
+
+    [Fact]
+    public void FrontAndFlankTankHitsRoundBeforeCombiningTheirDamage()
+    {
+        var cover = new CoverZone(new SimVector(-2, -2), new SimVector(2, 2), CoverFacing.East);
+        var match = MatchWithCover([cover], Infantry(First, Blue, 0),
+            Tank(Second, Orange, 8), Tank(Third, Orange, -8));
+        var hit = Assert.Single(match.Tick().OfType<EntityDamaged>(), damage => damage.Entity == First);
+        Assert.Equal(77, hit.Damage);
+    }
+
+    [Fact]
+    public void SuppressionSlowsTheNextTwentyFourTicksAndRecoversWithoutReplanning()
+    {
+        var sight = new Sight();
+        var match = MatchWithSuppression(sight, Infantry(First, Blue, 0), Tank(Second, Orange, 8));
+        match.Schedule(new MoveCommand(Blue, 1, 1, [First], new SimVector(0, 20)));
+        match.Tick();
+        var impacted = match.World;
+        Assert.True(impacted.IsSuppressed(First));
+        Assert.False(impacted.IsSuppressed(Second));
+        Assert.Equal(0.2f, Position(match, First).Z, precision: 4);
+
+        sight.Clear = false;
+        for (var tick = 0; tick < 24; tick++)
+        {
+            var last = Position(match, First).Z;
+            match.Tick();
+            Assert.True(match.World.IsSuppressed(First));
+            Assert.Equal(0.13f, Position(match, First).Z - last, precision: 4);
+        }
+
+        var recovery = Position(match, First).Z;
+        match.Tick();
+        Assert.False(match.World.IsSuppressed(First));
+        Assert.Equal(0.2f, Position(match, First).Z - recovery, precision: 4);
+        Assert.True(impacted.IsSuppressed(First));
+    }
+
+    [Fact]
+    public void ASecondHitRefreshesSuppressionWithoutStackingTheMovementPenalty()
+    {
+        var sight = new Sight { Clear = false };
+        var match = MatchWithSuppression(sight, Infantry(First, Blue, 0), Infantry(Second, Orange, 8));
+        match.Schedule(new MoveCommand(Blue, 1, 1, [First], new SimVector(0, 14)));
+        match.Tick();
+        Assert.False(match.World.IsSuppressed(First));
+        sight.Clear = true;
+        while (match.World.Tick < 22)
+            match.Tick();
+        Assert.Equal(380, HitPoints(match.World, First));
+        Assert.True(match.World.IsSuppressed(First));
+
+        sight.Clear = false;
+        while (match.World.Tick < 46)
+        {
+            var last = Position(match, First).Z;
+            match.Tick();
+            Assert.True(match.World.IsSuppressed(First));
+            Assert.Equal(0.13f, Position(match, First).Z - last, precision: 4);
+        }
+        match.Tick();
+        Assert.False(match.World.IsSuppressed(First));
+    }
+
+    private static GameSimulation MatchWithSuppression(ILineOfSightService sight, params WorldEntity[] entities)
+    {
+        var config = new GameConfiguration(1, 20, 500, 5, 2, 10, 6, 0.7m,
+            Configuration.Units, Configuration.Buildings, new SuppressionRules(24, 0.65m));
+        return new GameSimulation(new WorldEntities(entities), config, new StraightNavigation(), sight);
+    }
+
     private static SimVector Position(GameSimulation match, EntityId id)
     {
         Assert.True(match.World.TryGetUnitPosition(id, out var position));

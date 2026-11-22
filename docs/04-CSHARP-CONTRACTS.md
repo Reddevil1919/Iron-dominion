@@ -254,8 +254,28 @@ orders and sequence state. Restore uses the current battlefield's static
 geometry and recreates the simulation before exposing it to callers. The Godot
 adapter also saves the enemy commander's tactical state and explored terrain.
 
-The first JSON format includes its schema version, the battlefield ID, and
+The JSON format includes its schema version, the battlefield ID, and
 the game configuration version and fingerprint. The game validates the file
 and creates a replacement session before applying it to the scene. Disk
 writes use a temporary file in the same directory and replace the slot only
 after a complete write.
+
+## RTS-019 directional cover and suppression
+
+A directional `CoverZone` has a marked edge. Damage uses the 0.7 cover
+multiplier when an infantry target is inside the zone and the attacker is
+within 45° of that edge's outward direction. Diagonal boundary shots count
+and each shot rounds before same-tick damage is summed. A coincident
+attacker has no direction. Zones without a direction retain the original
+all-directions behavior. `HasCover` reports a unit's presence in cover.
+
+Each damaging hit on surviving infantry refreshes suppression through
+`hit tick + durationTicks`. The default duration is 24 ticks. Movement
+runs at `movementMultiplier` during the following 24 ticks, so the first
+hit leaves that tick's completed movement intact. The route continues
+at ordinary speed when the timer expires. `IsSuppressed` reports the
+published state, including the tick on which the hit lands.
+
+Save format 2 records the active expiry tick. Format 1 saves with the
+matching previous configuration load with no active suppression.
+Once resumed, they use the current battlefield rules.

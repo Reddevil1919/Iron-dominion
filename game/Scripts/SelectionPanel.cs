@@ -60,6 +60,7 @@ internal sealed class SelectionPanel
         var infantry = 0;
         var tanks = 0;
         var protectedUnits = 0;
+        var suppressedUnits = 0;
         long hp = 0;
         long maxHp = 0;
         foreach (var view in views)
@@ -73,6 +74,8 @@ internal sealed class SelectionPanel
                 tanks++;
             if (world.HasCover(view.Id))
                 protectedUnits++;
+            if (world.IsSuppressed(view.Id))
+                suppressedUnits++;
             hp += current;
             maxHp += _maximumHealth[view.Kind];
         }
@@ -95,9 +98,17 @@ internal sealed class SelectionPanel
         var healthColor = HudStyle.HealthColor(ratio);
         HudStyle.SetTextColor(_health, healthColor);
         HudStyle.SetProgressColor(_healthBar, healthColor);
-        _cover.Visible = protectedUnits > 0;
-        if (protectedUnits > 0)
-            HudStyle.SetText(_cover, count == 1 ? "In cover" : $"{protectedUnits} in cover");
+        _cover.Visible = protectedUnits > 0 || suppressedUnits > 0;
+        if (_cover.Visible)
+        {
+            var coverText = count == 1 ? "In cover" : $"{protectedUnits} in cover";
+            var suppressionText = count == 1 ? "Suppressed" : $"{suppressedUnits} suppressed";
+            var status = protectedUnits == 0 ? suppressionText
+                : suppressedUnits == 0 ? coverText
+                : $"{coverText} · {suppressionText}";
+            HudStyle.SetText(_cover, status);
+            HudStyle.SetTextColor(_cover, suppressedUnits > 0 ? HudStyle.Red : HudStyle.Amber);
+        }
     }
 
     private static Button AddOrderButton(Node row, string name, string label, string hint, Action pressed)
