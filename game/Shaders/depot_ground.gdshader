@@ -34,11 +34,14 @@ void fragment() {
 
     float vertical_road = max(abs(a.x - 32.0) - 3.13, a.y - 31.7);
     float cross_road = max(abs(a.y - 24.0) - 3.13, a.x - 33.2);
-    float main_road = max(a.y - 3.95, a.x - 57.0);
+    float main_road = max(a.y - 3.95, a.x - 63.0);
     float road = min(min(vertical_road, cross_road), main_road);
     float forecourt = max(abs(a.x - 32.0) - 8.15, abs(a.y - 24.0) - 7.15);
     float central_apron = max(a.x - 7.5, a.y - 9.2);
-    float concrete = min(forecourt, central_apron);
+    float relay_apron = max(abs(p.x + 30.0) - 5.10, abs(p.y + 6.0) - 4.45);
+    float service_apron = max(abs(p.x - 15.0) - 6.30, abs(p.y - 22.0) - 5.50);
+    float check_apron = max(abs(p.x - 30.0) - 4.0, abs(p.y - 6.6) - 4.05);
+    float concrete = min(min(forecourt, central_apron), min(relay_apron, min(service_apron, check_apron)));
 
     vec3 scrub = mix(vec3(0.29, 0.33, 0.22), vec3(0.48, 0.48, 0.34),
         smoothstep(0.26, 0.82, macro * 0.67 + soil_mottle * 0.33));
@@ -52,7 +55,9 @@ void fragment() {
     vec2 slab = abs(fract((p + vec2(2.0, 0.7)) / 3.8) - 0.5);
     float seam = smoothstep(0.465, 0.495, max(slab.x, slab.y));
     float slab_tone = hash_cell(floor((p + vec2(2.0, 0.7)) / 3.8));
-    vec3 cement = vec3(0.45, 0.45, 0.41) + vec3(slab_tone * 0.06 - seam * 0.10);
+    float patchwork = smoothstep(0.33, 0.77, macro * 0.54 + soil_mottle * 0.46);
+    vec3 cement = mix(vec3(0.44, 0.43, 0.38), vec3(0.49, 0.49, 0.44), patchwork)
+        + vec3(slab_tone * 0.06 - seam * 0.10);
     ground = mix(ground, cement, 1.0 - smoothstep(-0.12, 0.28, concrete));
 
     float main_dash = 1.0 - smoothstep(0.045, 0.12, a.y);

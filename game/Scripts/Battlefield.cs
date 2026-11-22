@@ -164,7 +164,8 @@ public partial class Battlefield : Node3D
         var exit = body.GetNode<Marker3D>("ProductionExit").GlobalPosition;
         _buildings.Add(id, body);
         body.GetNode<MeshInstance3D>("Base").Mesh = BattlefieldArt.Building(
-            definition.Kind == BuildingKind.Headquarters, _teamMaterials[owner].AlbedoColor, owner == LocalPlayer);
+            definition.Kind == BuildingKind.Headquarters, _teamMaterials[owner].AlbedoColor, owner == LocalPlayer,
+            body.GetMeta("relay_roof", false).AsBool());
         if (owner == Opponent)
             _enemyBuildings.Add(body, id);
         _healthBars.Add(id, new HealthBar(body, definition.MaxHp, 7.3f, 0.14f));

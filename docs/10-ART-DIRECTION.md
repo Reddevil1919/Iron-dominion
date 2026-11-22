@@ -12,7 +12,7 @@ panels and existing tactical overlays distinguish the forces at overview zoom.
 | Infantry | Four helmeted soldiers with vests, packs and small identification panels. Cool olive-pattern fabric and a deeper pack for Blue. Warm clay tones and a flatter pack for Orange. | Weighted joints with staggered steps, planted stances, and foot lift. The torso lowers under suppression, and both hands follow the equipment through aim and recovery. |
 | Tracked armor | Low hull, exposed track wheels, weathered armor panels, rear grille and contrasting identification marks. | Each belt follows travel and steering. The armor pitches at launch and braking. The turret turns separately and the gun recoils and recovers. |
 | Buildings | Concrete command posts with roof equipment. Barracks use low ribbed metal roofs and repeated doors. | Building damage and destruction retain the tactical feedback used in the original battlefield. |
-| Ground | Service roads, slab yards and scrub transition through gravel verges. Directional cover has a distinct brown edge. | Surface wear and markings remain fixed in world space at every camera zoom. |
+| Ground | Service roads, slab yards and scrub transition through gravel verges. Directional cover uses a compacted gravel surface and a dark protective edge with ochre diagonal markings. | Surface wear and markings remain fixed in world space at every camera zoom. |
 
 All geometry and ground shading in this pass are authored in the repository.
 The models are sized for an RTS camera. Collision, visibility, navigation,
@@ -53,3 +53,20 @@ movement leaves a low dust wake. The tracer keeps the line between shooter
 and target readable from the tactical camera. Combat and dust use two
 bounded batches of camera-facing quads. The existing visibility gates
 hide these effects when a contact is lost. Loading a match clears effects.
+
+## Depot landmarks and wayfinding
+
+The central loading frame is built into the freight yard footprint. The
+relay mast belongs to the western barracks roof. The two perimeter gates
+stand outside the existing navigable edge. Road arrows and stop lines
+mark the approaches to the gates.
+
+The three capture points have ground names and distinct concrete aprons.
+A marks Relay, B marks Service, and C marks Checkpoint. The segmented
+capture outline follows the configured radius and changes color with
+capture state. The floating sector letter becomes smaller at close zoom
+to leave space for units, health bars and orders.
+
+Gravel indicates directional cover. Ochre stripes on the dark edge mark
+the protected side. Dashes mark the opposite boundary. The annotations
+follow the authored parcel bounds and sit below the fog plane.

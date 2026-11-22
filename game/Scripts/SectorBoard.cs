@@ -10,16 +10,17 @@ internal sealed class SectorBoard
     private readonly Dictionary<EntityId, SectorView> _views = new();
     private readonly IReadOnlyDictionary<PlayerId, StandardMaterial3D> _teamMaterials;
     private readonly long _captureTicks;
+    private readonly Camera3D? _camera;
+    private float _symbolScale;
 
     public SectorBoard(Node3D markers, Node canvas, GameConfiguration configuration,
         IReadOnlyDictionary<PlayerId, StandardMaterial3D> teamMaterials)
     {
         _teamMaterials = teamMaterials;
         _captureTicks = (long)configuration.CaptureSeconds * configuration.TickRate;
+        _camera = markers.GetViewport().GetCamera3D();
         var radius = configuration.CaptureRadiusMeters;
-        var ring = radius > 0f
-            ? new TorusMesh { InnerRadius = Math.Max(0f, radius - 0.4f), OuterRadius = radius, Rings = 40, RingSegments = 8 }
-            : null;
+        var ring = radius > 0f ? CaptureOutline(radius) : null;
 
         var panel = HudStyle.Panel("SectorPanel");
         panel.OffsetLeft = 24;
@@ -35,22 +36,23 @@ internal sealed class SectorBoard
         rows.AddChild(heading);
 
         var sectors = new List<Sector>();
-        foreach (var (markerName, code, id) in new[]
+        foreach (var (markerName, code, landmark, id) in new[]
         {
-            ("Alpha", "A", new EntityId(11)),
-            ("Bravo", "B", new EntityId(12)),
-            ("Charlie", "C", new EntityId(13))
+            ("Alpha", "A", "RELAY", new EntityId(11)),
+            ("Bravo", "B", "SERVICE", new EntityId(12)),
+            ("Charlie", "C", "CHECKPOINT", new EntityId(13))
         })
         {
             var marker = markers.GetNode<Marker3D>(markerName);
             sectors.Add(new Sector(id, null, new SimVector(marker.GlobalPosition.X, marker.GlobalPosition.Z)));
 
+            DepotWayfinding.AddSectorStencil(marker, landmark, radius);
             var material = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded };
             if (ring is not null)
             {
                 marker.AddChild(new MeshInstance3D
                 {
-                    Name = "Ring", Mesh = ring, MaterialOverride = material, Position = new Vector3(0f, 0.05f, 0f),
+                    Name = "Ring", Mesh = ring, MaterialOverride = material, Position = new Vector3(0f, 0.048f, 0f),
                     CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
                 });
             }
@@ -58,7 +60,7 @@ internal sealed class SectorBoard
             var symbol = new Label3D
             {
                 Name = "Symbol", Text = code, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-                FontSize = 48, OutlineSize = 8, PixelSize = 0.075f, Position = new Vector3(0f, 5f, 0f)
+                FontSize = 48, OutlineSize = 6, PixelSize = 0.046f, Position = new Vector3(0f, 2.7f, 0f)
             };
             marker.AddChild(symbol);
 
@@ -79,6 +81,14 @@ internal sealed class SectorBoard
 
     public void Update(IReadOnlyWorld world, Func<SimVector, bool> canSeeSector)
     {
+        var scale = Mathf.Clamp((_camera?.Size ?? 136f) / 90f, 0.56f, 1f);
+        if (!Mathf.IsEqualApprox(scale, _symbolScale))
+        {
+            _symbolScale = scale;
+            foreach (var marker in _views.Values)
+                marker.Symbol.Scale = Vector3.One * scale;
+        }
+
         foreach (var sector in world.Sectors)
         {
             var view = _views[sector.Id];
@@ -103,6 +113,35 @@ internal sealed class SectorBoard
             HudStyle.SetText(view.Status, status);
             view.Progress.Value = visible ? sector.CaptureTicks : 0;
         }
+    }
+
+    private static Mesh CaptureOutline(float radius)
+    {
+        const int arcs = 6;
+        const int subdivisions = 10;
+        var arcLength = Mathf.Tau / arcs;
+        var inner = Mathf.Max(radius - 0.31f, 0f);
+        using var surface = new SurfaceTool();
+        surface.Begin(Mesh.PrimitiveType.Triangles);
+        for (var arc = 0; arc < arcs; arc++)
+        for (var step = 0; step < subdivisions; step++)
+        {
+            var start = (arc + 0.06f + (0.88f * step / subdivisions)) * arcLength;
+            var end = start + 0.88f * arcLength / subdivisions;
+            var a = new Vector3(Mathf.Cos(start), 0f, Mathf.Sin(start));
+            var b = new Vector3(Mathf.Cos(end), 0f, Mathf.Sin(end));
+            surface.AddVertex(a * radius);
+            surface.AddVertex(b * radius);
+            surface.AddVertex(a * inner);
+            if (inner > 0f)
+            {
+                surface.AddVertex(b * radius);
+                surface.AddVertex(b * inner);
+                surface.AddVertex(a * inner);
+            }
+        }
+
+        return surface.Commit();
     }
 
     private Color TeamColor(PlayerId? player) =>

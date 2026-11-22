@@ -1,10 +1,11 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" uid="uid://dv02nqkqukcxa" path="res://Scripts/Battlefield.cs" id="1_battlefield"]
 [ext_resource type="Script" uid="uid://2vc3lmq0l1g8" path="res://Scripts/RtsCamera.cs" id="2_camera"]
 [ext_resource type="Script" uid="uid://ccf7t4e6whks5" path="res://Scripts/UnitSelectionController.cs" id="3_unit_selection"]
 
 [ext_resource type="Shader" path="res://Shaders/depot_ground.gdshader" id="4_depot_ground"]
+[ext_resource type="Shader" path="res://Shaders/depot_cover.gdshader" id="5_depot_cover"]
 
 [sub_resource type="Environment" id="Environment_battlefield"]
 background_mode = 1
@@ -29,9 +30,8 @@ size = Vector3(11, 6, 9)
 [sub_resource type="BoxShape3D" id="BoxShape3D_roadblock"]
 size = Vector3(12, 3, 16)
 
-[sub_resource type="StandardMaterial3D" id="Material_cover"]
-albedo_color = Color(0.54, 0.48, 0.34, 1)
-roughness = 0.95
+[sub_resource type="ShaderMaterial" id="Material_cover"]
+shader = ExtResource("5_depot_cover")
 
 [sub_resource type="BoxMesh" id="BoxMesh_cover"]
 material = SubResource("Material_cover")
@@ -39,7 +39,7 @@ size = Vector3(9, 0.05, 8)
 
 [sub_resource type="StandardMaterial3D" id="Material_cover_edge"]
 shading_mode = 0
-albedo_color = Color(0.26, 0.17, 0.065, 1)
+albedo_color = Color(0.19, 0.17, 0.13, 1)
 
 [sub_resource type="BoxMesh" id="BoxMesh_cover_edge"]
 material = SubResource("Material_cover_edge")
@@ -112,6 +112,7 @@ position = Vector3(14, 0, 0)
 [node name="BlueBarracks" type="StaticBody3D" parent="."]
 position = Vector3(-32, 0, -24)
 collision_layer = 6
+metadata/relay_roof = true
 
 [node name="Collision" type="CollisionShape3D" parent="BlueBarracks"]
 position = Vector3(0, 3, 0)

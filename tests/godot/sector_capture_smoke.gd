@@ -37,6 +37,19 @@ func _run() -> void:
 	var squad := current_scene.get_node("Units/Unit1") as Node3D
 	var alpha := current_scene.get_node("Sectors/Alpha") as Node3D
 	var ring := alpha.get_node("Ring") as MeshInstance3D
+	for landmark in [["Alpha", "RELAY"], ["Bravo", "SERVICE"], ["Charlie", "CHECKPOINT"]]:
+		var stencil := current_scene.get_node("Sectors/%s/GroundStencil" % landmark[0]) as Label3D
+		assert(stencil.text == landmark[1] and stencil.position.y < 0.08, "Ground names stay below fog")
+	assert(ring.mesh is ArrayMesh and ring.get_aabb().size.x > 11.8, "The flat outline keeps the capture radius")
+	var symbol := alpha.get_node("Symbol") as Label3D
+	var overview_scale := symbol.scale.x
+	var initial_zoom := camera.size
+	camera.size = 32.0
+	await physics_frame
+	await physics_frame
+	assert(symbol.scale.x < overview_scale, "The floating letter shrinks at close zoom")
+	camera.size = initial_zoom
+	await process_frame
 	var neutral_color: Color = ring.material_override.albedo_color
 	await _click(camera.unproject_position(squad.global_position + Vector3.UP), MOUSE_BUTTON_LEFT)
 	await _click(camera.unproject_position(alpha.global_position), MOUSE_BUTTON_RIGHT)
