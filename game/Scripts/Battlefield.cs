@@ -215,7 +215,14 @@ public partial class Battlefield : Node3D
             {
                 var attacker = _views.Find(view => view.Id == shot.Attacker);
                 attacker?.PlayShot(origin, target);
-                _feedback?.Trace(shot, attacker?.ShotOrigin ?? origin, target);
+                var contact = _views.Find(view => view.Id == shot.Target);
+                var impactRadius = contact?.Kind switch
+                {
+                    UnitKind.Tank => 1.35f,
+                    UnitKind.InfantrySquad => 0.76f,
+                    _ => 3.4f
+                };
+                _feedback?.Trace(shot, attacker?.ShotOrigin ?? origin, target, impactRadius, attacker?.Kind == UnitKind.Tank);
             }
             if (gameEvent is EntityDamaged damage && _healthBars.TryGetValue(damage.Entity, out var bar))
                 bar.SetHitPoints(damage.RemainingHitPoints);
@@ -234,9 +241,9 @@ public partial class Battlefield : Node3D
         _productionPanel?.Update(session.World);
         _sectorBoard?.Update(session.World, fog.CanSeeSector);
         _selectionPanel?.Update(session.World, _views);
-        _feedback?.Update(session.World.Tick, visibleActors);
         UpdateActorVisibility(visibleActors);
-        UpdateUnitViews(session.World);
+        UpdateUnitViews(session.World, showMovementEffects: true);
+        _feedback?.Update(session.World.Tick, visibleActors);
         if (session.World.Result != MatchResult.Running)
             _matchMenu?.ShowOutcome(session.World.Result);
     }
@@ -293,14 +300,16 @@ public partial class Battlefield : Node3D
         actor.SetCollisionLayerValue(UnitView.PickingLayerNumber, visible);
     }
 
-    private void UpdateUnitViews(IReadOnlyWorld world)
+    private void UpdateUnitViews(IReadOnlyWorld world, bool showMovementEffects = false)
     {
         foreach (var view in _views)
         {
             if (!world.TryGetUnitPosition(view.Id, out var position))
                 continue;
 
-            view.ApplyPosition(new Vector3(position.X, 0f, position.Z), Engine.PhysicsTicksPerSecond);
+            var travelled = view.ApplyPosition(new Vector3(position.X, 0f, position.Z), Engine.PhysicsTicksPerSecond);
+            if (showMovementEffects && view.Visible && travelled > 0f && view.AdvanceDust(travelled))
+                _feedback?.TrackDust(view.Id, world.Tick, view.RearTrack);
             view.ShowInfantryStatus(world.HasCover(view.Id), world.IsSuppressed(view.Id));
         }
     }

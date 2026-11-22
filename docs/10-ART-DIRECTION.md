@@ -10,7 +10,7 @@ panels and existing tactical overlays distinguish the forces at overview zoom.
 | Subject | Visual language | Motion |
 | --- | --- | --- |
 | Infantry | Four helmeted soldiers with vests, packs and small identification panels. Cool olive-pattern fabric and a deeper pack for Blue. Warm clay tones and a flatter pack for Orange. | Weighted joints with staggered steps, planted stances, and foot lift. The torso lowers under suppression, and both hands follow the equipment through aim and recovery. |
-| Tracked armor | Low hull, exposed track wheels, rear grille, turret silhouette and spare equipment. | The hull follows its movement heading. The turret turns separately when a shot resolves and the barrel recoils and recovers. |
+| Tracked armor | Low hull, exposed track wheels, weathered armor panels, rear grille and contrasting identification marks. | Each belt follows travel and steering. The armor pitches at launch and braking. The turret turns separately and the gun recoils and recovers. |
 | Buildings | Concrete command posts with roof equipment. Barracks use low ribbed metal roofs and repeated doors. | Building damage and destruction retain the tactical feedback used in the original battlefield. |
 | Ground | Service roads, slab yards and scrub transition through gravel verges. Directional cover has a distinct brown edge. | Surface wear and markings remain fixed in world space at every camera zoom. |
 
@@ -39,3 +39,17 @@ The target for a later art pass is finer cloth detail and authored
 transitions for turns, kneeling and going prone. Check replacement models
 at tactical zoom and overview. Preserve silhouette, faction identification
 and the frame budget at 50 and 100 units.
+
+## Tracked armor and combat feedback
+
+Each belt follows a closed mesh around the running gear. A shared shader
+draws tread links with separate phases for left and right. Travel and
+steering drive the phases. The sprung armor above the belts responds to
+acceleration and braking. The paint finish and faction marks stay on the
+same panels while the suspension moves.
+
+A visible shot adds a short muzzle flash and a fading impact burst. Tank
+movement leaves a low dust wake. The tracer keeps the line between shooter
+and target readable from the tactical camera. Combat and dust use two
+bounded batches of camera-facing quads. The existing visibility gates
+hide these effects when a contact is lost. Loading a match clears effects.

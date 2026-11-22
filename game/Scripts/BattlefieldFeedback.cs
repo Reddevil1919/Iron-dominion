@@ -15,6 +15,7 @@ internal sealed class BattlefieldFeedback
     };
     private readonly MeshInstance3D _trailsView;
     private readonly List<Trail> _trails = new();
+    private readonly BattlefieldEffects _effects;
     private readonly PanelContainer _notice = HudStyle.Panel("OrderNotice");
     private readonly Label _message = HudStyle.Label("OrderMessage", 15, HudStyle.Amber);
     private long _noticeUntil;
@@ -28,6 +29,7 @@ internal sealed class BattlefieldFeedback
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
         battlefield.AddChild(_trailsView);
+        _effects = new BattlefieldEffects(battlefield);
 
         _notice.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight);
         _notice.OffsetLeft = -304;
@@ -40,11 +42,14 @@ internal sealed class BattlefieldFeedback
         canvas.AddChild(_notice);
     }
 
-    public void Trace(ShotFired shot, Vector3 origin, Vector3 target)
+    public void Trace(ShotFired shot, Vector3 origin, Vector3 target, float targetRadius, bool heavy)
     {
         _trails.Add(new Trail(shot.Attacker, shot.Target, origin, target, shot.Tick + TrailTicks));
         _trailsChanged = true;
+        _effects.Fire(shot, origin, target, targetRadius, heavy);
     }
+
+    public void TrackDust(EntityId tank, long tick, Vector3 position) => _effects.TrackDust(tank, tick, position);
 
     public void Reset()
     {
@@ -52,6 +57,7 @@ internal sealed class BattlefieldFeedback
         _mesh.ClearSurfaces();
         _trailsView.Hide();
         _notice.Hide();
+        _effects.Reset();
         _trailsChanged = false;
     }
 
@@ -75,6 +81,7 @@ internal sealed class BattlefieldFeedback
 
     public void Update(long tick, IReadOnlySet<EntityId> visibleActors)
     {
+        _effects.Update(tick, visibleActors);
         if (_notice.Visible && tick >= _noticeUntil)
             _notice.Hide();
 

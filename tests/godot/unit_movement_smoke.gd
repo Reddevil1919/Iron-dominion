@@ -25,6 +25,12 @@ func _run() -> void:
 	var enemy := current_scene.get_node("Units/Unit6") as Node3D
 	var initial := tank.global_position
 	var enemy_initial := enemy.global_position
+	var model := tank.get_node("Model")
+	var suspension := model.get_node("Suspension") as Node3D
+	var belts := model.get_node("TrackBelts") as MeshInstance3D
+	var belt_material := belts.material_override as ShaderMaterial
+	var dust := current_scene.get_node("TrackDust") as MeshInstance3D
+	assert(not dust.visible, "An idle tank produces no track dust")
 	await _click(camera.unproject_position(initial + Vector3.UP), MOUSE_BUTTON_LEFT)
 	assert(tank.get_node("SelectionRing").visible, "The blue tank is selected")
 
@@ -35,9 +41,16 @@ func _run() -> void:
 	var goal := Vector3(22.0, 0.0, 7.0)
 	await _click(camera.unproject_position(goal), MOUSE_BUTTON_RIGHT)
 	var previous := tank.global_position
+	var steering_seen := false
+	var suspension_seen := false
+	var dust_seen := false
 	for tick in range(440):
 		await physics_frame
 		var current := tank.global_position
+		var travel: Vector2 = belt_material.get_shader_parameter("travel")
+		steering_seen = steering_seen or abs(travel.x - travel.y) > 0.06
+		suspension_seen = suspension_seen or abs(suspension.rotation.x) > 0.006
+		dust_seen = dust_seen or dust.visible
 		assert(current.distance_to(previous) <= 0.151, "The tank moves at its configured tick speed")
 		assert(abs(current.x) >= 10.99 or abs(current.z) >= 12.99, "The tank stays outside the expanded obstacle")
 		if current.distance_to(goal) < 0.08:
@@ -46,6 +59,13 @@ func _run() -> void:
 
 	assert(tank.global_position.distance_to(goal) < 0.08, "The tank reaches the clicked ground")
 	assert(enemy.global_position.is_equal_approx(enemy_initial), "The enemy tank never moves")
+	assert(steering_seen, "The two belts advance by different amounts on a turn")
+	assert(suspension_seen, "The hull reacts to acceleration")
+	assert(dust_seen, "Travel creates dust")
+	for tick in range(25):
+		await physics_frame
+	assert(not dust.visible, "Track dust clears after stopping")
+	assert(abs(suspension.rotation.x) < 0.008, "The hull settles after braking")
 	print("Unit movement smoke checks passed.")
 	quit()
 
