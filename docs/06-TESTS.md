@@ -22,6 +22,8 @@ Unit tests (xUnit): command validation, income, capture, cooldown, damage, produ
 | T-014 | enemy AI with fog | hidden enemy units | no target selected |
 | T-015 | 50 active units | 5-min run | measure FPS/tick; record results |
 | T-016 | hidden enemy unit and HQ | scout around the roadblock and withdraw | models, bars and picking follow contact visibility |
+| T-017 | tank on an attack-move route | a hostile enters weapon range, then contact ends | pause to engage and resume the same route |
+| T-018 | selected unit moving or focusing fire | issue hold position | the route and focus clear, and automatic fire continues |
 
 ## Example xUnit skeleton
 ```csharp
@@ -79,6 +81,15 @@ sight range and that distant contacts are hidden. It uses normal mouse
 input to distinguish a ground move from a targeted attack, reveal an
 opposing squad and HQ and conceal them again by withdrawing. The xUnit
 AI visibility test covers scouting for a hidden enemy HQ.
+
+## Tactical order scenarios
+
+The simulation tests cover attack-move across a cooldown, resumption after
+loss of sight or destruction, route rejection, hold during an engagement and
+ownership validation. The integration test saves both order modes in a replay
+recording and verifies the timeline after loading them in reverse order. The
+Godot smoke sends keyboard and mouse input to confirm the same order modes
+through the HUD and input shortcuts.
 
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.

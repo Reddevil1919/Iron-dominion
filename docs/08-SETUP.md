@@ -81,6 +81,8 @@ with `-- --passive-opponent` in the Debug game. The enemy AI smoke runs
 the default scene and observes the orange side train a tank, capture
 a sector and advance on the blue HQ. The HUD check verifies selection
 health, compact window layout, rejected orders and temporary shot traces.
+The tactical-order check uses the keyboard and HUD to engage along an
+attack-move route and cancel a route with hold position.
 The fog check scouts around the roadblock, reveals a unit and a building
 and hides them again on withdrawal. The lifecycle checks pause and resume
 through the UI, win by destroying
@@ -135,6 +137,13 @@ clicked point and the others use adjacent 9 m slots in entity ID order. Pick
 open ground with room for the group. A blocked destination leaves existing
 orders in effect. Routes account for the static map. Moving units can pass
 through each other in this milestone.
+
+Use **Shift+A** or the **Attack move** button, then left-click open ground.
+The selected units advance, pause to fire on visible enemies within weapon
+range and resume their route when contact ends. Right-click cancels the
+awaiting ground click and gives the usual move or attack order. Press **H**
+or click **Hold position** to stop the selected units. They keep firing at
+visible enemies within range.
 
 Right-click an orange unit or building to focus fire. An accepted attack order
 stops the selected units. Move them within weapon range for the shot to

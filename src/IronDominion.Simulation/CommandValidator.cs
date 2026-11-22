@@ -11,6 +11,7 @@ internal sealed class CommandValidator(WorldEntities entities)
         return command switch
         {
             MoveCommand move => ValidateUnits(move.Player, move.Units, health),
+            HoldPositionCommand hold => ValidateUnits(hold.Player, hold.Units, health),
             AttackCommand attack when attack.Target.Value <= 0 => new(false, "invalid_target"),
             AttackCommand attack => ValidateUnits(attack.Player, attack.Units, health),
             TrainUnitCommand train when !Enum.IsDefined(train.Kind) => new(false, "invalid_unit_kind"),

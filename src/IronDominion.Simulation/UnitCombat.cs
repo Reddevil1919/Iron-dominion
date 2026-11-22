@@ -143,6 +143,12 @@ internal sealed class UnitCombat(
         return definition.DamagePerShot;
     }
 
+    public bool HasTargetInRange(EntityId id, IReadOnlyDictionary<EntityId, SimVector> positions)
+    {
+        var unit = (Unit)world.Find(id)!;
+        return FindTarget(unit, _definitions[unit.Kind].AttackRangeMeters, positions) is not null;
+    }
+
     private WorldEntity? FindTarget(Unit attacker, float range, IReadOnlyDictionary<EntityId, SimVector> positions)
     {
         var origin = positions[attacker.Id];

@@ -385,6 +385,26 @@ The 42 m sight radius is an initial gameplay value. The terrain uses a
 48 × 48 grid that refreshes up to five times per second. Unit and building
 visibility follows the authoritative contact query every tick.
 
+## RTS-017 tactical orders
+
+Attack-move reuses ordinary movement routes and group slots. Each unit pauses
+when it can fire on an enemy in weapon range. The unit stays through its weapon
+cooldown and resumes its route when contact ends. Hold position cancels
+movement and focused attacks. Automatic fire continues from the held spot.
+
+The selection HUD offers both orders. Shift+A arms a ground click for
+attack-move, leaving the ordinary WASD camera keys available. H issues hold
+position to the current selection.
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 123 xUnit cases passed. The tests covered both orders and deterministic replay, including preservation of the golden match hash. |
+| `scripts/validate-godot.sh` | Godot 4.6.3 .NET imported and started the game. The tactical scenario checked the shortcuts and HUD buttons, engagement on an attack-move route and cancelling movement with hold position. |
+
+The cloud desktop uses Mesa softpipe for graphical checks. Windows graphical
+performance remains unmeasured.
+
 ## Next
 
-RTS-017 adds attack-move and hold position.
+RTS-018 adds versioned save and load.

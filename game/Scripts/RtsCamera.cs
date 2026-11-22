@@ -25,6 +25,11 @@ public partial class RtsCamera : Node3D
     public override void _Process(double delta)
     {
         var direction = Input.GetVector("camera_pan_left", "camera_pan_right", "camera_pan_up", "camera_pan_down");
+        if (Input.IsActionPressed("order_attack_move", exactMatch: true) && !Input.IsPhysicalKeyPressed(Key.Left))
+        {
+            direction = new Vector2(Input.GetActionStrength("camera_pan_right"),
+                Input.GetAxis("camera_pan_up", "camera_pan_down")).LimitLength();
+        }
         if (direction == Vector2.Zero)
             direction = GetEdgePanDirection();
         if (direction == Vector2.Zero)

@@ -7,6 +7,8 @@ namespace IronDominion.Game;
 internal sealed class SelectionPanel
 {
     private readonly UnitSelection _selection;
+    private readonly UnitSelectionController _orders;
+    private readonly Button _attackMove;
     private readonly IReadOnlyDictionary<UnitKind, int> _maximumHealth;
     private readonly PanelContainer _panel = HudStyle.Panel("SelectionPanel");
     private readonly Label _title = HudStyle.Label("SelectionTitle", 20, HudStyle.Text);
@@ -15,14 +17,16 @@ internal sealed class SelectionPanel
     private readonly ProgressBar _healthBar = HudStyle.Progress("SelectionHealthBar", HudStyle.Green);
     private readonly Label _cover = HudStyle.Label("SelectionCover", 14, HudStyle.Amber);
 
-    public SelectionPanel(Node canvas, UnitSelection selection, GameConfiguration configuration)
+    public SelectionPanel(Node canvas, UnitSelection selection, GameConfiguration configuration,
+        UnitSelectionController orders)
     {
         _selection = selection;
+        _orders = orders;
         _maximumHealth = configuration.Units.ToDictionary(unit => unit.Kind, unit => unit.MaxHp);
         _panel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.BottomRight);
         _panel.OffsetLeft = -292;
         _panel.OffsetRight = -24;
-        _panel.OffsetTop = -178;
+        _panel.OffsetTop = -198;
         _panel.OffsetBottom = -24;
         _panel.Visible = false;
         canvas.AddChild(_panel);
@@ -35,6 +39,13 @@ internal sealed class SelectionPanel
         rows.AddChild(_health);
         rows.AddChild(_healthBar);
         rows.AddChild(_cover);
+
+        var orderButtons = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        orderButtons.AddThemeConstantOverride("separation", 6);
+        rows.AddChild(orderButtons);
+        _attackMove = AddOrderButton(orderButtons, "AttackMoveButton", "Attack move", "Shift+A, then click a destination",
+            orders.ArmAttackMove);
+        AddOrderButton(orderButtons, "HoldPositionButton", "Hold position", "H", orders.RequestHoldPosition);
     }
 
     public void Update(IReadOnlyWorld world, IReadOnlyList<UnitView> views)
@@ -71,6 +82,9 @@ internal sealed class SelectionPanel
         if (count == 0)
             return;
 
+        var attackMoveLabel = _orders.AttackMoveArmed ? "Click ground" : "Attack move";
+        if (_attackMove.Text != attackMoveLabel)
+            _attackMove.Text = attackMoveLabel;
         HudStyle.SetText(_title, count == 1 ? infantry == 1 ? "Infantry squad" : "Tank" : $"{count} units selected");
         _composition.Visible = count > 1;
         if (count > 1)
@@ -84,5 +98,23 @@ internal sealed class SelectionPanel
         _cover.Visible = protectedUnits > 0;
         if (protectedUnits > 0)
             HudStyle.SetText(_cover, count == 1 ? "In cover" : $"{protectedUnits} in cover");
+    }
+
+    private static Button AddOrderButton(Node row, string name, string label, string hint, Action pressed)
+    {
+        var button = new Button
+        {
+            Name = name,
+            Text = label,
+            TooltipText = hint,
+            FocusMode = Control.FocusModeEnum.None,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 28)
+        };
+        HudStyle.StyleButton(button);
+        button.AddThemeFontSizeOverride("font_size", 13);
+        button.Pressed += pressed;
+        row.AddChild(button);
+        return button;
     }
 }

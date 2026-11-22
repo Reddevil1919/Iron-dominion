@@ -14,7 +14,8 @@ public partial class UnitSelectionController : Control
     private UnitSelection? _selection;
     private IReadOnlyList<UnitView> _units = [];
     private StaticBody3D _ground = null!;
-    private Action<IReadOnlyList<EntityId>, SimVector> _move = null!;
+    private Action<IReadOnlyList<EntityId>, SimVector, bool> _move = null!;
+    private Action<IReadOnlyList<EntityId>> _hold = null!;
     private Func<GodotObject, EntityId?> _hostile = null!;
     private Action<IReadOnlyList<EntityId>, EntityId> _attack = null!;
     private Action<string> _reject = null!;
@@ -22,27 +23,31 @@ public partial class UnitSelectionController : Control
     private Vector2 _pointer;
     private bool _dragging;
 
+    public bool AttackMoveArmed { get; private set; }
+
     public void Initialize(UnitSelection selection, IReadOnlyList<UnitView> units,
-        StaticBody3D ground, Action<IReadOnlyList<EntityId>, SimVector> move,
+        StaticBody3D ground, Action<IReadOnlyList<EntityId>, SimVector, bool> move,
+        Action<IReadOnlyList<EntityId>> hold,
         Func<GodotObject, EntityId?> hostile, Action<IReadOnlyList<EntityId>, EntityId> attack, Action<string> reject)
     {
         _selection = selection;
         _units = units;
         _ground = ground;
         _move = move;
+        _hold = hold;
         _hostile = hostile;
         _attack = attack;
         _reject = reject;
     }
 
-    public override void _Ready() => GetWindow().FocusExited += CancelGesture;
+    public override void _Ready() => GetWindow().FocusExited += CancelInput;
 
-    public override void _ExitTree() => GetWindow().FocusExited -= CancelGesture;
+    public override void _ExitTree() => GetWindow().FocusExited -= CancelInput;
 
     public override void _Notification(int what)
     {
         if (what == NotificationPaused)
-            CancelGesture();
+            CancelInput();
     }
 
     public override void _UnhandledInput(InputEvent inputEvent)
@@ -52,13 +57,33 @@ public partial class UnitSelectionController : Control
 
         if (inputEvent is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } button)
         {
-            _start = _pointer = button.Position;
+            var point = button.Position;
+            if (AttackMoveArmed)
+            {
+                AttackMoveArmed = false;
+                _pending.Enqueue(() => OrderSelected(selection, point, attackMove: true));
+            }
+            else
+            {
+                _start = _pointer = point;
+            }
             GetViewport().SetInputAsHandled();
         }
         else if (inputEvent is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true } move)
         {
+            AttackMoveArmed = false;
             var point = move.Position;
             _pending.Enqueue(() => OrderSelected(selection, point));
+            GetViewport().SetInputAsHandled();
+        }
+        else if (inputEvent.IsActionPressed("order_attack_move", exactMatch: true))
+        {
+            ArmAttackMove();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (inputEvent.IsActionPressed("order_hold_position", exactMatch: true))
+        {
+            RequestHoldPosition();
             GetViewport().SetInputAsHandled();
         }
         else if (inputEvent is InputEventKey { Pressed: true, Echo: false } key)
@@ -71,7 +96,10 @@ public partial class UnitSelectionController : Control
             if (key.CtrlPressed)
                 _pending.Enqueue(() => selection.AssignGroup(group));
             else
+            {
+                AttackMoveArmed = false;
                 _pending.Enqueue(() => selection.RecallGroup(group));
+            }
 
             GetViewport().SetInputAsHandled();
         }
@@ -115,12 +143,36 @@ public partial class UnitSelectionController : Control
         ShowSelection(selection);
     }
 
+    public void ArmAttackMove()
+    {
+        if (_selection is not { Selected.IsEmpty: false })
+            return;
+
+        CancelGesture();
+        AttackMoveArmed = true;
+    }
+
+    public void RequestHoldPosition()
+    {
+        if (_selection is not { } selection)
+            return;
+
+        CancelInput();
+        _pending.Enqueue(() =>
+        {
+            if (!selection.Selected.IsEmpty)
+                _hold(selection.Selected);
+        });
+    }
+
     public void RefreshSelection()
     {
         if (_selection is not { } selection)
             return;
 
         selection.Select(selection.Selected);
+        if (selection.Selected.IsEmpty)
+            AttackMoveArmed = false;
         ShowSelection(selection);
     }
 
@@ -147,7 +199,7 @@ public partial class UnitSelectionController : Control
             yield return unit.Id;
     }
 
-    private void OrderSelected(UnitSelection selection, Vector2 point)
+    private void OrderSelected(UnitSelection selection, Vector2 point, bool attackMove = false)
     {
         if (selection.Selected.IsEmpty)
             return;
@@ -159,12 +211,12 @@ public partial class UnitSelectionController : Control
             return;
         }
 
-        if (_hostile(actor) is { } targetId)
+        if (!attackMove && _hostile(actor) is { } targetId)
             _attack(selection.Selected, targetId);
         else if (actor == _ground)
         {
             var target = hit["position"].AsVector3();
-            _move(selection.Selected, new SimVector(target.X, target.Z));
+            _move(selection.Selected, new SimVector(target.X, target.Z), attackMove);
         }
         else
         {
@@ -197,6 +249,12 @@ public partial class UnitSelectionController : Control
             if (!camera.IsPositionBehind(center) && bounds.HasPoint(camera.UnprojectPosition(center)))
                 yield return unit.Id;
         }
+    }
+
+    private void CancelInput()
+    {
+        AttackMoveArmed = false;
+        CancelGesture();
     }
 
     private void CancelGesture()

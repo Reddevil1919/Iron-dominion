@@ -80,14 +80,16 @@ public sealed class UnitMovementTests
         Assert.Single(navigation.Requests);
     }
 
-    [Fact]
-    public void UnreachableOrderDoesNotReplaceAnExistingRoute()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnreachableOrderDoesNotReplaceAnExistingRoute(bool attackMove)
     {
         var navigation = new TestNavigation((_, destination) => destination.X <= 59 ? [destination] : []);
         var simulation = CreateSimulation(navigation, Squad(First, Blue, default));
         var valid = new SimVector(2, 0);
         simulation.Schedule(new MoveCommand(Blue, 1, 1, [First], valid));
-        simulation.Schedule(new MoveCommand(Blue, 2, 2, [First], new SimVector(64, 0)));
+        simulation.Schedule(new MoveCommand(Blue, 2, 2, [First], new SimVector(64, 0), attackMove));
 
         Assert.True(Processed(simulation).Result.Accepted);
         Assert.Equal(new CommandResult(false, "unreachable_destination"), Processed(simulation).Result);
@@ -144,6 +146,19 @@ public sealed class UnitMovementTests
         Assert.Equal(anchor, positions[0]);
         Assert.Equal(10, positions.Distinct().Count());
         Assert.Equal(units.Select(unit => unit.Position), navigation.Requests.Select(request => request.Start));
+    }
+
+    [Fact]
+    public void HoldPositionRejectsMixedOwnershipWithoutStoppingTheFriendlyUnit()
+    {
+        var simulation = CreateSimulation(StraightRoutes(), Squad(First, Blue, default), Squad(Second, Orange, default));
+        simulation.Schedule(new MoveCommand(Blue, 1, 1, [First], new SimVector(3, 0)));
+        simulation.Schedule(new HoldPositionCommand(Blue, 2, 2, [First, Second]));
+
+        Assert.True(Processed(simulation).Result.Accepted);
+        Assert.Equal(new CommandResult(false, "not_owner"), Processed(simulation).Result);
+        Assert.Equal(0.4f, Position(simulation, First).X, precision: 4);
+        Assert.Equal(default, Position(simulation, Second));
     }
 
     private static Unit Squad(EntityId id, PlayerId owner, SimVector position) =>

@@ -226,3 +226,20 @@ terrain and draws fog from samples on a 48 × 48 ground grid. The map mask
 refreshes up to five times per second. Actor visibility uses the contact
 query at the current tick. Sector ownership is public. Live capture and
 contest indicators require ground visibility at the sector center.
+
+## RTS-017 tactical orders
+
+`CommandScheduler.ScheduleAttackMove` submits a `MoveCommand` with attack-move
+mode. It plans and validates each group slot using the normal movement rules.
+Before advancing an attack-move route, the simulation checks for hostiles
+within that unit's weapon range and line of sight. The route waits while a
+target remains, including during cooldown, and resumes once there is no
+eligible target. All routes check the same start-of-movement positions.
+Combat still resolves against the positions after movement.
+
+`CommandScheduler.ScheduleHoldPosition` submits a `HoldPositionCommand`.
+An accepted hold clears the selected units' routes and focused targets.
+Automatic fire and normal cooldowns apply from the held position. Both
+orders use the existing tick, player and sequence ordering and validate
+all selected units before applying an effect. The replay test format records
+both modes along with the existing move, attack and training orders.

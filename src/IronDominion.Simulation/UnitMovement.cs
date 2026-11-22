@@ -15,7 +15,7 @@ internal sealed class UnitMovement(
 
     private readonly Dictionary<UnitKind, float> _stepSizes = configuration.Units.ToDictionary(
         unit => unit.Kind, unit => unit.SpeedMetersPerSecond / configuration.TickRate);
-    private readonly Dictionary<EntityId, Queue<SimVector>> _routes = new();
+    private readonly Dictionary<EntityId, Route> _routes = new();
 
     public ImmutableDictionary<EntityId, SimVector> Positions { get; private set; } =
         entities.Units.ToImmutableDictionary(unit => unit.Id, unit => unit.Position);
@@ -24,7 +24,7 @@ internal sealed class UnitMovement(
     {
         var ids = command.Units.Distinct().OrderBy(id => id.Value).ToArray();
         var width = (int)MathF.Ceiling(MathF.Sqrt(ids.Length));
-        var routes = new Queue<SimVector>[ids.Length];
+        var routes = new Route[ids.Length];
 
         for (var i = 0; i < ids.Length; i++)
         {
@@ -35,7 +35,7 @@ internal sealed class UnitMovement(
             if (path.Count == 0 || path[^1] != destination)
                 return new CommandResult(false, "unreachable_destination");
 
-            routes[i] = new Queue<SimVector>(path);
+            routes[i] = new Route(new Queue<SimVector>(path), command.AttackMove);
         }
 
         for (var i = 0; i < ids.Length; i++)
@@ -60,7 +60,7 @@ internal sealed class UnitMovement(
         Positions = Positions.Remove(id);
     }
 
-    public void Advance()
+    public void Advance(UnitCombat? combat)
     {
         if (_routes.Count == 0)
             return;
@@ -69,10 +69,14 @@ internal sealed class UnitMovement(
         var completed = new List<EntityId>();
         foreach (var (id, route) in _routes)
         {
+            // All routes check for targets against the positions at the start of the movement phase.
+            if (route.AttackMove && combat?.HasTargetInRange(id, Positions) == true)
+                continue;
+
             var unit = (Unit)entities.Find(id)!;
             var position = positions[id];
             var remaining = _stepSizes[unit.Kind];
-            while (route.TryPeek(out var waypoint))
+            while (route.Waypoints.TryPeek(out var waypoint))
             {
                 var delta = new Vector2(waypoint.X - position.X, waypoint.Z - position.Z);
                 var distance = delta.Length();
@@ -83,12 +87,12 @@ internal sealed class UnitMovement(
                     break;
                 }
 
-                position = route.Dequeue();
+                position = route.Waypoints.Dequeue();
                 remaining -= distance;
             }
 
             positions[id] = position;
-            if (route.Count == 0)
+            if (route.Waypoints.Count == 0)
                 completed.Add(id);
         }
 
@@ -97,4 +101,6 @@ internal sealed class UnitMovement(
 
         Positions = positions.ToImmutable();
     }
+
+    private readonly record struct Route(Queue<SimVector> Waypoints, bool AttackMove);
 }
