@@ -10,14 +10,27 @@ public partial class UnitView : StaticBody3D
 
     private MeshInstance3D _ring = null!;
     private Label3D? _coverIndicator;
+    private InfantryMotion? _infantry;
+    private MeshInstance3D? _gun;
+    private MeshInstance3D? _turret;
+    private Node3D _model = null!;
+    private float _movementHeading;
+    private float _aimHeading;
+    private float _speed;
+    private float _shotTime;
+    private bool _suppressed;
 
     public EntityId Id { get; private set; }
     public UnitKind Kind { get; private set; }
     public PlayerId Player { get; private set; }
 
+    public Vector3 ShotOrigin => _gun is { } gun
+        ? gun.ToGlobal(new Vector3(0f, 0f, -2.70f))
+        : _model.ToGlobal(new Vector3(0f, _suppressed ? 1.42f : 1.68f, -1.15f));
+
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;
 
-    public static UnitView Create(Unit unit, StandardMaterial3D teamMaterial)
+    internal static UnitView Create(Unit unit, UnitArt art)
     {
         var tank = unit.Kind == UnitKind.Tank;
         var view = new UnitView
@@ -50,18 +63,74 @@ public partial class UnitView : StaticBody3D
         });
         view._ring = view.GetNode<MeshInstance3D>("SelectionRing");
 
+        var heading = view.Player.Value == 1 ? -Mathf.Pi / 2f : Mathf.Pi / 2f;
+        view._movementHeading = heading;
+        view._aimHeading = heading;
+        view._model = new Node3D { Name = "Model", Rotation = new Vector3(0f, heading, 0f) };
+        view.AddChild(view._model);
         if (tank)
-            view.AddTank(teamMaterial);
+            view.AddTank(art);
         else
-            view.AddInfantry(teamMaterial);
+            view.AddInfantry(art);
 
         return view;
     }
 
     public void ShowSelection(bool selected) => _ring.Visible = selected;
 
+    public void ApplyPosition(Vector3 position, float tickRate)
+    {
+        var step = position - Position;
+        _speed = step.Length() * tickRate;
+        if (_speed > 0.05f)
+            _movementHeading = Heading(step);
+        Position = position;
+    }
+
+    public void PlayShot(Vector3 origin, Vector3 target)
+    {
+        var direction = target - origin;
+        if (new Vector2(direction.X, direction.Z).LengthSquared() < 0.001f)
+            return;
+
+        _aimHeading = Heading(direction);
+        _shotTime = 0.48f;
+        if (_turret is null)
+            _model.Rotation = new Vector3(0f, _aimHeading, 0f);
+        else
+        {
+            _turret.Rotation = new Vector3(0f, _aimHeading - _model.Rotation.Y, 0f);
+            _gun!.Position = new Vector3(0f, 0.38f, -0.83f);
+        }
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!IsVisibleInTree())
+            return;
+
+        var seconds = (float)delta;
+        var aiming = _shotTime > 0f;
+        var recoil = Mathf.Clamp((_shotTime - 0.27f) / 0.21f, 0f, 1f);
+        var heading = _turret is null && aiming ? _aimHeading : _movementHeading;
+        var turn = 1f - Mathf.Exp(-seconds * 11f);
+        _model.Rotation = new Vector3(0f, Mathf.LerpAngle(_model.Rotation.Y, heading, turn), 0f);
+        if (_turret is { } turret && _gun is { } gun)
+        {
+            var targetAngle = aiming ? _aimHeading - _model.Rotation.Y : 0f;
+            turret.Rotation = new Vector3(0f, Mathf.LerpAngle(turret.Rotation.Y, targetAngle, turn), 0f);
+            gun.Position = new Vector3(0f, 0.38f, -1.12f + recoil * 0.29f);
+        }
+        else
+            _infantry?.Update(seconds, _speed, aiming, recoil, _suppressed);
+        _shotTime = Mathf.Max(0f, _shotTime - seconds);
+    }
+
+    private static float Heading(Vector3 direction) => Mathf.Atan2(-direction.X, -direction.Z);
+
     public void ShowInfantryStatus(bool covered, bool suppressed)
     {
+        _suppressed = suppressed;
         if (_coverIndicator is not { } indicator)
             return;
 
@@ -80,14 +149,22 @@ public partial class UnitView : StaticBody3D
         indicator.Modulate = suppressed ? HudStyle.Red : HudStyle.Amber;
     }
 
-    private void AddTank(StandardMaterial3D material)
+    private void AddTank(UnitArt art)
     {
-        AddMesh(new BoxMesh { Size = new Vector3(6.5f, 1.5f, 5.2f) }, new Vector3(0, 0.75f, 0), material);
-        AddMesh(new BoxMesh { Size = new Vector3(3.2f, 0.8f, 2.6f) }, new Vector3(0, 1.9f, 0),
-            new StandardMaterial3D { AlbedoColor = new Color("303943") });
+        _model.AddChild(new MeshInstance3D { Name = "TracksAndHull", Mesh = art.TankHull });
+        _turret = new MeshInstance3D
+        {
+            Name = "Turret", Mesh = art.TankTurret, Position = Vector3.Up * 1.43f
+        };
+        _gun = new MeshInstance3D
+        {
+            Name = "Gun", Mesh = art.TankGun, Position = new Vector3(0f, 0.38f, -1.12f)
+        };
+        _model.AddChild(_turret);
+        _turret.AddChild(_gun);
     }
 
-    private void AddInfantry(StandardMaterial3D material)
+    private void AddInfantry(UnitArt art)
     {
         _coverIndicator = new Label3D
         {
@@ -102,15 +179,6 @@ public partial class UnitView : StaticBody3D
             Visible = false
         };
         AddChild(_coverIndicator);
-
-        var soldier = new CapsuleMesh { Radius = 0.7f, Height = 2.4f, RadialSegments = 10, Rings = 4 };
-        foreach (var x in new[] { -1.4f, 1.4f })
-        foreach (var z in new[] { -1.4f, 1.4f })
-            AddMesh(soldier, new Vector3(x, 1.2f, z), material);
-    }
-
-    private void AddMesh(Mesh mesh, Vector3 position, Material material)
-    {
-        AddChild(new MeshInstance3D { Mesh = mesh, Position = position, MaterialOverride = material });
+        _infantry = new InfantryMotion(_model, art);
     }
 }

@@ -23,7 +23,12 @@ Story points are relative estimates; adjust after first sprint. Dependencies mat
 | RTS-017 | P1 | Attack-move, hold position | 5 | 006,007 | Order modes tested |
 | RTS-018 | P2 | Save/load | 8 | 003 | Versioned restore |
 | RTS-019 | P2 | Directional cover and suppression | 13 | 010 | Balance/test suite |
-| RTS-020 | P2 | Multiplayer prototype | TBD | architecture review | Separate design required |
+| RTS-020 | Deferred | Multiplayer prototype | TBD | architecture review | Separate design required |
+
+## Post-MVP priority
+
+The contemporary art pass comes first. See the [art direction](10-ART-DIRECTION.md)
+for the visuals and animation goals. Multiplayer remains in the backlog.
 
 ## Suggested delivery sequence
 Sprint 0: 001–003. Sprint 1: 004–006. Sprint 2: 007,008. Sprint 3: 009,010,012. Sprint 4: 011,013,014,015. P1 items can be added after a working match. Avoid parallel edits to shared world-state APIs.

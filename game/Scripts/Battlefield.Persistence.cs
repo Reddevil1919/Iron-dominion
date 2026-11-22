@@ -8,8 +8,6 @@ namespace IronDominion.Game;
 
 public partial class Battlefield
 {
-    private readonly Dictionary<EntityId, (Material? Base, Material? Roof)> _buildingMaterials = new();
-
     private void SaveMatch(MatchSaveFile file, BattlefieldFog fog) =>
         file.Write(new BattlefieldCheckpoint(_session!.Capture(), _enemyCommander?.Capture(), fog.CaptureExplored()));
 
@@ -67,9 +65,7 @@ public partial class Battlefield
                 continue;
             }
 
-            var (baseMaterial, roofMaterial) = _buildingMaterials[building.Id];
-            body.GetNode<MeshInstance3D>("Base").MaterialOverride = baseMaterial;
-            body.GetNode<MeshInstance3D>("Roof").MaterialOverride = roofMaterial;
+            body.GetNode<MeshInstance3D>("Base").MaterialOverride = null;
             var maxHp = ((Building)map.Find(building.Id)!).HitPoints;
             var bar = new HealthBar(body, maxHp, 7.3f, 0.14f);
             _healthBars.Add(building.Id, bar);
@@ -99,7 +95,6 @@ public partial class Battlefield
     {
         var ruin = new StandardMaterial3D { AlbedoColor = new Color("505862") };
         building.GetNode<MeshInstance3D>("Base").MaterialOverride = ruin;
-        building.GetNode<MeshInstance3D>("Roof").MaterialOverride = ruin;
     }
 
     private sealed record BattlefieldCheckpoint(SessionCheckpoint Session, CommanderCheckpoint? Enemy, byte[] Explored);

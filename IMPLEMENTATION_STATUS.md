@@ -448,6 +448,27 @@ battlefield rules.
 The desktop verification uses Mesa softpipe. Windows graphical performance
 remains unmeasured.
 
+## Contemporary battlefield art
+
+The first art pass depicts a contemporary logistics depot. The battlefield
+adds asphalt, concrete yards, freight containers and perimeter vegetation.
+Both fictional forces use muted equipment colors with the existing blue
+and orange identification. Infantry gait follows rendered travel and lowers
+under suppression. Tanks have separate hull and turret motion with recoil
+from visible shot events. The battlefield keeps the same navigation,
+picking, line-of-sight shapes and save identity.
+
+The art uses original procedural meshes and shaders. See
+[Contemporary art direction](docs/10-ART-DIRECTION.md) for the palette,
+silhouettes, motion and remaining close-up production work.
+
+| Check | Observed result |
+| --- | --- |
+| Release build and xUnit | Build passed with zero warnings and errors. All 145 tests passed. |
+| Godot headless | All 13 scenarios passed for the art pass. The combat scenario now checks independent turret rotation, gun recoil and recovery through normal combat. |
+| Linux desktop | Inspected the overview and tactical close-up in Godot on Mesa softpipe and checked that the infantry foot transforms change during a real movement order. Native hardware frame rates still need measurement. |
+
 ## Next
 
-RTS-020 starts with a separate multiplayer architecture review.
+Continue the contemporary art pass with close-up materials and authored
+animation transitions. RTS-020 remains in the backlog.

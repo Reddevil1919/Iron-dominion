@@ -23,6 +23,7 @@ public partial class Battlefield : Node3D
     private readonly Dictionary<EntityId, StaticBody3D> _buildings = new();
     private readonly Dictionary<StaticBody3D, EntityId> _enemyBuildings = new();
     private readonly Dictionary<PlayerId, StandardMaterial3D> _teamMaterials = new();
+    private readonly Dictionary<PlayerId, UnitArt> _unitArt = new();
     private ProductionPanel? _productionPanel;
     private SectorBoard? _sectorBoard;
     private SelectionPanel? _selectionPanel;
@@ -71,6 +72,8 @@ public partial class Battlefield : Node3D
             _benchmark = new BattlefieldBenchmark(benchmark, units);
         _teamMaterials.Add(LocalPlayer, new StandardMaterial3D { AlbedoColor = new Color("3da9fc") });
         _teamMaterials.Add(Opponent, new StandardMaterial3D { AlbedoColor = new Color("f7793c") });
+        foreach (var (player, material) in _teamMaterials)
+            _unitArt.Add(player, new UnitArt(material.AlbedoColor, player == LocalPlayer));
         foreach (var unit in units)
             AddUnitView(unit);
 
@@ -95,6 +98,7 @@ public partial class Battlefield : Node3D
         var sight = new BattlefieldSight(GetWorld3D(), _buildings);
         var fog = new BattlefieldFog(this, BattlefieldNavigation.BoxBounds(groundCollision), sight);
         _fog = fog;
+        BattlefieldArt.Decorate(this, fog.SceneryMaterial);
         var session = new GameSession(world, configuration, navigation, sight);
         _session = session;
         var menuLayer = new CanvasLayer { Name = "MatchMenuLayer", Layer = 2, ProcessMode = ProcessModeEnum.Always };
@@ -147,7 +151,7 @@ public partial class Battlefield : Node3D
 
     private void AddUnitView(Unit unit)
     {
-        var view = UnitView.Create(unit, _teamMaterials[unit.Owner!.Value]);
+        var view = UnitView.Create(unit, _unitArt[unit.Owner!.Value]);
         _unitRoot.AddChild(view);
         view.ResetPhysicsInterpolation();
         _views.Add(view);
@@ -159,8 +163,8 @@ public partial class Battlefield : Node3D
         var body = GetNode<StaticBody3D>(path);
         var exit = body.GetNode<Marker3D>("ProductionExit").GlobalPosition;
         _buildings.Add(id, body);
-        _buildingMaterials.Add(id, (body.GetNode<MeshInstance3D>("Base").MaterialOverride,
-            body.GetNode<MeshInstance3D>("Roof").MaterialOverride));
+        body.GetNode<MeshInstance3D>("Base").Mesh = BattlefieldArt.Building(
+            definition.Kind == BuildingKind.Headquarters, _teamMaterials[owner].AlbedoColor, owner == LocalPlayer);
         if (owner == Opponent)
             _enemyBuildings.Add(body, id);
         _healthBars.Add(id, new HealthBar(body, definition.MaxHp, 7.3f, 0.14f));
@@ -208,7 +212,11 @@ public partial class Battlefield : Node3D
             if (gameEvent is ShotFired shot && visibleActors.Contains(shot.Attacker) && visibleActors.Contains(shot.Target)
                 && FindActorPosition(shot.Attacker, session.World) is { } origin
                 && FindActorPosition(shot.Target, session.World) is { } target)
-                _feedback?.Trace(shot, origin, target);
+            {
+                var attacker = _views.Find(view => view.Id == shot.Attacker);
+                attacker?.PlayShot(origin, target);
+                _feedback?.Trace(shot, attacker?.ShotOrigin ?? origin, target);
+            }
             if (gameEvent is EntityDamaged damage && _healthBars.TryGetValue(damage.Entity, out var bar))
                 bar.SetHitPoints(damage.RemainingHitPoints);
             if (gameEvent is UnitSpawned spawn)
@@ -250,7 +258,11 @@ public partial class Battlefield : Node3D
         }
     }
 
-    public override void _ExitTree() => _benchmark?.Dispose();
+    public override void _ExitTree()
+    {
+        _benchmark?.Dispose();
+        _fog?.Dispose();
+    }
 
     private Vector3? FindActorPosition(EntityId id, IReadOnlyWorld world)
     {
@@ -288,7 +300,7 @@ public partial class Battlefield : Node3D
             if (!world.TryGetUnitPosition(view.Id, out var position))
                 continue;
 
-            view.Position = new Vector3(position.X, 0f, position.Z);
+            view.ApplyPosition(new Vector3(position.X, 0f, position.Z), Engine.PhysicsTicksPerSecond);
             view.ShowInfantryStatus(world.HasCover(view.Id), world.IsSuppressed(view.Id));
         }
     }
