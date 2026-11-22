@@ -186,4 +186,12 @@ with a right-click. Sector ownership stays on the HUD.
 Destroy the orange HQ to win. If your HQ falls, the match ends in defeat.
 If both fall on the same simulation tick, the match is a draw. Press
 **Esc** or click **Pause** to freeze the match. The pause menu lets you
-resume, restart or quit. The result screen lets you restart or quit.
+resume, save, load, restart or quit. **Save match** replaces the local
+slot. **Load saved match** restores the saved tick and leaves the game
+paused so you can inspect it before clicking **Resume**. Loading resets
+selection and control groups. The result screen can load the slot, start
+a new match or quit.
+
+The local slot is `user://match-save.json`. Godot resolves this path in the
+application data directory for the signed-in system user. On Windows it is
+typically `%APPDATA%\Godot\app_userdata\Iron Dominion\match-save.json`.

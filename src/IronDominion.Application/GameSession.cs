@@ -7,7 +7,7 @@ public sealed class GameSession
 {
     public const int TicksPerSecond = GameSimulation.TicksPerSecond;
 
-    private readonly IGameSimulation _simulation;
+    private readonly GameSimulation _simulation;
 
     public GameSession() : this(new GameSimulation())
     {
@@ -27,7 +27,7 @@ public sealed class GameSession
     {
     }
 
-    private GameSession(IGameSimulation simulation)
+    private GameSession(GameSimulation simulation)
     {
         _simulation = simulation;
         Commands = new CommandScheduler(simulation);
@@ -37,6 +37,28 @@ public sealed class GameSession
     public IReadOnlyWorld World => _simulation.World;
     public bool IsPaused { get; private set; }
     public PlayerObservation Observe(PlayerId player) => _simulation.Observe(player);
+
+    public SessionCheckpoint Capture() => new(_simulation.Capture(), Commands.Capture(), IsPaused);
+
+    public static GameSession Restore(WorldEntities map, GameConfiguration configuration,
+        INavigationService navigation, ILineOfSightService sight, SessionCheckpoint checkpoint)
+    {
+        var session = new GameSession(GameSimulation.Restore(map, configuration, navigation, sight, checkpoint.Simulation));
+        session.Commands.Restore(checkpoint.Scheduler);
+        if (session.World.Result == MatchResult.Running)
+        {
+            var lastSequences = checkpoint.Simulation.UsedSequences.GroupBy(sequence => sequence.Player)
+                .OrderBy(group => group.Key.Value).Select(group => new CommandSequence(group.Key, group.Max(item => item.Sequence)));
+            if (!session.Commands.Capture().SequenceEqual(lastSequences))
+                throw new InvalidDataException("The saved scheduler disagrees with the simulation.");
+        }
+        else if (checkpoint.Paused)
+        {
+            throw new InvalidDataException("A finished match cannot be paused.");
+        }
+        session.SetPaused(checkpoint.Paused);
+        return session;
+    }
 
     public void SetPaused(bool paused)
     {

@@ -46,6 +46,15 @@ internal sealed class BattlefieldFeedback
         _trailsChanged = true;
     }
 
+    public void Reset()
+    {
+        _trails.Clear();
+        _mesh.ClearSurfaces();
+        _trailsView.Hide();
+        _notice.Hide();
+        _trailsChanged = false;
+    }
+
     public void Reject(string? reason, long tick)
     {
         var message = reason switch

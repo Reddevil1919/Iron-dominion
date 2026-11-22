@@ -14,12 +14,24 @@ public partial class MatchMenu : Control
     private Button _pause = null!;
     private Button _resume = null!;
     private Button _restart = null!;
+    private Button _save = null!;
+    private Button _load = null!;
+    private Action? _saveMatch;
+    private Func<GameSession>? _loadMatch;
+    private Func<bool>? _hasSave;
     private bool _restarting;
 
     public void Initialize(GameSession session, PlayerId localPlayer)
     {
         _session = session;
         _localPlayer = localPlayer;
+    }
+
+    public void EnablePersistence(Action save, Func<GameSession> load, Func<bool> hasSave)
+    {
+        _saveMatch = save;
+        _loadMatch = load;
+        _hasSave = hasSave;
     }
 
     public override void _Ready()
@@ -65,6 +77,8 @@ public partial class MatchMenu : Control
         content.AddChild(_title);
         content.AddChild(_detail);
         _resume = AddButton(content, "ResumeButton", "Resume", TogglePause);
+        _save = AddButton(content, "SaveButton", "Save match", SavePausedMatch);
+        _load = AddButton(content, "LoadButton", "Load saved match", LoadSavedMatch);
         _restart = AddButton(content, "RestartButton", "Restart match", RequestRestart);
         AddButton(content, "QuitButton", "Quit game", () => GetTree().Quit());
         _overlay.Hide();
@@ -115,12 +129,65 @@ public partial class MatchMenu : Control
         _title.Text = title;
         HudStyle.SetTextColor(_title, color);
         _detail.Text = detail;
+        HudStyle.SetTextColor(_detail, HudStyle.Muted);
         _detail.Visible = detail.Length > 0;
         _resume.Visible = resumable;
+        _save.Visible = resumable && _saveMatch is not null;
+        _load.Visible = _loadMatch is not null;
+        _load.Disabled = _hasSave?.Invoke() != true;
         _pause.Hide();
         _overlay.Show();
         (resumable ? _resume : _restart).GrabFocus();
         GetTree().Paused = true;
+    }
+
+    private void SavePausedMatch()
+    {
+        if (!_session.IsPaused || _saveMatch is null)
+            return;
+
+        try
+        {
+            _saveMatch();
+            _load.Disabled = false;
+            ShowStatus("Match saved.", HudStyle.Green);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            ShowStatus($"Could not save the match. {exception.Message}", HudStyle.Red);
+        }
+    }
+
+    private void LoadSavedMatch()
+    {
+        if (_loadMatch is null || _restarting)
+            return;
+
+        try
+        {
+            var loaded = _loadMatch();
+            _session = loaded;
+            if (loaded.World.Result == MatchResult.Running)
+            {
+                loaded.SetPaused(true);
+                ShowOverlay("Paused", "Saved match loaded.", resumable: true, HudStyle.Text);
+            }
+            else
+            {
+                ShowOutcome(loaded.World.Result);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            ShowStatus($"Could not load the match. {exception.Message}", HudStyle.Red);
+        }
+    }
+
+    private void ShowStatus(string message, Color color)
+    {
+        _detail.Text = message;
+        HudStyle.SetTextColor(_detail, color);
+        _detail.Show();
     }
 
     private void RequestRestart()

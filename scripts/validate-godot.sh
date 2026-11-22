@@ -10,7 +10,8 @@ if [[ $version != 4.6.3.stable.mono.* ]]; then
 fi
 
 log=$(mktemp)
-trap 'rm -f "$log"' EXIT
+save_test_data=$(mktemp -d)
+trap 'rm -f "$log"; rm -rf "$save_test_data"' EXIT
 
 run_godot() {
     "$godot" --headless --path "$repo_root/game" "$@" 2>&1 | tee "$log"
@@ -51,3 +52,5 @@ run_smoke_test infantry_cover_smoke.gd 'Infantry cover smoke checks passed.' 160
 run_smoke_test enemy_ai_smoke.gd 'Enemy AI smoke checks passed.' 8500 active
 run_smoke_test battlefield_hud_smoke.gd 'Battlefield HUD smoke checks passed.' 2000
 run_smoke_test match_lifecycle_smoke.gd 'Match lifecycle smoke checks passed.' 8000
+
+XDG_DATA_HOME="$save_test_data" run_smoke_test save_load_smoke.gd 'Save and load smoke checks passed.' 1500

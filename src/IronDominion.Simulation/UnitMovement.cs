@@ -44,6 +44,20 @@ internal sealed class UnitMovement(
         return Accepted;
     }
 
+    public RouteCheckpoint? CaptureRoute(EntityId id) => _routes.TryGetValue(id, out var route)
+        ? new RouteCheckpoint(route.AttackMove, route.Waypoints.ToImmutableArray()) : null;
+
+    public void Restore(ImmutableArray<UnitCheckpoint> units)
+    {
+        Positions = units.Where(unit => unit.Position.HasValue)
+            .ToImmutableDictionary(unit => unit.Id, unit => unit.Position!.Value);
+        foreach (var unit in units)
+        {
+            if (unit.Route is { } route)
+                _routes.Add(unit.Id, new Route(new Queue<SimVector>(route.Waypoints), route.AttackMove));
+        }
+    }
+
     public bool IsMoving(EntityId id) => _routes.ContainsKey(id);
 
     public void Register(Unit unit) => Positions = Positions.Add(unit.Id, unit.Position);

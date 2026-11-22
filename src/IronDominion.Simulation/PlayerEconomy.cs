@@ -24,6 +24,18 @@ internal sealed class PlayerEconomy
     public ImmutableDictionary<PlayerId, int> Credits { get; private set; }
     public ImmutableDictionary<PlayerId, long> Income { get; private set; }
 
+    public ImmutableArray<PlayerCheckpoint> Capture() => _players.Select(player =>
+        new PlayerCheckpoint(player, Credits[player], _remainders.GetValueOrDefault(player))).ToImmutableArray();
+
+    public void Restore(ImmutableArray<PlayerCheckpoint> players,
+        IReadOnlyDictionary<EntityId, int> health, ImmutableArray<SectorState> sectors)
+    {
+        Credits = players.ToImmutableDictionary(player => player.Id, player => player.Credits);
+        Income = _players.ToImmutableDictionary(player => player, player => CalculateIncome(player, health, sectors));
+        foreach (var player in players)
+            _remainders.Add(player.Id, player.IncomeRemainder);
+    }
+
     public bool TrySpend(PlayerId player, int cost)
     {
         var balance = Credits[player];

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using IronDominion.Application;
 using IronDominion.Domain;
 
@@ -15,6 +16,35 @@ public sealed class EnemyCommander(GameConfiguration configuration)
     private EntityId? _scoutingSector;
 
     public static bool IsDecisionTick(long tick) => tick > 0 && tick % DecisionInterval == 0;
+
+    public CommanderCheckpoint Capture() => new(_approaches.OrderBy(item => item.Key.Value)
+        .Select(item => new ApproachCheckpoint(item.Key, item.Value.Target, item.Value.Position, item.Value.Destination))
+        .ToImmutableArray(), _captureOrder?.Unit, _captureOrder?.Sector, _scoutingSector);
+
+    public static EnemyCommander Restore(GameConfiguration configuration, CommanderCheckpoint saved,
+        IReadOnlySet<EntityId> units, IReadOnlySet<EntityId> actors, IReadOnlySet<EntityId> sectors)
+    {
+        if (saved.Approaches.IsDefault || saved.CapturingUnit.HasValue != saved.CapturingSector.HasValue
+            || (saved.CapturingUnit is { } unit && !units.Contains(unit))
+            || (saved.CapturingSector is { } capture && !sectors.Contains(capture))
+            || (saved.ScoutingSector is { } scout && !sectors.Contains(scout)))
+            throw new InvalidDataException("Invalid saved AI objectives.");
+
+        var commander = new EnemyCommander(configuration)
+        {
+            _captureOrder = saved.CapturingUnit is { } capturing ? (capturing, saved.CapturingSector!.Value) : null,
+            _scoutingSector = saved.ScoutingSector
+        };
+        foreach (var approach in saved.Approaches)
+        {
+            if (!units.Contains(approach.Unit) || !actors.Contains(approach.Target)
+                || !float.IsFinite(approach.Position.X) || !float.IsFinite(approach.Position.Z)
+                || !float.IsFinite(approach.Destination.X) || !float.IsFinite(approach.Destination.Z)
+                || !commander._approaches.TryAdd(approach.Unit, new Approach(approach.Target, approach.Position, approach.Destination)))
+                throw new InvalidDataException("Invalid saved AI approach.");
+        }
+        return commander;
+    }
 
     public void Plan(PlayerObservation world, PlayerCommands commands)
     {

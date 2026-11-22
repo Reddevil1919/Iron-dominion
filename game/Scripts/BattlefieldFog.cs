@@ -53,6 +53,20 @@ internal sealed class BattlefieldFog
         return x >= 0 && x < Resolution && z >= 0 && z < Resolution && _cells[z * Resolution + x] == Visible;
     }
 
+    public byte[] CaptureExplored() => _cells.Select(cell => cell == 0 ? (byte)0 : Explored).ToArray();
+
+    public void RestoreExplored(byte[] explored)
+    {
+        if (explored.Length != _cells.Length || explored.Any(cell => cell is not (0 or Explored)))
+            throw new InvalidDataException("Invalid saved battlefield exploration.");
+
+        explored.CopyTo(_cells, 0);
+        _lastPositions = [];
+        _lastMaskTick = -MaskIntervalTicks;
+        using var image = CreateImage();
+        _texture.Update(image);
+    }
+
     public void Update(PlayerObservation observation)
     {
         _visibleActors.Clear();

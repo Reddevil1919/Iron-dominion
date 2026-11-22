@@ -3,7 +3,7 @@ using IronDominion.Domain;
 
 namespace IronDominion.Simulation;
 
-public sealed class GameSimulation : IGameSimulation
+public sealed partial class GameSimulation : IGameSimulation
 {
     public const int TicksPerSecond = GameConfiguration.FixedTickRate;
 

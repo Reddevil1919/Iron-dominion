@@ -11,6 +11,8 @@ internal sealed class SectorControl(ImmutableArray<SectorState> sectors, WorldEn
 
     public ImmutableArray<SectorState> Sectors { get; private set; } = sectors;
 
+    public void Restore(ImmutableArray<SectorState> sectors) => Sectors = sectors;
+
     public void Advance(long tick, IReadOnlyDictionary<EntityId, SimVector> positions,
         IReadOnlyDictionary<EntityId, int> health, List<IGameEvent> events)
     {

@@ -91,6 +91,16 @@ recording and verifies the timeline after loading them in reverse order. The
 Godot smoke sends keyboard and mouse input to confirm the same order modes
 through the HUD and input shortcuts.
 
+## Save and load scenario
+
+The golden match saves and loads at three ticks covering active orders,
+blocked production and combat cooldowns. The loaded matches finish at
+the original tick and match the original per-tick digest. Additional
+cases exercise invalid forms, incompatible versions and malformed
+session state. The Godot scenario uses an isolated user directory and
+checks the pause menu, resumed movement and production, and rejection
+of an incompatible file without replacing the live session.
+
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.
 
