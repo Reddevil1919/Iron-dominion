@@ -500,8 +500,23 @@ dust. The effects are limited in count and exist in the presentation.
 | Godot headless | All 13 scenarios passed. Movement checks track phases, suspension and dust expiry. Combat checks recoil and the burst lifetime. |
 | Linux desktop | Rendered the moving tank with dust and the tank firing at an opposing squad in the playable depot. The cloud rendered with Mesa softpipe. Graphical frame rates on Windows hardware remain unmeasured. |
 
+## Depot landmarks and wayfinding
+
+The freight loading frame, relay mast and perimeter gates give the depot
+specific landmarks. Asphalt approaches have arrows and stop markings.
+Relay, Service and Checkpoint use painted ground names and segmented
+capture outlines. The floating letter shrinks at close zoom. Cover uses
+gravel, with ochre markings on the protective edge and a dashed opposite
+boundary. The map layout for navigation, line of sight and saves is the
+same.
+
+| Check | Observed result |
+| --- | --- |
+| Release build and xUnit | Zero build warnings and errors. All 145 tests passed. |
+| Godot headless | All 13 scenarios passed. The sector scenario checks outline dimensions, ground labels and close-zoom scaling. The cover scenario checks paint inside both parcels and below the fog plane. |
+| Linux desktop | Rendered the playable depot at overview and tactical zoom on Mesa softpipe. Graphical frame rates on Windows hardware remain unmeasured. |
+
 ## Next
 
-Continue the contemporary art pass with depot landmarks, ground markings
-and clearer identification of sectors and cover. RTS-020 remains in the
-backlog.
+Assess a tactical minimap using the existing sectors and depot landmarks.
+RTS-020 remains in the backlog.

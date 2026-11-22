@@ -38,6 +38,13 @@ func _run() -> void:
 	var hud := current_scene.get_node("SelectionLayer/SelectionPanel")
 	var status := hud.find_child("SelectionCover", true, false) as Label
 	assert(edge.position.x < 0 and patch.get_meta("cover_facing") == "West", "The marked edge matches the protected side")
+	for side in ["East", "West"]:
+		var parcel := current_scene.get_node("CoverZones/" + side) as MeshInstance3D
+		var paint := parcel.get_node("CoverPaint") as MeshInstance3D
+		var rect := parcel.get_aabb()
+		var bounds := paint.get_aabb()
+		assert(bounds.position.x >= rect.position.x and bounds.end.x <= rect.end.x, "Cover paint is inside the parcel")
+		assert(parcel.global_position.y + bounds.end.y < 0.08, "Cover stripes are below the fog plane")
 	assert(not marker.visible, "Infantry starts exposed")
 	assert(not current_scene.get_node("Units/Unit3").has_node("CoverIndicator"), "Tanks have no cover indicator")
 	await _click(camera.unproject_position(squad.global_position + Vector3.UP), MOUSE_BUTTON_LEFT)

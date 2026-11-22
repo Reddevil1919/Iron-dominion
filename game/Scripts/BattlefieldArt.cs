@@ -6,7 +6,7 @@ internal static class BattlefieldArt
 {
     private static readonly Basis AlongZ = new(Vector3.Right, Mathf.Pi / 2f);
 
-    public static Mesh Building(bool headquarters, Color identification, bool local)
+    public static Mesh Building(bool headquarters, Color identification, bool local, bool relayRoof)
     {
         var mesh = new ArtMesh();
         var wall = local ? "898e7d" : "9b8c74";
@@ -50,7 +50,19 @@ internal static class BattlefieldArt
                 mesh.Box(new(x, 1.04f, 4.28f), new(1.75f, 1.88f, 0.11f), "4c544e");
         }
 
+        if (relayRoof)
+            AddRelayMast(mesh);
         return mesh.Build();
+    }
+
+    private static void AddRelayMast(ArtMesh mesh)
+    {
+        mesh.Box(new Vector3(2.5f, 4.75f, -0.18f), new Vector3(1.42f, 0.24f, 0.96f), "6b6d63");
+        mesh.Box(new Vector3(2.5f, 5.27f, -0.18f), new Vector3(0.22f, 1.25f, 0.20f), "545c57");
+        for (var panel = -1; panel <= 1; panel++)
+            mesh.Box(new Vector3(2.5f + panel * 0.35f, 5.67f, -0.27f), new Vector3(0.22f, 0.48f, 0.16f),
+                new Color("9a9d8c"), new Basis(Vector3.Up, panel * 0.39f));
+        mesh.Box(new Vector3(2.50f, 5.61f, -0.24f), new Vector3(0.83f, 0.10f, 0.10f), "6f7668");
     }
 
     public static void Decorate(Node3D battlefield, Material surface)
@@ -58,6 +70,7 @@ internal static class BattlefieldArt
         var roadblock = battlefield.GetNode<MeshInstance3D>("Roadblock/Mesh");
         roadblock.Mesh = Depot();
         roadblock.MaterialOverride = surface;
+        DepotWayfinding.AddGroundMarkings(battlefield);
         var perimeter = new MeshInstance3D
         {
             Name = "PerimeterVegetation",
@@ -75,6 +88,7 @@ internal static class BattlefieldArt
         mesh.Box(new(0f, -1.27f, 0f), new(11.9f, 0.46f, 15.9f), "75756c");
         AddContainer(mesh, -2.92f, -2.9f, "69736a");
         AddContainer(mesh, 2.82f, 2.85f, "8b684d");
+        AddLoadingFrame(mesh);
         for (var i = -3; i <= 3; i++)
         {
             var x = i * 1.62f;
@@ -99,6 +113,29 @@ internal static class BattlefieldArt
             mesh.Box(new(2.05f + row * 1.1f, -0.76f, -5.03f), new(1.0f, 0.68f, 1.0f), "72694f");
         }
         return mesh.Build();
+    }
+
+    private static void AddLoadingFrame(ArtMesh mesh)
+    {
+        const float crossbar = 1.33f;
+        foreach (var sign in new[] { -1f, 1f })
+        {
+            var x = sign * 4.93f;
+            mesh.Box(new Vector3(x, -1.12f, 0.6f), new Vector3(0.75f, 0.21f, 2.02f), "575954");
+            mesh.Box(new Vector3(x, -0.02f, 0.6f), new Vector3(0.26f, 2.33f, 0.40f), "625b47");
+            foreach (var direction in new[] { -1f, 1f })
+                mesh.Box(new Vector3(x, -0.63f, direction * 0.66f + 0.6f), new Vector3(0.16f, 1.68f, 0.14f),
+                    new Color("746953"), new Basis(Vector3.Right, direction * 0.63f));
+            mesh.Box(new Vector3(x, -0.05f, 0.82f), new Vector3(0.28f, 0.96f, 0.06f), "a68c5c");
+        }
+
+        mesh.Box(new Vector3(0f, crossbar, 0.6f), new Vector3(10.35f, 0.32f, 0.52f), "977d4f");
+        for (var brace = -4; brace <= 4; brace++)
+            mesh.Box(new Vector3(brace * 1.13f, crossbar + 0.01f, 0.87f), new Vector3(0.22f, 0.20f, 0.038f), "676049");
+
+        mesh.Box(new Vector3(0f, crossbar - 0.20f, 0.6f), new Vector3(0.88f, 0.21f, 0.60f), "474942");
+        mesh.Box(new Vector3(0f, 0.82f, 0.6f), new Vector3(0.045f, 0.39f, 0.045f), "50504a");
+        mesh.Box(new Vector3(0f, 0.62f, 0.6f), new Vector3(0.30f, 0.17f, 0.24f), "79745d");
     }
 
     private static void AddContainer(ArtMesh mesh, float x, float z, string paint)
@@ -142,6 +179,8 @@ internal static class BattlefieldArt
             {
                 var offset = random.NextSingle() * 4.5f - 2.25f;
                 var p = point + (side < 2 ? Vector3.Back : Vector3.Right) * offset;
+                if (side < 2 && Mathf.Abs(p.Z) < 6.5f)
+                    continue;
                 var h = 2.2f + random.NextSingle() * 3.8f;
                 mesh.Cylinder(p + Vector3.Up * (h * 0.22f), new(0.22f, h * 0.45f, 0.22f), new Color("5c5746"));
                 mesh.Conifer(p + Vector3.Up * (h * 0.44f), new(h * 0.55f, h * 0.54f, h * 0.55f), foliage[cluster % 3]);
@@ -149,6 +188,25 @@ internal static class BattlefieldArt
                 mesh.Conifer(p + Vector3.Up * (h * 0.79f), new(h * 0.31f, h * 0.42f, h * 0.31f), foliage[cluster % 3]);
             }
         }
+        AddPerimeterGate(mesh, -61.8f);
+        AddPerimeterGate(mesh, 61.8f);
         return mesh.Build();
+    }
+
+    private static void AddPerimeterGate(ArtMesh mesh, float x)
+    {
+        foreach (var z in new[] { -4.15f, 4.15f })
+        {
+            mesh.Box(new Vector3(x, 0.24f, z), new Vector3(1.30f, 0.48f, 1.30f), "7d7b6f");
+            mesh.Box(new Vector3(x, 1.95f, z), new Vector3(0.31f, 3.53f, 0.34f), "63685f");
+            mesh.Box(new Vector3(x, 2.7f, z * 0.81f), new Vector3(0.17f, 1.77f, 0.16f),
+                new Color("72776a"), new Basis(Vector3.Right, Mathf.Sign(z) * 0.7f));
+        }
+
+        mesh.Box(new Vector3(x, 3.62f, 0f), new Vector3(0.36f, 0.28f, 8.57f), "747666");
+        mesh.Box(new Vector3(x, 3.55f, 0f), new Vector3(0.41f, 0.43f, 2.22f), "96875c");
+        for (var stripe = -1; stripe <= 1; stripe++)
+            mesh.Box(new Vector3(x - Mathf.Sign(x) * 0.22f, 3.56f, stripe * 0.60f),
+                new Vector3(0.047f, 0.30f, 0.21f), "605a46");
     }
 }
