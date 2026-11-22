@@ -93,6 +93,7 @@ shape = SubResource("BoxShape3D_ground")
 
 [node name="BlueHQ" type="StaticBody3D" parent="."]
 position = Vector3(-32, 0, 24)
+collision_layer = 6
 
 [node name="Collision" type="CollisionShape3D" parent="BlueHQ"]
 position = Vector3(0, 3, 0)
@@ -110,6 +111,7 @@ mesh = SubResource("BoxMesh_hq_roof")
 
 [node name="OrangeHQ" type="StaticBody3D" parent="."]
 position = Vector3(32, 0, -24)
+collision_layer = 6
 
 [node name="Collision" type="CollisionShape3D" parent="OrangeHQ"]
 position = Vector3(0, 3, 0)
@@ -133,6 +135,7 @@ position = Vector3(14, 0, 0)
 
 [node name="BlueBarracks" type="StaticBody3D" parent="."]
 position = Vector3(-32, 0, -24)
+collision_layer = 6
 
 [node name="Collision" type="CollisionShape3D" parent="BlueBarracks"]
 position = Vector3(0, 3, 0)
@@ -154,6 +157,7 @@ position = Vector3(-14, 0, 0)
 
 [node name="OrangeBarracks" type="StaticBody3D" parent="."]
 position = Vector3(32, 0, 24)
+collision_layer = 6
 
 [node name="Collision" type="CollisionShape3D" parent="OrangeBarracks"]
 position = Vector3(0, 3, 0)
@@ -175,6 +179,7 @@ position = Vector3(14, 0, 0)
 
 [node name="Roadblock" type="StaticBody3D" parent="."]
 position = Vector3(0, 1.5, 0)
+collision_layer = 5
 
 [node name="Collision" type="CollisionShape3D" parent="Roadblock"]
 shape = SubResource("BoxShape3D_roadblock")

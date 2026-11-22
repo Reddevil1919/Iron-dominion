@@ -1,0 +1,81 @@
+extends SceneTree
+
+const BATTLEFIELD := "res://Scenes/Battlefield.tscn"
+const PICKING_LAYER := 2
+const OBSTACLE_LAYER := 4
+
+
+func _initialize() -> void:
+	_run.call_deferred()
+
+
+func _run() -> void:
+	assert(change_scene_to_file(BATTLEFIELD) == OK, "Battlefield loads")
+	await scene_changed
+	root.size = Vector2i(1280, 720)
+	var region := current_scene.get_node("NavigationRegion") as NavigationRegion3D
+	NavigationServer3D.map_set_use_async_iterations(region.get_navigation_map(), false)
+	for tick in range(10):
+		await physics_frame
+		if NavigationServer3D.map_get_iteration_id(region.get_navigation_map()) > 0:
+			break
+	assert(NavigationServer3D.map_get_iteration_id(region.get_navigation_map()) > 0, "Navigation is ready")
+
+	var fog := current_scene.get_node("FogOfWar") as MeshInstance3D
+	var tank := current_scene.get_node("Units/Unit3") as StaticBody3D
+	var enemy := current_scene.get_node("Units/Unit4") as StaticBody3D
+	var enemy_tank := current_scene.get_node("Units/Unit6") as StaticBody3D
+	var headquarters := current_scene.get_node("OrangeHQ") as StaticBody3D
+	var camera := root.get_camera_3d()
+	var start := tank.global_position
+	assert(fog.visible and fog.material_override is ShaderMaterial, "The battlefield has a fog overlay")
+	assert(tank.visible and tank.get_node("HealthBar").is_visible_in_tree(), "Friendly visuals remain visible")
+	assert(not enemy_tank.visible, "The roadblock conceals an enemy tank within vision range")
+	assert(not enemy.visible and (enemy.collision_layer & PICKING_LAYER) == 0, "A distant enemy is hidden and unpickable")
+	assert(not enemy.get_node("HealthBar").is_visible_in_tree(), "A hidden enemy does not leave a health bar")
+	assert(not headquarters.visible and headquarters.collision_layer == OBSTACLE_LAYER,
+		"A hidden enemy building still blocks line of sight without being pickable")
+
+	await _click(camera.unproject_position(start + Vector3.UP), MOUSE_BUTTON_LEFT)
+	assert(tank.get_node("SelectionRing").visible, "A friendly scout can be selected")
+	await _click(camera.unproject_position(enemy.global_position + Vector3.UP), MOUSE_BUTTON_RIGHT)
+	assert(tank.global_position.distance_to(start) >= 0.1, "Clicking a hidden enemy orders a ground move")
+
+	var scout_position := Vector3(-8, 0, -25)
+	await _move_to(tank, camera, scout_position)
+	assert(enemy.visible and (enemy.collision_layer & PICKING_LAYER) != 0, "Scouting reveals and exposes the unit to picking")
+	assert(enemy_tank.visible and enemy.get_node("HealthBar").is_visible_in_tree(), "Scouting reveals enemy visuals")
+	assert(headquarters.visible and (headquarters.collision_layer & PICKING_LAYER) != 0, "The enemy base is revealed")
+
+	await _click(camera.unproject_position(enemy.global_position + Vector3.UP), MOUSE_BUTTON_RIGHT)
+	assert(tank.global_position.distance_to(scout_position) < 0.1, "A revealed enemy receives an attack order instead of a move")
+
+	await _move_to(tank, camera, start)
+	assert(not enemy.visible and (enemy.collision_layer & PICKING_LAYER) == 0, "Retreat removes the contact and picking shape")
+	assert(not enemy.get_node("HealthBar").is_visible_in_tree() and not headquarters.visible, "Retreat hides enemy models and bars again")
+
+	print("Fog of war smoke checks passed.")
+	quit()
+
+
+func _move_to(tank: Node3D, camera: Camera3D, point: Vector3) -> void:
+	await _click(camera.unproject_position(point), MOUSE_BUTTON_RIGHT)
+	for tick in range(400):
+		await physics_frame
+		if tank.global_position.distance_to(point) < 0.08:
+			return
+	assert(false, "The tank reaches the scouting waypoint")
+
+
+func _click(point: Vector2, button: MouseButton) -> void:
+	for pressed in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = button
+		event.position = point
+		event.global_position = point
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		Input.flush_buffered_events()
+		await process_frame
+	for tick in range(6):
+		await physics_frame

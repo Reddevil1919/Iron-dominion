@@ -88,7 +88,7 @@ internal sealed class BattlefieldNavigation : INavigationService
         return mesh;
     }
 
-    private static Aabb BoxBounds(CollisionShape3D collider)
+    internal static Aabb BoxBounds(CollisionShape3D collider)
     {
         var box = (BoxShape3D)collider.Shape;
         return collider.GlobalTransform * new Aabb(-box.Size / 2f, box.Size);

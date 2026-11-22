@@ -81,7 +81,9 @@ with `-- --passive-opponent` in the Debug game. The enemy AI smoke runs
 the default scene and observes the orange side train a tank, capture
 a sector and advance on the blue HQ. The HUD check verifies selection
 health, compact window layout, rejected orders and temporary shot traces.
-The lifecycle checks pause and resume through the UI, win by destroying
+The fog check scouts around the roadblock, reveals a unit and a building
+and hides them again on withdrawal. The lifecycle checks pause and resume
+through the UI, win by destroying
 the enemy HQ, restart from the result screen and confirm defeat against
 the active opponent.
 
@@ -166,6 +168,11 @@ Tanks and buildings take full damage.
 The orange commander trains reinforcements, claims neutral sectors
 and launches an attack once it has enough units. It responds to visible
 threats near its HQ.
+
+Move infantry or tanks forward to scout. A living unit can see enemies
+within 42 m along a clear line of sight. The map is darkest in unexplored
+areas and dims again once the scouts leave. Visible enemies can be targeted
+with a right-click. Sector ownership stays on the HUD.
 
 Destroy the orange HQ to win. If your HQ falls, the match ends in defeat.
 If both fall on the same simulation tick, the match is a draw. Press

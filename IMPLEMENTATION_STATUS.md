@@ -362,6 +362,29 @@ path. The runner verified Windows execution headlessly. Graphical metrics
 come from Mesa llvmpipe software rendering on Linux. Desktop FPS on Windows
 and the 60 FPS target on Windows hardware remain unmeasured.
 
+## RTS-016 fog of war
+
+Battlefield vision comes from living units within 42 m and respects the
+roadblock and buildings. Both sides use the same query for hostile contacts
+and attack order validation. The local view hides enemy actors, health bars
+and traces when a contact is lost. Hidden buildings remain solid obstacles.
+The map distinguishes visible, explored and unexplored terrain. Sector
+ownership is public and capture progress requires visibility of the sector.
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet build IronDominion.sln --configuration Release --no-restore` | Build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 116 xUnit cases passed, including AI visibility and deterministic replay. |
+| `scripts/validate-godot.sh` | Godot 4.6.3 .NET imported and launched the scene. All eleven headless scenarios passed. The new smoke checked obstacle occlusion, scouting, attack picking and lost contacts. |
+
+The Linux desktop displayed the fog with Mesa softpipe. Its default
+llvmpipe driver hit an illegal instruction in both the MVP and RTS-016.
+Windows graphical performance remains unmeasured.
+
+The 42 m sight radius is an initial gameplay value. The terrain uses a
+48 × 48 grid that refreshes up to five times per second. Unit and building
+visibility follows the authoritative contact query every tick.
+
 ## Next
 
-RTS-016 adds fog-of-war rendering.
+RTS-017 adds attack-move and hold position.
