@@ -334,6 +334,34 @@ Rendering and Windows execution were outside the headless validation.
 The Linux cloud run verified the Windows package contents. Windows
 playtesting remains under RTS-015.
 
+## RTS-015 Windows x64 package and performance
+
+The Windows release ZIP includes the executable, PCK, self-contained .NET
+runtime, launch instructions, license notices and the source commit. CI
+checks the ZIP checksum and runs the packaged executable twice on a native
+Windows Server 2025 x64 runner. First it loads the default battlefield.
+Then it runs a 50-unit benchmark for eight seconds after warm-up.
+
+The Release benchmark measures frame and fixed-tick times, navigation and
+memory at 50, 100 and 200 active units. The complete results, workload,
+cloud hardware and launch commands are in the [performance report](docs/09-PERFORMANCE.md).
+
+### Verification
+
+| Check | Observed result |
+| --- | --- |
+| `dotnet restore IronDominion.sln` and `dotnet build IronDominion.sln --configuration Release --no-restore` | Restore and Release build passed with 0 warnings and 0 errors. |
+| `dotnet test IronDominion.sln --configuration Release --no-build` | All 116 xUnit cases passed. |
+| `scripts/validate-godot.sh` | Godot 4.6.3 .NET imported and launched the Linux project headlessly. All ten smoke scenarios passed. |
+| Windows x64 build and native headless check | Exported, checksum-verified and launched the ZIP. The runner loaded the exported battlefield with the bundled runtime. The 50-unit check processed 160 simulation ticks and 100 path requests with zero rejected moves. |
+| T-015 on the Linux cloud desktop | The 50-unit graphical Release profile completed 300.06 seconds at 12.3 FPS with 6,002 simulation ticks and 3,800 path requests. The p95 simulation tick took 0.59 ms. |
+
+The first Windows CI attempt loaded the scene but the validator expected
+the editor scene path. The corrected check verifies Godot's exported scene
+path. The runner verified Windows execution headlessly. Graphical metrics
+come from Mesa llvmpipe software rendering on Linux. Desktop FPS on Windows
+and the 60 FPS target on Windows hardware remain unmeasured.
+
 ## Next
 
-RTS-015 adds the Windows build and performance profiling.
+RTS-016 adds fog-of-war rendering.

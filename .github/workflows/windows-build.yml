@@ -1,0 +1,62 @@
+name: Windows x64 Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Install pinned Godot .NET editor
+        run: |
+          godot_bin=$(scripts/install-godot-linux.sh "$RUNNER_TEMP/godot")
+          printf 'GODOT_BIN=%s\n' "$godot_bin" >> "$GITHUB_ENV"
+      - name: Export the self-contained Windows package
+        run: scripts/export-windows.sh "$RUNNER_TEMP/windows-package"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-package
+          path: ${{ runner.temp }}/windows-package/
+          if-no-files-found: error
+          compression-level: 0
+
+  smoke:
+    needs: export
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-x64-package
+          path: ${{ runner.temp }}/windows-package
+      - name: Launch the exported executable on Windows
+        shell: pwsh
+        run: |
+          $params = @{
+              ArtifactDirectory = "$env:RUNNER_TEMP/windows-package"
+              ReportDirectory = "$env:RUNNER_TEMP/windows-reports"
+              ExpectedCommit = (git rev-parse HEAD)
+          }
+          ./scripts/verify-windows.ps1 @params
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-x64-validation
+          path: ${{ runner.temp }}/windows-reports/
+          if-no-files-found: warn

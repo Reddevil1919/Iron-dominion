@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Godot;
 using IronDominion.AI;
 using IronDominion.Application;
@@ -26,6 +27,8 @@ public partial class Battlefield : Node3D
     private BattlefieldFeedback? _feedback;
     private MatchMenu? _matchMenu;
     private GameSession? _session;
+    private BattlefieldBenchmark? _benchmark;
+    private BattlefieldNavigation? _navigation;
     private EnemyCommander? _enemyCommander;
     private PlayerCommands? _enemyCommands;
 
@@ -35,7 +38,9 @@ public partial class Battlefield : Node3D
         {
             var configuration = GameConfigurationLoader.LoadDefault();
             Engine.PhysicsTicksPerSecond = configuration.TickRate;
-            SetUpUnits(configuration);
+            var benchmark = BenchmarkOptions.Parse(OS.GetCmdlineUserArgs());
+            SetUpUnits(configuration, benchmark);
+            SetProcess(benchmark is not null);
         }
         catch (InvalidDataException exception)
         {
@@ -45,19 +50,22 @@ public partial class Battlefield : Node3D
         }
     }
 
-    private void SetUpUnits(GameConfiguration configuration)
+    private void SetUpUnits(GameConfiguration configuration, BenchmarkOptions? benchmark)
     {
         var infantry = configuration.Units.Single(unit => unit.Kind == UnitKind.InfantrySquad);
         var tank = configuration.Units.Single(unit => unit.Kind == UnitKind.Tank);
-        Unit[] units =
-        [
-            CreateUnit(1, LocalPlayer, infantry, -20, 18),
-            CreateUnit(2, LocalPlayer, infantry, -15, 29),
-            CreateUnit(3, LocalPlayer, tank, -17, 7),
-            CreateUnit(4, Opponent, infantry, 20, -18),
-            CreateUnit(5, Opponent, infantry, 15, -29),
-            CreateUnit(6, Opponent, tank, 17, -7)
-        ];
+        Unit[] units = benchmark is null
+            ? [
+                CreateUnit(1, LocalPlayer, infantry, -20, 18),
+                CreateUnit(2, LocalPlayer, infantry, -15, 29),
+                CreateUnit(3, LocalPlayer, tank, -17, 7),
+                CreateUnit(4, Opponent, infantry, 20, -18),
+                CreateUnit(5, Opponent, infantry, 15, -29),
+                CreateUnit(6, Opponent, tank, 17, -7)
+            ]
+            : BattlefieldBenchmark.CreateRoster(benchmark, LocalPlayer, Opponent);
+        if (benchmark is not null)
+            _benchmark = new BattlefieldBenchmark(benchmark, units);
         _teamMaterials.Add(LocalPlayer, new StandardMaterial3D { AlbedoColor = new Color("3da9fc") });
         _teamMaterials.Add(Opponent, new StandardMaterial3D { AlbedoColor = new Color("f7793c") });
         foreach (var unit in units)
@@ -79,6 +87,7 @@ public partial class Battlefield : Node3D
         var navigation = new BattlefieldNavigation(_navigationRegion, ground.GetNode<CollisionShape3D>("GroundCollision"),
             _buildings.Values.Select(body => body.GetNode<CollisionShape3D>("Collision"))
                 .Append(GetNode<CollisionShape3D>("Roadblock/Collision")).ToArray());
+        _navigation = navigation;
         var sight = new BattlefieldSight(GetWorld3D(), ground.CollisionLayer, _buildings);
         var session = new GameSession(world, configuration, navigation, sight);
         _session = session;
@@ -89,7 +98,7 @@ public partial class Battlefield : Node3D
         AddChild(menuLayer);
         menuLayer.AddChild(menu);
 
-        if (!OS.IsDebugBuild() || !OS.GetCmdlineUserArgs().Contains("--passive-opponent"))
+        if (benchmark is null && (!OS.IsDebugBuild() || !OS.GetCmdlineUserArgs().Contains("--passive-opponent")))
         {
             _enemyCommander = new EnemyCommander(configuration);
             _enemyCommands = session.Commands.ForPlayer(Opponent);
@@ -152,7 +161,10 @@ public partial class Battlefield : Node3D
         if (_session is not { } session)
             return;
 
+        _benchmark?.ScheduleOrders(session);
+        var startedAt = _benchmark is null ? 0 : Stopwatch.GetTimestamp();
         var events = session.AdvanceOneTick();
+        _benchmark?.RecordTick(startedAt, events);
         if (session.World.Result == MatchResult.Running
             && _enemyCommander is { } commander && _enemyCommands is { } commands
             && EnemyCommander.IsDecisionTick(session.World.Tick))
@@ -190,6 +202,25 @@ public partial class Battlefield : Node3D
         if (session.World.Result != MatchResult.Running)
             _matchMenu?.ShowOutcome(session.World.Result);
     }
+
+    public override void _Process(double delta)
+    {
+        if (_benchmark is null || _navigation is null)
+            return;
+
+        try
+        {
+            if (_benchmark.RecordFrame(_views.Count, _navigation.PathRequests))
+                GetTree().Quit();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            GD.PushError(exception.Message);
+            GetTree().Quit(1);
+        }
+    }
+
+    public override void _ExitTree() => _benchmark?.Dispose();
 
     private Vector3? FindActorPosition(EntityId id, IReadOnlyWorld world)
     {
