@@ -11,8 +11,7 @@ public partial class UnitView : StaticBody3D
     private MeshInstance3D _ring = null!;
     private Label3D? _coverIndicator;
     private InfantryMotion? _infantry;
-    private MeshInstance3D? _gun;
-    private MeshInstance3D? _turret;
+    private TankMotion? _tank;
     private Node3D _model = null!;
     private float _movementHeading;
     private float _aimHeading;
@@ -24,9 +23,8 @@ public partial class UnitView : StaticBody3D
     public UnitKind Kind { get; private set; }
     public PlayerId Player { get; private set; }
 
-    public Vector3 ShotOrigin => _gun is { } gun
-        ? gun.ToGlobal(new Vector3(0f, 0f, -2.70f))
-        : _infantry!.Muzzle;
+    public Vector3 ShotOrigin => _tank?.Muzzle ?? _infantry!.Muzzle;
+    public Vector3 RearTrack => _model.ToGlobal(new Vector3(0f, 0.07f, 2.15f));
 
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;
 
@@ -69,7 +67,7 @@ public partial class UnitView : StaticBody3D
         view._model = new Node3D { Name = "Model", Rotation = new Vector3(0f, heading, 0f) };
         view.AddChild(view._model);
         if (tank)
-            view.AddTank(art);
+            view._tank = new TankMotion(view._model, art.Tank);
         else
             view.AddInfantry(art);
 
@@ -78,14 +76,18 @@ public partial class UnitView : StaticBody3D
 
     public void ShowSelection(bool selected) => _ring.Visible = selected;
 
-    public void ApplyPosition(Vector3 position, float tickRate)
+    public float ApplyPosition(Vector3 position, float tickRate)
     {
         var step = position - Position;
-        _speed = step.Length() * tickRate;
+        var distance = step.Length();
+        _speed = distance * tickRate;
         if (_speed > 0.05f)
             _movementHeading = Heading(step);
         Position = position;
+        return distance;
     }
+
+    public bool AdvanceDust(float distance) => _tank?.AdvanceDust(distance) ?? false;
 
     public void PlayShot(Vector3 origin, Vector3 target)
     {
@@ -95,16 +97,13 @@ public partial class UnitView : StaticBody3D
 
         _aimHeading = Heading(direction);
         _shotTime = 0.48f;
-        if (_turret is null)
+        if (_tank is null)
         {
             if (_speed < 0.05f)
                 _movementHeading = _aimHeading;
         }
         else
-        {
-            _turret.Rotation = new Vector3(0f, _aimHeading - _model.Rotation.Y, 0f);
-            _gun!.Position = new Vector3(0f, 0.38f, -0.83f);
-        }
+            _tank.Fire(_model.Rotation.Y, _aimHeading);
     }
 
     public override void _Process(double delta)
@@ -115,15 +114,13 @@ public partial class UnitView : StaticBody3D
         var seconds = (float)delta;
         var aiming = _shotTime > 0f;
         var recoil = Mathf.Clamp((_shotTime - 0.27f) / 0.21f, 0f, 1f);
-        var heading = _turret is null && aiming ? _aimHeading : _movementHeading;
+        var desiredHeading = _tank is null && aiming ? _aimHeading : _movementHeading;
+        var previousHeading = _model.Rotation.Y;
         var turn = 1f - Mathf.Exp(-seconds * 11f);
-        _model.Rotation = new Vector3(0f, Mathf.LerpAngle(_model.Rotation.Y, heading, turn), 0f);
-        if (_turret is { } turret && _gun is { } gun)
-        {
-            var targetAngle = aiming ? _aimHeading - _model.Rotation.Y : 0f;
-            turret.Rotation = new Vector3(0f, Mathf.LerpAngle(turret.Rotation.Y, targetAngle, turn), 0f);
-            gun.Position = new Vector3(0f, 0.38f, -1.12f + recoil * 0.29f);
-        }
+        var heading = Mathf.LerpAngle(previousHeading, desiredHeading, turn);
+        _model.Rotation = new Vector3(0f, heading, 0f);
+        if (_tank is { } tank)
+            tank.Update(seconds, _speed, previousHeading, heading, aiming ? _aimHeading : null, recoil);
         else
             _infantry?.Update(seconds, _speed, aiming, recoil, _suppressed);
         _shotTime = Mathf.Max(0f, _shotTime - seconds);
@@ -152,20 +149,7 @@ public partial class UnitView : StaticBody3D
         indicator.Modulate = suppressed ? HudStyle.Red : HudStyle.Amber;
     }
 
-    private void AddTank(UnitArt art)
-    {
-        _model.AddChild(new MeshInstance3D { Name = "TracksAndHull", Mesh = art.TankHull });
-        _turret = new MeshInstance3D
-        {
-            Name = "Turret", Mesh = art.TankTurret, Position = Vector3.Up * 1.43f
-        };
-        _gun = new MeshInstance3D
-        {
-            Name = "Gun", Mesh = art.TankGun, Position = new Vector3(0f, 0.38f, -1.12f)
-        };
-        _model.AddChild(_turret);
-        _turret.AddChild(_gun);
-    }
+    public override void _ExitTree() => _tank?.Dispose();
 
     private void AddInfantry(UnitArt art)
     {

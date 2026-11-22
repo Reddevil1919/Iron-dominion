@@ -486,7 +486,22 @@ See [Contemporary art direction](docs/10-ART-DIRECTION.md).
 | Godot headless | All 13 scenarios passed. The updated cover scenario checks skin binds, alternating stance and swing, gear raised during combat and a lowered torso under suppression. |
 | Linux desktop | Checked the weighted model in the playable depot at tactical zoom and in close-up, with Mesa softpipe. Native hardware presentation performance still needs measurement. |
 
+## Tracked armor and combat effects
+
+The two track belts advance by distance and turn. The suspended armor
+rocks on starts and stops, and retains independent turret traverse and
+barrel recoil. Armor panels use a weathered paint finish. Visible shots
+add short muzzle and impact bursts. A moving tank leaves brief ground
+dust. The effects are limited in count and exist in the presentation.
+
+| Check | Observed result |
+| --- | --- |
+| Release build and xUnit | Zero build warnings and errors. All 145 tests passed. |
+| Godot headless | All 13 scenarios passed. Movement checks track phases, suspension and dust expiry. Combat checks recoil and the burst lifetime. |
+| Linux desktop | Rendered the moving tank with dust and the tank firing at an opposing squad in the playable depot. The cloud rendered with Mesa softpipe. Graphical frame rates on Windows hardware remain unmeasured. |
+
 ## Next
 
-Continue the contemporary art pass with the tracked vehicle and combat
-effects. RTS-020 remains in the backlog.
+Continue the contemporary art pass with depot landmarks, ground markings
+and clearer identification of sectors and cover. RTS-020 remains in the
+backlog.
