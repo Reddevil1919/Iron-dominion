@@ -466,7 +466,7 @@ silhouettes, motion and remaining close-up production work.
 | --- | --- |
 | Release build and xUnit | Build passed with zero warnings and errors. All 145 tests passed. |
 | Godot headless | All 13 scenarios passed for the art pass. The combat scenario now checks independent turret rotation, gun recoil and recovery through normal combat. |
-| Linux desktop | Inspected the overview and tactical close-up in Godot on Mesa softpipe. Native hardware frame rates still need measurement. |
+| Linux desktop | Inspected the overview and tactical close-up in Godot on Mesa softpipe and checked that the infantry foot transforms change during a real movement order. Native hardware frame rates still need measurement. |
 
 ## Next
 

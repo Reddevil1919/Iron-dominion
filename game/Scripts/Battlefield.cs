@@ -98,7 +98,7 @@ public partial class Battlefield : Node3D
         var sight = new BattlefieldSight(GetWorld3D(), _buildings);
         var fog = new BattlefieldFog(this, BattlefieldNavigation.BoxBounds(groundCollision), sight);
         _fog = fog;
-        BattlefieldArt.Decorate(this, fog.CreateSceneryMaterial());
+        BattlefieldArt.Decorate(this, fog.SceneryMaterial);
         var session = new GameSession(world, configuration, navigation, sight);
         _session = session;
         var menuLayer = new CanvasLayer { Name = "MatchMenuLayer", Layer = 2, ProcessMode = ProcessModeEnum.Always };
@@ -258,7 +258,11 @@ public partial class Battlefield : Node3D
         }
     }
 
-    public override void _ExitTree() => _benchmark?.Dispose();
+    public override void _ExitTree()
+    {
+        _benchmark?.Dispose();
+        _fog?.Dispose();
+    }
 
     private Vector3? FindActorPosition(EntityId id, IReadOnlyWorld world)
     {

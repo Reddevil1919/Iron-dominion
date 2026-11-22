@@ -56,7 +56,7 @@ internal sealed class ArtMesh
 
     public ArrayMesh Build()
     {
-        var arrays = new Godot.Collections.Array();
+        using var arrays = new Godot.Collections.Array();
         arrays.Resize((int)Mesh.ArrayType.Max);
         arrays[(int)Mesh.ArrayType.Vertex] = _vertices.ToArray();
         arrays[(int)Mesh.ArrayType.Normal] = _normals.ToArray();
@@ -73,10 +73,13 @@ internal sealed class ArtMesh
     {
         public static Geometry From(PrimitiveMesh mesh)
         {
-            using var arrays = mesh.GetMeshArrays();
-            return new Geometry(arrays[(int)Mesh.ArrayType.Vertex].AsVector3Array(),
-                arrays[(int)Mesh.ArrayType.Normal].AsVector3Array(),
-                arrays[(int)Mesh.ArrayType.Index].AsInt32Array());
+            using (mesh)
+            {
+                using var arrays = mesh.GetMeshArrays();
+                return new Geometry(arrays[(int)Mesh.ArrayType.Vertex].AsVector3Array(),
+                    arrays[(int)Mesh.ArrayType.Normal].AsVector3Array(),
+                    arrays[(int)Mesh.ArrayType.Index].AsInt32Array());
+            }
         }
     }
 }

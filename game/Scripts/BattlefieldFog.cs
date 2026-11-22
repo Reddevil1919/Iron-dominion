@@ -3,7 +3,7 @@ using IronDominion.Domain;
 
 namespace IronDominion.Game;
 
-internal sealed class BattlefieldFog
+internal sealed class BattlefieldFog : IDisposable
 {
     private const int Resolution = 48;
     private const int MaskIntervalTicks = 4;
@@ -13,6 +13,8 @@ internal sealed class BattlefieldFog
     private readonly HashSet<EntityId> _visibleActors = new();
     private readonly BattlefieldSight _sight;
     private readonly ImageTexture _texture;
+    private readonly ShaderMaterial _overlay;
+    public ShaderMaterial SceneryMaterial { get; }
     private readonly Vector2 _origin;
     private readonly Vector2 _size;
     private readonly Vector2 _cellSize;
@@ -28,29 +30,34 @@ internal sealed class BattlefieldFog
         using var image = CreateImage();
         _texture = ImageTexture.CreateFromImage(image);
         var center = floor.GetCenter();
-        var material = new ShaderMaterial
+        _overlay = new ShaderMaterial
         {
             Shader = GD.Load<Shader>("res://Shaders/battlefield_fog.gdshader"),
             RenderPriority = -1
         };
-        material.SetShaderParameter("visibility_mask", _texture);
+        _overlay.SetShaderParameter("visibility_mask", _texture);
         battlefield.AddChild(new MeshInstance3D
         {
             Name = "FogOfWar",
             Position = new Vector3(center.X, floor.End.Y + 0.08f, center.Z),
             Mesh = new PlaneMesh { Size = _size },
-            MaterialOverride = material,
+            MaterialOverride = _overlay,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         });
+        SceneryMaterial = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/depot_scenery.gdshader") };
+        SceneryMaterial.SetShaderParameter("visibility_mask", _texture);
+        SceneryMaterial.SetShaderParameter("floor_origin", _origin);
+        SceneryMaterial.SetShaderParameter("floor_size", _size);
     }
 
-    public Material CreateSceneryMaterial()
+    public void Dispose()
     {
-        var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/depot_scenery.gdshader") };
-        material.SetShaderParameter("visibility_mask", _texture);
-        material.SetShaderParameter("floor_origin", _origin);
-        material.SetShaderParameter("floor_size", _size);
-        return material;
+        // Release both references while the renderer still exists, including in headless runs.
+        _overlay.SetShaderParameter("visibility_mask", default);
+        SceneryMaterial.SetShaderParameter("visibility_mask", default);
+        _overlay.Dispose();
+        SceneryMaterial.Dispose();
+        _texture.Dispose();
     }
 
     public IReadOnlySet<EntityId> VisibleActors => _visibleActors;
