@@ -111,9 +111,16 @@ public partial class Battlefield : Node3D
         var selection = new UnitSelection(LocalPlayer, id => session.World.LivingUnitOwner(id));
         var feedback = new BattlefieldFeedback(this, canvas);
         _feedback = feedback;
-        _selectionPanel = new SelectionPanel(canvas, selection, configuration);
+        _selectionPanel = new SelectionPanel(canvas, selection, configuration, _unitSelection);
         _unitSelection.Initialize(selection, _views, ground,
-            (selected, destination) => session.Commands.ScheduleMove(LocalPlayer, selected, destination),
+            (selected, destination, attackMove) =>
+            {
+                if (attackMove)
+                    session.Commands.ScheduleAttackMove(LocalPlayer, selected, destination);
+                else
+                    session.Commands.ScheduleMove(LocalPlayer, selected, destination);
+            },
+            selected => session.Commands.ScheduleHoldPosition(LocalPlayer, selected),
             actor => actor switch
             {
                 UnitView view when view.Player == Opponent && fog.VisibleActors.Contains(view.Id) => view.Id,

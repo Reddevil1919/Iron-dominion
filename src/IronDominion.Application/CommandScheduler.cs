@@ -20,6 +20,19 @@ public sealed class CommandScheduler
         return Schedule(player, executeAtTick, (tick, sequence) => new MoveCommand(player, tick, sequence, units, destination));
     }
 
+    public MoveCommand ScheduleAttackMove(PlayerId player, IReadOnlyList<EntityId> units, SimVector destination,
+        long? executeAtTick = null)
+    {
+        return Schedule(player, executeAtTick,
+            (tick, sequence) => new MoveCommand(player, tick, sequence, units, destination, attackMove: true));
+    }
+
+    public HoldPositionCommand ScheduleHoldPosition(PlayerId player, IReadOnlyList<EntityId> units,
+        long? executeAtTick = null)
+    {
+        return Schedule(player, executeAtTick, (tick, sequence) => new HoldPositionCommand(player, tick, sequence, units));
+    }
+
     public AttackCommand ScheduleAttack(PlayerId player, IReadOnlyList<EntityId> units, EntityId target,
         long? executeAtTick = null)
     {

@@ -204,6 +204,106 @@ public sealed class UnitCombatTests
         Assert.False(match.World.HasCover(First));
     }
 
+    [Fact]
+    public void AttackMoveAdvancesToRangeWaitsThroughCooldownThenResumesAfterDestruction()
+    {
+        var destination = new SimVector(24, 0);
+        var match = Match(new Sight(), Tank(First, Blue, 0),
+            new Building(Second, Orange, new SimVector(18, 0), BuildingKind.Barracks, 90));
+        match.Schedule(new MoveCommand(Blue, 1, 1, [First], destination, attackMove: true));
+
+        for (var i = 0; i < 20 && HitPoints(match.World, Second) == 90; i++)
+            match.Tick();
+
+        Assert.Equal(45, HitPoints(match.World, Second));
+        var engagement = Position(match, First);
+        Assert.InRange(engagement.X, 2f, 2.16f);
+        for (var i = 0; i < 39; i++)
+        {
+            Assert.Empty(match.Tick().OfType<ShotFired>());
+            Assert.Equal(engagement, Position(match, First));
+        }
+
+        Assert.Single(match.Tick().OfType<EntityDestroyed>());
+        Assert.Equal(engagement, Position(match, First));
+        match.Tick();
+        Assert.True(Position(match, First).X > engagement.X);
+        for (var i = 0; i < 160; i++)
+            match.Tick();
+        Assert.Equal(destination, Position(match, First));
+    }
+
+    [Fact]
+    public void AttackMovePausesOnlyWhileItHasAnUnobstructedTarget()
+    {
+        var sight = new Sight { Clear = false };
+        var match = Match(sight, Tank(First, Blue, 0),
+            new Building(Second, Orange, new SimVector(8, 0), BuildingKind.Barracks, 700));
+        match.Schedule(new MoveCommand(Blue, 1, 1, [First], new SimVector(10, 0), attackMove: true));
+
+        Assert.Empty(match.Tick().OfType<ShotFired>());
+        var beforeContact = Position(match, First);
+        Assert.True(beforeContact.X > 0);
+        sight.Clear = true;
+        Assert.Single(match.Tick().OfType<ShotFired>());
+        Assert.Equal(beforeContact, Position(match, First));
+
+        sight.Clear = false;
+        Assert.Empty(match.Tick().OfType<ShotFired>());
+        Assert.True(Position(match, First).X > beforeContact.X);
+    }
+
+    [Fact]
+    public void HoldPositionCancelsAnEngagedAttackMoveAndKeepsAutomaticFire()
+    {
+        var sight = new Sight { Clear = false };
+        var match = Match(sight, Tank(First, Blue, 0),
+            new Building(Second, Orange, new SimVector(8, 0), BuildingKind.Barracks, 700));
+        match.Schedule(new MoveCommand(Blue, 1, 1, [First], new SimVector(10, 0), attackMove: true));
+        match.Tick();
+        var held = Position(match, First);
+        sight.Clear = true;
+        Assert.Single(match.Tick().OfType<ShotFired>());
+
+        match.Schedule(new HoldPositionCommand(Blue, 3, 2, [First]));
+        Assert.True(Assert.Single(match.Tick().OfType<CommandProcessed>()).Result.Accepted);
+        sight.Clear = false;
+        for (var i = 0; i < 38; i++)
+        {
+            match.Tick();
+            Assert.Equal(held, Position(match, First));
+        }
+        sight.Clear = true;
+        Assert.Single(match.Tick().OfType<ShotFired>());
+        Assert.Equal(held, Position(match, First));
+
+        match.Schedule(new MoveCommand(Blue, 43, 3, [First], new SimVector(10, 0)));
+        match.Tick();
+        Assert.True(Position(match, First).X > held.X);
+    }
+
+    [Fact]
+    public void HoldPositionReleasesFocusAndReturnsToNearestTarget()
+    {
+        var match = Match(new Sight(), Tank(First, Blue, 0),
+            new Building(Second, Orange, new SimVector(2, 0), BuildingKind.Barracks, 700),
+            new Building(Third, Orange, new SimVector(8, 0), BuildingKind.Barracks, 700));
+        match.Schedule(new AttackCommand(Blue, 1, 1, [First], Third));
+        Assert.Equal(Third, Assert.Single(match.Tick().OfType<ShotFired>()).Target);
+
+        match.Schedule(new HoldPositionCommand(Blue, 2, 2, [First]));
+        for (var i = 0; i < 39; i++)
+            match.Tick();
+        Assert.Equal(Second, Assert.Single(match.Tick().OfType<ShotFired>()).Target);
+        Assert.Equal(default, Position(match, First));
+    }
+
+    private static SimVector Position(GameSimulation match, EntityId id)
+    {
+        Assert.True(match.World.TryGetUnitPosition(id, out var position));
+        return position;
+    }
+
     private static readonly CoverZone CentralCover = new(new SimVector(-2, -2), new SimVector(2, 2));
 
     private static Unit Infantry(EntityId id, PlayerId player, float x, int hp = 400) =>

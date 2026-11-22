@@ -125,6 +125,11 @@ public sealed class GameSimulation : IGameSimulation
                     if (result.Accepted)
                         _combat?.CancelOrders(move.Units);
                 }
+                else if (command is HoldPositionCommand hold)
+                {
+                    _movement.Stop(hold.Units);
+                    _combat?.CancelOrders(hold.Units);
+                }
                 else if (command is AttackCommand attack && _combat is not null)
                 {
                     result = _combat.OrderAttack(attack, _movement.Positions);
@@ -140,7 +145,7 @@ public sealed class GameSimulation : IGameSimulation
             events.Add(new CommandProcessed(tick, command, result));
         }
 
-        _movement?.Advance();
+        _movement?.Advance(_combat);
         if (_combat is not null && _movement is not null)
         {
             events ??= new List<IGameEvent>();

@@ -69,6 +69,38 @@ public sealed class GoldenMatchTests(ITestOutputHelper output)
         output.WriteLine($"Both replays matched all {live.Trace.Frames.Count} frames ({live.Trace.Digest}).");
     }
 
+    [Fact]
+    public void TacticalOrdersRoundTripAndReplayInReverseArrivalOrder()
+    {
+        const int ticks = 50;
+        var battlefield = new GoldenBattlefield(Seed);
+        var initial = CreateWorld();
+        var session = new GameSession(initial, Configuration, battlefield, battlefield);
+        var selected = new[] { BlueTank };
+        session.Commands.ScheduleAttackMove(Blue, selected, AcrossWall);
+        session.Commands.ScheduleHoldPosition(Blue, selected, 35);
+        selected[0] = OrangeTank;
+
+        var trace = new ReplayTrace(initial);
+        trace.Add(session.World, []);
+        var orders = new List<RecordedOrder>();
+        while (session.World.Tick < ticks)
+        {
+            var events = session.AdvanceOneTick();
+            trace.Add(session.World, events);
+            foreach (var order in events.OfType<CommandProcessed>())
+            {
+                Assert.True(order.Result.Accepted);
+                orders.Add(RecordedOrder.Capture(order.Command));
+            }
+        }
+
+        Assert.Equal([OrderKind.AttackMove, OrderKind.HoldPosition], orders.Select(order => order.Kind));
+        var json = JsonSerializer.Serialize(new ReplayRecording(Configuration.SchemaVersion, Seed, orders.ToArray()));
+        var recording = Assert.IsType<ReplayRecording>(JsonSerializer.Deserialize<ReplayRecording>(json));
+        AssertSameTimeline(trace, Replay(recording, recording.Orders.Reverse(), ticks), "reverse tactical arrival");
+    }
+
     private static GoldenRun PlayGoldenMatch()
     {
         var battlefield = new GoldenBattlefield(Seed);
@@ -145,7 +177,7 @@ public sealed class GoldenMatchTests(ITestOutputHelper output)
         return new GoldenRun(session, trace, events, new ReplayRecording(Configuration.SchemaVersion, Seed, orders.ToArray()));
     }
 
-    private static ReplayTrace Replay(ReplayRecording recording, IEnumerable<RecordedOrder> orders)
+    private static ReplayTrace Replay(ReplayRecording recording, IEnumerable<RecordedOrder> orders, int tickLimit = TickLimit)
     {
         var battlefield = new GoldenBattlefield(recording.Seed);
         var initial = CreateWorld();
@@ -155,7 +187,7 @@ public sealed class GoldenMatchTests(ITestOutputHelper output)
         foreach (var order in orders)
             simulation.Schedule(order.Restore());
 
-        while (simulation.World.Tick < TickLimit && simulation.World.Result == MatchResult.Running)
+        while (simulation.World.Tick < tickLimit && simulation.World.Result == MatchResult.Running)
         {
             var events = simulation.Tick();
             trace.Add(simulation.World, events);

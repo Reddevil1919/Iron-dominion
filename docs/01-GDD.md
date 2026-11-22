@@ -13,7 +13,7 @@ Scout → capture sectors → gain credits → build/produce → maneuver behind
 Two symmetric factions; 128×128m arena, three neutral sectors, each player has one HQ, one barracks, two infantry squads and one tank. Starting credits: 500. HQ destruction ends match; draw if both HQs die in the same combat resolution tick. Pause/restart supported.
 
 ## Player interactions
-Left click selects entity; drag selects units; Shift adds/removes; Ctrl+1–9 assigns control groups; right-click ground moves; right-click visible enemy attacks; A then click gives attack-move; S stops; H holds position; B opens construction menu. Orders can be queued with Shift after MVP.
+Left click selects entity; drag selects units; Shift adds/removes; Ctrl+1–9 assigns control groups; right-click ground moves; right-click visible enemy attacks; Shift+A then a ground click gives attack-move; S stops; H holds position; B opens construction menu. Orders can be queued with Shift after MVP.
 
 ## Units
 - Infantry squad: 4 soldiers rendered together, **one gameplay entity** with shared HP (400), speed 4m/s, range 12m, 10 damage/shot, 1 shot/s, 100 credits, 8s training. Benefits from cover.
