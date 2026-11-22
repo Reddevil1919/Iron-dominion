@@ -14,6 +14,7 @@ internal sealed class BattlefieldFog
     private readonly BattlefieldSight _sight;
     private readonly ImageTexture _texture;
     private readonly Vector2 _origin;
+    private readonly Vector2 _size;
     private readonly Vector2 _cellSize;
     private SimVector[] _lastPositions = [];
     private long _lastMaskTick = -MaskIntervalTicks;
@@ -22,8 +23,8 @@ internal sealed class BattlefieldFog
     {
         _sight = sight;
         _origin = new Vector2(floor.Position.X, floor.Position.Z);
-        var size = new Vector2(floor.Size.X, floor.Size.Z);
-        _cellSize = size / Resolution;
+        _size = new Vector2(floor.Size.X, floor.Size.Z);
+        _cellSize = _size / Resolution;
         using var image = CreateImage();
         _texture = ImageTexture.CreateFromImage(image);
         var center = floor.GetCenter();
@@ -37,10 +38,19 @@ internal sealed class BattlefieldFog
         {
             Name = "FogOfWar",
             Position = new Vector3(center.X, floor.End.Y + 0.08f, center.Z),
-            Mesh = new PlaneMesh { Size = size },
+            Mesh = new PlaneMesh { Size = _size },
             MaterialOverride = material,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         });
+    }
+
+    public Material CreateSceneryMaterial()
+    {
+        var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/depot_scenery.gdshader") };
+        material.SetShaderParameter("visibility_mask", _texture);
+        material.SetShaderParameter("floor_origin", _origin);
+        material.SetShaderParameter("floor_size", _size);
+        return material;
     }
 
     public IReadOnlySet<EntityId> VisibleActors => _visibleActors;

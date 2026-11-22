@@ -1,7 +1,7 @@
 # Game Design Document (GDD) — v0.1
 
 ## Vision and pillars
-Iron Dominion is an original near-future military RTS. **Pillars:** (1) meaningful base/economic choices, (2) squad-level tactical positioning, (3) clear counterplay and readable information, (4) responsive controls.
+Iron Dominion is an original contemporary military RTS. **Pillars:** (1) meaningful base/economic choices, (2) squad-level tactical positioning, (3) clear counterplay and readable information, (4) responsive controls.
 
 ## Audience, platform, camera
 PC Windows, keyboard/mouse, single-player. Isometric 3D camera with edge/WASD pan, wheel zoom, optional Q/E rotation. 15–25 minute match aspiration.
@@ -37,7 +37,7 @@ are future work. Line of sight blocked by marked solid obstacles; shots require 
 Rules/utility hybrid: produce units when affordable, capture nearest neutral sector, defend HQ when threatened, attack enemy HQ when force threshold met. Decision every 40 ticks. AI must respect fog-of-war visibility.
 
 ## Presentation
-Prototype uses primitive meshes and original placeholder icons. Feedback: selection ring, health bars, attack effects, capture progress, build queue, economy, end-game overlay. Sounds optional for MVP.
+The first art pass depicts a contemporary logistics depot and fictional forces. The [art direction](10-ART-DIRECTION.md) describes the battlefield, unit silhouettes and movement. Feedback: selection ring, health bars, attack effects, capture progress, build queue, economy, end-game overlay. Sounds optional for MVP.
 
 ## Explicit exclusions
 Online multiplayer, aircraft, naval units, tech tree, hero abilities, physics destruction, realistic ballistics, advanced formations, procedural campaigns, monetization, historical factions.

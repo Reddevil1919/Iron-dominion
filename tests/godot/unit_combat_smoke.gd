@@ -25,7 +25,11 @@ func _run() -> void:
 	var orange := current_scene.get_node("Units/Unit4") as Node3D
 	var orange_tank := current_scene.get_node("Units/Unit6") as Node3D
 	assert(orange.get_node("HealthBar") is Sprite3D, "The target has a health bar")
+	var hull := blue.get_node("Model") as Node3D
+	var turret := hull.get_node("Turret") as Node3D
+	var gun := turret.get_node("Gun") as Node3D
 	var initial := blue.global_position
+	var gun_rest := gun.position.z
 	await _click(camera.unproject_position(initial + Vector3.UP), MOUSE_BUTTON_LEFT)
 
 	var firing_position := Vector3(17.0, 0.0, -3.0)
@@ -37,10 +41,18 @@ func _run() -> void:
 	assert(blue.global_position.distance_to(firing_position) < 0.08, "The tank reaches firing range")
 
 	await _click(camera.unproject_position(orange.global_position + Vector3.UP), MOUSE_BUTTON_RIGHT)
+	var recoiled := false
+	var aimed := false
+	var recovered := false
 	for tick in range(390):
 		await physics_frame
+		recoiled = recoiled or gun.position.z > gun_rest + 0.08
+		aimed = aimed or abs(angle_difference(0.0, turret.rotation.y)) > 0.20
+		recovered = recovered or (recoiled and is_equal_approx(gun.position.z, gun_rest))
 		if not is_instance_valid(orange):
 			break
+	assert(recoiled and recovered, "The tank's gun recoils and returns after firing")
+	assert(aimed, "The turret can turn independently of its hull")
 	assert(not is_instance_valid(orange), "The ordered infantry target is destroyed and removed")
 	assert(is_instance_valid(orange_tank), "The closer tank remains alive after the focused attack")
 	assert(is_instance_valid(blue), "The attacking tank survives the test")
