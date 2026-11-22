@@ -20,11 +20,13 @@ public partial class Battlefield : Node3D
     private readonly List<UnitView> _views = new();
     private readonly Dictionary<EntityId, HealthBar> _healthBars = new();
     private readonly Dictionary<EntityId, StaticBody3D> _buildings = new();
+    private readonly Dictionary<StaticBody3D, EntityId> _enemyBuildings = new();
     private readonly Dictionary<PlayerId, StandardMaterial3D> _teamMaterials = new();
     private ProductionPanel? _productionPanel;
     private SectorBoard? _sectorBoard;
     private SelectionPanel? _selectionPanel;
     private BattlefieldFeedback? _feedback;
+    private BattlefieldFog? _fog;
     private MatchMenu? _matchMenu;
     private GameSession? _session;
     private BattlefieldBenchmark? _benchmark;
@@ -84,11 +86,14 @@ public partial class Battlefield : Node3D
         var world = new WorldEntities([.. units, blueHq, orangeHq, blueBarracks, orangeBarracks, .. sectorBoard.Sectors],
             cover);
         var ground = GetNode<StaticBody3D>("Terrain");
-        var navigation = new BattlefieldNavigation(_navigationRegion, ground.GetNode<CollisionShape3D>("GroundCollision"),
+        var groundCollision = ground.GetNode<CollisionShape3D>("GroundCollision");
+        var navigation = new BattlefieldNavigation(_navigationRegion, groundCollision,
             _buildings.Values.Select(body => body.GetNode<CollisionShape3D>("Collision"))
                 .Append(GetNode<CollisionShape3D>("Roadblock/Collision")).ToArray());
         _navigation = navigation;
-        var sight = new BattlefieldSight(GetWorld3D(), ground.CollisionLayer, _buildings);
+        var sight = new BattlefieldSight(GetWorld3D(), _buildings);
+        var fog = new BattlefieldFog(this, BattlefieldNavigation.BoxBounds(groundCollision), sight);
+        _fog = fog;
         var session = new GameSession(world, configuration, navigation, sight);
         _session = session;
         var menuLayer = new CanvasLayer { Name = "MatchMenuLayer", Layer = 2, ProcessMode = ProcessModeEnum.Always };
@@ -103,8 +108,6 @@ public partial class Battlefield : Node3D
             _enemyCommander = new EnemyCommander(configuration);
             _enemyCommands = session.Commands.ForPlayer(Opponent);
         }
-        var enemyBuildings = new[] { orangeHq, orangeBarracks }.ToDictionary(building => _buildings[building.Id],
-            building => building.Id);
         var selection = new UnitSelection(LocalPlayer, id => session.World.LivingUnitOwner(id));
         var feedback = new BattlefieldFeedback(this, canvas);
         _feedback = feedback;
@@ -113,9 +116,9 @@ public partial class Battlefield : Node3D
             (selected, destination) => session.Commands.ScheduleMove(LocalPlayer, selected, destination),
             actor => actor switch
             {
-                UnitView view when session.World.LivingUnitOwner(view.Id) == Opponent => view.Id,
-                StaticBody3D body when enemyBuildings.TryGetValue(body, out var id)
-                    && session.World.TryGetHitPoints(id, out var hp) && hp > 0 => id,
+                UnitView view when view.Player == Opponent && fog.VisibleActors.Contains(view.Id) => view.Id,
+                StaticBody3D body when _enemyBuildings.TryGetValue(body, out var id)
+                    && fog.VisibleActors.Contains(id) => id,
                 _ => null
             },
             (selected, target) => session.Commands.ScheduleAttack(LocalPlayer, selected, target),
@@ -123,7 +126,8 @@ public partial class Battlefield : Node3D
         _productionPanel = new ProductionPanel(canvas, LocalPlayer, configuration,
             [blueBarracks, blueHq], (producer, kind) => session.Commands.ScheduleTraining(LocalPlayer, producer, kind));
         _productionPanel.Update(session.World);
-        sectorBoard.Update(session.World);
+        sectorBoard.Update(session.World, fog.CanSeeSector);
+        UpdateActorVisibility(fog.VisibleActors);
         UpdateUnitViews(session.World);
     }
 
@@ -141,6 +145,8 @@ public partial class Battlefield : Node3D
         var body = GetNode<StaticBody3D>(path);
         var exit = body.GetNode<Marker3D>("ProductionExit").GlobalPosition;
         _buildings.Add(id, body);
+        if (owner == Opponent)
+            _enemyBuildings.Add(body, id);
         _healthBars.Add(id, new HealthBar(body, definition.MaxHp, 7.3f, 0.14f));
         return new Building(id, owner, new SimVector(body.GlobalPosition.X, body.GlobalPosition.Z),
             definition.Kind, definition.MaxHp, new SimVector(exit.X, exit.Z));
@@ -158,7 +164,7 @@ public partial class Battlefield : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
-        if (_session is not { } session)
+        if (_session is not { } session || _fog is not { } fog)
             return;
 
         _benchmark?.ScheduleOrders(session);
@@ -172,14 +178,17 @@ public partial class Battlefield : Node3D
             commander.Plan(session.Observe(Opponent), commands);
         }
 
+        fog.Update(session.Observe(LocalPlayer));
+        var visibleActors = fog.VisibleActors;
         var destroyed = false;
         foreach (var gameEvent in events)
         {
             if (gameEvent is CommandProcessed order && order.Command.Player == LocalPlayer && !order.Result.Accepted)
                 _feedback?.Reject(order.Result.RejectionCode, order.Tick);
-            if (gameEvent is ShotFired shot && FindActorPosition(shot.Attacker, session.World) is { } origin
+            if (gameEvent is ShotFired shot && visibleActors.Contains(shot.Attacker) && visibleActors.Contains(shot.Target)
+                && FindActorPosition(shot.Attacker, session.World) is { } origin
                 && FindActorPosition(shot.Target, session.World) is { } target)
-                _feedback?.Trace(origin, target, shot.Tick);
+                _feedback?.Trace(shot, origin, target);
             if (gameEvent is EntityDamaged damage && _healthBars.TryGetValue(damage.Entity, out var bar))
                 bar.SetHitPoints(damage.RemainingHitPoints);
             if (gameEvent is UnitSpawned spawn)
@@ -195,9 +204,10 @@ public partial class Battlefield : Node3D
             _unitSelection.RefreshSelection();
 
         _productionPanel?.Update(session.World);
-        _sectorBoard?.Update(session.World);
+        _sectorBoard?.Update(session.World, fog.CanSeeSector);
         _selectionPanel?.Update(session.World, _views);
-        _feedback?.Update(session.World.Tick);
+        _feedback?.Update(session.World.Tick, visibleActors);
+        UpdateActorVisibility(visibleActors);
         UpdateUnitViews(session.World);
         if (session.World.Result != MatchResult.Running)
             _matchMenu?.ShowOutcome(session.World.Result);
@@ -232,6 +242,23 @@ public partial class Battlefield : Node3D
         if (_views.Find(view => view.Id == id) is { } lastView)
             return lastView.GlobalPosition + height;
         return null;
+    }
+
+    private void UpdateActorVisibility(IReadOnlySet<EntityId> visibleActors)
+    {
+        foreach (var view in _views)
+            SetActorVisible(view, view.Player == LocalPlayer || visibleActors.Contains(view.Id));
+        foreach (var (building, id) in _enemyBuildings)
+            SetActorVisible(building, visibleActors.Contains(id));
+    }
+
+    private static void SetActorVisible(StaticBody3D actor, bool visible)
+    {
+        if (actor.Visible == visible)
+            return;
+
+        actor.Visible = visible;
+        actor.SetCollisionLayerValue(UnitView.PickingLayerNumber, visible);
     }
 
     private void UpdateUnitViews(IReadOnlyWorld world)

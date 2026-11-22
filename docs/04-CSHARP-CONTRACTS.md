@@ -68,9 +68,9 @@ requested destination is reachable. The simulation caches successful routes
 and publishes positions through `IReadOnlyWorld.TryGetUnitPosition` after
 each 50 ms step. The combat session resolves fire after movement. It checks
 range, line of sight and the configured cooldown before firing. An order can
-focus a hostile target that at least one living allied unit can see. In this
-prototype, an allied unit's unobstructed view defines visibility. Fog rendering
-follows in RTS-016.
+focus a hostile target that at least one living allied unit can see. In the
+Godot battlefield, a living allied unit sees a target within 42 m when no
+solid obstacle blocks its view.
 
 `ShotFired` events are ordered by attacker ID. Damage from that tick is
 applied together in target ID order and produces `EntityDamaged` and
@@ -136,8 +136,7 @@ buildings, the player's credits, public sector locations and ownership,
 and hostile contacts that at least one living ally can see. The same
 line-of-sight rule validates player and AI attack orders. Each contact
 lists its observing allies, which lets the commander check individual
-firing positions. This projection applies to AI decisions. On-screen
-fog rendering follows in RTS-016.
+firing positions. RTS-016 uses this projection for battlefield visibility as well.
 
 The commander uses `CommandScheduler.ForPlayer` to submit orders for its
 side on the next tick. It trains up to two tanks and four infantry
@@ -209,3 +208,21 @@ properties are rejected.
 `EntityId` and `PlayerId` constructors require positive values. Entity
 constructors also reject default IDs and owners, since C# value types can be
 zero-initialized. A neutral sector has a null owner.
+
+
+## RTS-016 battlefield fog
+
+`GameSession.Observe` provides the contacts used for rendering and picking.
+The Godot line-of-sight adapter limits vision to 42 m from each living
+unit and checks the existing roadblock and building collision shapes.
+The same adapter applies to both sides. All current weapon ranges fit
+inside the sight radius.
+
+At each simulation tick, Godot hides hostile actors without a contact,
+including their health bars, shot traces and picking shapes. Hidden buildings
+keep their solid collision for navigation and line of sight. Ranges and damage
+are resolved by the existing combat rules. The local map retains explored
+terrain and draws fog from samples on a 48 × 48 ground grid. The map mask
+refreshes up to five times per second. Actor visibility uses the contact
+query at the current tick. Sector ownership is public. Live capture and
+contest indicators require ground visibility at the sector center.

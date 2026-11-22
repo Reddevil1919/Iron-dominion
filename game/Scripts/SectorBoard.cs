@@ -77,12 +77,15 @@ internal sealed class SectorBoard
 
     public IReadOnlyList<Sector> Sectors { get; }
 
-    public void Update(IReadOnlyWorld world)
+    public void Update(IReadOnlyWorld world, Func<SimVector, bool> canSeeSector)
     {
         foreach (var sector in world.Sectors)
         {
             var view = _views[sector.Id];
-            var color = sector.Contested ? ContestedColor : TeamColor(sector.Owner ?? sector.CapturingPlayer);
+            var visible = canSeeSector(sector.Position);
+            var contested = visible && sector.Contested;
+            var challenger = visible ? sector.CapturingPlayer : null;
+            var color = contested ? ContestedColor : TeamColor(sector.Owner ?? challenger);
             if (view.Material.AlbedoColor != color)
             {
                 view.Material.AlbedoColor = color;
@@ -92,13 +95,13 @@ internal sealed class SectorBoard
             }
 
             var status = $"{view.Code}   {OwnerName(sector.Owner)}";
-            if (sector.Contested)
+            if (contested)
                 status += " · Contested";
-            else if (sector.CapturingPlayer is { } challenger && _captureTicks > 0)
-                status += $" · {OwnerName(challenger)} {sector.CaptureTicks * 100 / _captureTicks}%";
+            else if (challenger is { } player && _captureTicks > 0)
+                status += $" · {OwnerName(player)} {sector.CaptureTicks * 100 / _captureTicks}%";
 
             HudStyle.SetText(view.Status, status);
-            view.Progress.Value = sector.CaptureTicks;
+            view.Progress.Value = visible ? sector.CaptureTicks : 0;
         }
     }
 

@@ -21,6 +21,7 @@ Unit tests (xUnit): command validation, income, capture, cooldown, damage, produ
 | T-013 | same seed, commands, fake nav | 2 headless replays | same canonical world hash |
 | T-014 | enemy AI with fog | hidden enemy units | no target selected |
 | T-015 | 50 active units | 5-min run | measure FPS/tick; record results |
+| T-016 | hidden enemy unit and HQ | scout around the roadblock and withdraw | models, bars and picking follow contact visibility |
 
 ## Example xUnit skeleton
 ```csharp
@@ -70,6 +71,14 @@ warm-up. It sends move orders, records fire and reports frame and simulation
 tick percentiles, process memory and path requests as JSON. The [performance
 report](09-PERFORMANCE.md) gives the launch commands, workload and observed
 results at 50, 100 and 200 units.
+
+## Fog of war scenario T-016
+
+The Godot smoke checks that a roadblock conceals an enemy tank within
+sight range and that distant contacts are hidden. It uses normal mouse
+input to distinguish a ground move from a targeted attack, reveal an
+opposing squad and HQ and conceal them again by withdrawing. The xUnit
+AI visibility test covers scouting for a hidden enemy HQ.
 
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.

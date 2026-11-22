@@ -1,4 +1,5 @@
 using Godot;
+using IronDominion.Domain;
 
 namespace IronDominion.Game;
 
@@ -39,9 +40,9 @@ internal sealed class BattlefieldFeedback
         canvas.AddChild(_notice);
     }
 
-    public void Trace(Vector3 origin, Vector3 target, long tick)
+    public void Trace(ShotFired shot, Vector3 origin, Vector3 target)
     {
-        _trails.Add(new Trail(origin, target, tick + TrailTicks));
+        _trails.Add(new Trail(shot.Attacker, shot.Target, origin, target, shot.Tick + TrailTicks));
         _trailsChanged = true;
     }
 
@@ -63,12 +64,13 @@ internal sealed class BattlefieldFeedback
         _noticeUntil = tick + NoticeTicks;
     }
 
-    public void Update(long tick)
+    public void Update(long tick, IReadOnlySet<EntityId> visibleActors)
     {
         if (_notice.Visible && tick >= _noticeUntil)
             _notice.Hide();
 
-        var expired = _trails.RemoveAll(trail => trail.Until <= tick);
+        var expired = _trails.RemoveAll(trail => trail.Until <= tick
+            || !visibleActors.Contains(trail.Attacker) || !visibleActors.Contains(trail.TargetId));
         if (!_trailsChanged && expired == 0)
             return;
 
@@ -87,5 +89,5 @@ internal sealed class BattlefieldFeedback
         _mesh.SurfaceEnd();
     }
 
-    private readonly record struct Trail(Vector3 Origin, Vector3 Target, long Until);
+    private readonly record struct Trail(EntityId Attacker, EntityId TargetId, Vector3 Origin, Vector3 Target, long Until);
 }
