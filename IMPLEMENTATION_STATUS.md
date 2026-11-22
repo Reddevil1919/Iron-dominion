@@ -468,7 +468,25 @@ silhouettes, motion and remaining close-up production work.
 | Godot headless | All 13 scenarios passed for the art pass. The combat scenario now checks independent turret rotation, gun recoil and recovery through normal combat. |
 | Linux desktop | Inspected the overview and tactical close-up in Godot on Mesa softpipe and checked that the infantry foot transforms change during a real movement order. Native hardware frame rates still need measurement. |
 
+## Reference infantry
+
+Both fictional forces now render four weighted soldiers using one skinned
+mesh and one skeleton for each squad. The uniform has distinct fabric,
+equipment and metal shader responses. The original colors and outline
+remain readable at the tactical camera scale.
+
+The presentation samples separate run, braking, aiming and suppression
+poses. Leg placement uses two-segment inverse kinematics and a grounded
+stance phase. Hands track the equipment while it rises and recovers.
+See [Contemporary art direction](docs/10-ART-DIRECTION.md).
+
+| Check | Observed result |
+| --- | --- |
+| Release build and xUnit | Zero build warnings and errors. All 145 tests passed. |
+| Godot headless | All 13 scenarios passed. The updated cover scenario checks skin binds, alternating stance and swing, gear raised during combat and a lowered torso under suppression. |
+| Linux desktop | Checked the weighted model in the playable depot at tactical zoom and in close-up, with Mesa softpipe. Native hardware presentation performance still needs measurement. |
+
 ## Next
 
-Continue the contemporary art pass with close-up materials and authored
-animation transitions. RTS-020 remains in the backlog.
+Continue the contemporary art pass with the tracked vehicle and combat
+effects. RTS-020 remains in the backlog.

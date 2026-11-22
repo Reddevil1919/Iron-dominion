@@ -26,7 +26,7 @@ public partial class UnitView : StaticBody3D
 
     public Vector3 ShotOrigin => _gun is { } gun
         ? gun.ToGlobal(new Vector3(0f, 0f, -2.70f))
-        : _model.ToGlobal(new Vector3(0f, _suppressed ? 1.42f : 1.68f, -1.15f));
+        : _infantry!.Muzzle;
 
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;
 
@@ -96,7 +96,10 @@ public partial class UnitView : StaticBody3D
         _aimHeading = Heading(direction);
         _shotTime = 0.48f;
         if (_turret is null)
-            _model.Rotation = new Vector3(0f, _aimHeading, 0f);
+        {
+            if (_speed < 0.05f)
+                _movementHeading = _aimHeading;
+        }
         else
         {
             _turret.Rotation = new Vector3(0f, _aimHeading - _model.Rotation.Y, 0f);
@@ -179,6 +182,6 @@ public partial class UnitView : StaticBody3D
             Visible = false
         };
         AddChild(_coverIndicator);
-        _infantry = new InfantryMotion(_model, art);
+        _infantry = new InfantryMotion(_model, art.Infantry);
     }
 }
