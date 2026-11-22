@@ -152,7 +152,7 @@ public sealed class GoldenMatchTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void ACheckpointWithAnInvalidSchedulerOrLiveUnitPositionCannotBeLoaded()
+    public void ACheckpointWithInvalidSessionStateCannotBeLoaded()
     {
         var battlefield = new GoldenBattlefield(Seed);
         var world = CreateWorld();
@@ -167,6 +167,14 @@ public sealed class GoldenMatchTests(ITestOutputHelper output)
             Simulation = original.Simulation with { Units = original.Simulation.Units.SetItem(0, living with { Position = null }) }
         };
         Assert.Throws<InvalidDataException>(() => GameSession.Restore(world, Configuration, battlefield, battlefield, malformed));
+        var forgedSpawn = original with
+        {
+            Simulation = original.Simulation with
+            {
+                Units = original.Simulation.Units.Add(living with { Id = new EntityId(int.MaxValue) })
+            }
+        };
+        Assert.Throws<InvalidDataException>(() => GameSession.Restore(world, Configuration, battlefield, battlefield, forgedSpawn));
         Assert.True(Assert.Single(session.AdvanceOneTick().OfType<CommandProcessed>()).Result.Accepted);
     }
 

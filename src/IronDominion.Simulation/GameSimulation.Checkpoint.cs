@@ -64,6 +64,7 @@ public sealed partial class GameSimulation
         var initialUnits = map.Units.ToDictionary(unit => unit.Id);
         var initialIdLimit = staticActors.Select(entity => entity.Id).Concat(initialUnits.Keys)
             .Select(id => id.Value).DefaultIfEmpty().Max();
+        var lastSpawnId = (long)initialIdLimit + saved.Units.Length - initialUnits.Count;
         var ids = staticActors.Select(entity => entity.Id).ToHashSet();
         foreach (var unit in saved.Units)
         {
@@ -78,7 +79,8 @@ public sealed partial class GameSimulation
             }
             else
             {
-                Require(unit.Id.Value > initialIdLimit, "A saved unit overlaps an initial entity ID.");
+                Require(unit.Id.Value > initialIdLimit && unit.Id.Value <= lastSpawnId,
+                    "A saved unit has an invalid spawn ID.");
             }
 
             var alive = unit.HitPoints > 0;
