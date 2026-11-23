@@ -591,6 +591,24 @@ smaller particles and marks than cannon impacts.
 The combat smoke checks the dirt and armor effects during a real engagement.
 The match lifecycle smoke checks concrete impacts on the orange headquarters.
 
+## Progressive tank damage
+
+At 65% of starting health or below, the hull and turret show paint loss
+and exposed metal. At 30% or below, scorch marks darken the armor and
+smoke rises from the rear grille. The smoke batch follows match time
+and actor visibility. A destroyed tank switches to the existing blast
+and debris. Loading restores the armor from health in the checkpoint
+and clears the previous smoke. The simulation and save schema are unchanged.
+
+The Release solution build passed with zero warnings and errors. All 151
+xUnit tests passed, and `scripts/validate-godot.sh` passed all 13 headless
+scenarios. The combat smoke observes both damage stages before destruction.
+The save smoke checks the critical threshold at load and verifies that an
+enemy outside sight contributes no smoke. The Linux desktop capture used
+Mesa llvmpipe and compares all three stages in the depot, including a
+critical tank at tactical zoom. Windows graphical performance remains
+unmeasured.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

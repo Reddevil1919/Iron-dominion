@@ -13,6 +13,8 @@ internal sealed class TankArt
     public Mesh Turret { get; }
     public Mesh Gun { get; }
     public Mesh Tracks { get; } = BuildTracks();
+    public ShaderMaterial Scuffed { get; } = GD.Load<ShaderMaterial>("res://Shaders/tank_armor_scuffed.tres");
+    public ShaderMaterial Scorched { get; } = GD.Load<ShaderMaterial>("res://Shaders/tank_armor_scorched.tres");
 
     public TankArt(Color identification, bool local)
     {
