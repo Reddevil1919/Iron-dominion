@@ -14,8 +14,7 @@ save_test_data=$(mktemp -d)
 trap 'rm -f "$log"; rm -rf "$save_test_data"' EXIT
 
 run_godot() {
-    # Godot 4.6.3 Mono can race pending input-event finalizers at the end of short headless runs.
-    DOTNET_gcConcurrent=0 "$godot" --headless --path "$repo_root/game" "$@" 2>&1 | tee "$log"
+    "$godot" --headless --path "$repo_root/game" "$@" 2>&1 | tee "$log"
     # Engine and resource errors can appear in the log even when Godot exits zero.
     if grep -Eq '(^|[[:space:]])(ERROR|Error):' "$log"; then
         return 1

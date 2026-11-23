@@ -67,9 +67,6 @@ The Godot script builds the Debug game assembly, imports the project with
 `--headless --fixed-fps 20 --quit-after 10`. The script fails on a nonzero
 exit code or a Godot error in the output. GitHub Actions runs the same commands
 across the `dotnet` and `validate` jobs.
-The validation script uses the synchronous .NET garbage collector for
-its Godot processes to avoid a shutdown race with input-event finalizers.
-The graphical launch and the packaged Windows game use the normal defaults.
 
 The script also runs headless camera, selection, movement, combat,
 production, sector capture, infantry cover, enemy AI, HUD and match lifecycle checks against the main scene. They send keyboard and mouse

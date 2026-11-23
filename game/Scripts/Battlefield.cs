@@ -285,6 +285,9 @@ public partial class Battlefield : Node3D
         _benchmark?.Dispose();
         _casualties?.Dispose();
         _fog?.Dispose();
+        // Drain managed input and resource wrappers while the Godot runtime still owns their native objects.
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true);
+        GC.WaitForPendingFinalizers();
     }
 
     private Vector3? FindActorPosition(EntityId id, IReadOnlyWorld world)
