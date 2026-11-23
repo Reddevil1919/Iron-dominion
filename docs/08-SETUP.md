@@ -151,7 +151,8 @@ approach a reachable position if needed and stop once they can
 fire. Units also fire automatically at visible enemies in range.
 The roadblock and buildings block line of sight. Infantry fire shows
 staggered flashes at the rifles and small impact puffs. Cannon fire has
-a larger flash, a compact shell, ground dust and a heavier impact.
+a larger flash, a compact shell and a heavier impact. Dirt and gravel
+throw warm dust, concrete scatters pale chips and armor gives off sparks.
 Health bars shrink and change from green to amber at 60% health, then
 red at 25%. The bottom-right panel shows exact hit
 points, group composition and cover for the current selection. Rejected

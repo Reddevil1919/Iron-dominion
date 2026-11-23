@@ -11,9 +11,9 @@ internal sealed class BattlefieldFeedback
     private readonly Label _message = HudStyle.Label("OrderMessage", 15, HudStyle.Amber);
     private long _noticeUntil;
 
-    public BattlefieldFeedback(Node3D battlefield, Node canvas)
+    public BattlefieldFeedback(Node3D battlefield, Node canvas, DepotImpactSurfaces surfaces)
     {
-        _effects = new BattlefieldEffects(battlefield);
+        _effects = new BattlefieldEffects(battlefield, surfaces);
 
         _notice.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight);
         _notice.OffsetLeft = -304;
@@ -26,9 +26,9 @@ internal sealed class BattlefieldFeedback
         canvas.AddChild(_notice);
     }
 
-    public void Fire(ShotFired shot, UnitView attacker, Vector3 target, float targetRadius,
+    public void Fire(ShotFired shot, UnitView attacker, ShotSurface target,
         bool sourceDestroyed, bool targetDestroyed) =>
-        _effects.Fire(shot, attacker, target, targetRadius, sourceDestroyed, targetDestroyed);
+        _effects.Fire(shot, attacker, target, sourceDestroyed, targetDestroyed);
 
     public void TrackDust(EntityId tank, long tick, Vector3 position) => _effects.TrackDust(tank, tick, position);
 

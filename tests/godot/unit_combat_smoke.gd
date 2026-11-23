@@ -47,12 +47,16 @@ func _run() -> void:
 	var aimed := false
 	var recovered := false
 	var burst_seen := false
+	var soil_seen := false
+	var armor_seen := false
 	var shell_in_motion := false
 	var shell_is_compact := false
 	var previous_shell := Vector3.ZERO
 	for tick in range(390):
 		await physics_frame
 		burst_seen = burst_seen or (bursts.visible and bursts.mesh.get_surface_count() == 1)
+		soil_seen = soil_seen or _impact_visible("SoilImpacts")
+		armor_seen = armor_seen or _impact_visible("ArmorImpacts")
 		if shells.visible:
 			var bounds := shells.get_aabb()
 			shell_is_compact = shell_is_compact or bounds.size.length() < 1.0
@@ -71,6 +75,7 @@ func _run() -> void:
 	assert(aimed, "The turret can turn independently of its hull")
 	assert(burst_seen, "Visible fire emits localized burst geometry")
 	assert(shell_is_compact and shell_in_motion, "A compact shell travels between the muzzle and the impact")
+	assert(soil_seen and armor_seen, "Combat distinguishes soil strikes from hits against tank armor")
 	assert(not is_instance_valid(orange), "The ordered infantry target is destroyed and removed")
 	assert(is_instance_valid(orange_tank), "The closer tank remains alive after the focused attack")
 	assert(is_instance_valid(blue), "The attacking tank survives the test")
@@ -80,6 +85,9 @@ func _run() -> void:
 	print("Unit combat smoke checks passed.")
 	quit()
 
+func _impact_visible(path: NodePath) -> bool:
+	var effect := current_scene.get_node_or_null(path) as MeshInstance3D
+	return effect != null and effect.visible and effect.mesh.get_surface_count() == 1
 
 func _verify_casualties(blue: Node3D) -> bool:
 	var casualty_effects := current_scene.get_node("CasualtyEffects")
