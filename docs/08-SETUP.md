@@ -145,8 +145,8 @@ awaiting ground click and gives the usual move or attack order. Press **H**
 or click **Hold position** to stop the selected units. They keep firing at
 visible enemies within range.
 
-Right-click an orange unit or building to focus fire. An accepted attack order
-stops the selected units. Move them within weapon range for the shot to
+Right-click a visible orange unit or building to focus fire. Selected units
+approach a reachable position if needed and stop once they can
 fire. Units also fire automatically at visible enemies in range.
 The roadblock and buildings block line of sight. Watch for muzzle flashes,
 short moving tracers and dust at the point of impact. Health bars shrink

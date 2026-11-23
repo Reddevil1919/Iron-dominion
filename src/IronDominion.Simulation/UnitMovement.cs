@@ -32,8 +32,7 @@ internal sealed class UnitMovement(
             var destination = new SimVector(
                 command.Destination.X + i % width * GroupSpacing,
                 command.Destination.Z + i / width * GroupSpacing);
-            var path = navigation.FindPath(Positions[ids[i]], destination, GroundMask);
-            if (path.Count == 0 || path[^1] != destination)
+            if (FindRoute(Positions[ids[i]], destination) is not { } path)
                 return new CommandResult(false, "unreachable_destination");
 
             routes[i] = new Route(new Queue<SimVector>(path), command.AttackMove);
@@ -43,6 +42,23 @@ internal sealed class UnitMovement(
             _routes[ids[i]] = routes[i];
 
         return Accepted;
+    }
+
+    public IReadOnlyList<SimVector>? FindRoute(SimVector origin, SimVector destination)
+    {
+        var path = navigation.FindPath(origin, destination, GroundMask);
+        return path.Count > 0 && path[^1] == destination ? path : null;
+    }
+
+    public SimVector? RouteDestination(EntityId id) => _routes.TryGetValue(id, out var route)
+        ? route.Waypoints.Last() : null;
+
+    public void SetApproach(EntityId id, IReadOnlyList<SimVector>? path)
+    {
+        if (path is { Count: > 0 })
+            _routes[id] = new Route(new Queue<SimVector>(path), AttackMove: false);
+        else
+            Stop(id);
     }
 
     public RouteCheckpoint? CaptureRoute(EntityId id) => _routes.TryGetValue(id, out var route)
@@ -66,12 +82,14 @@ internal sealed class UnitMovement(
     public void Stop(IEnumerable<EntityId> ids)
     {
         foreach (var id in ids)
-            _routes.Remove(id);
+            Stop(id);
     }
+
+    public void Stop(EntityId id) => _routes.Remove(id);
 
     public void Remove(EntityId id)
     {
-        _routes.Remove(id);
+        Stop(id);
         Positions = Positions.Remove(id);
     }
 
@@ -114,7 +132,7 @@ internal sealed class UnitMovement(
         }
 
         foreach (var id in completed)
-            _routes.Remove(id);
+            Stop(id);
 
         Positions = positions.ToImmutable();
     }

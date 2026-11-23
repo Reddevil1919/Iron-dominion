@@ -47,8 +47,23 @@ func _run() -> void:
 	assert(enemy_tank.visible and enemy.get_node("HealthBar").is_visible_in_tree(), "Scouting reveals enemy visuals")
 	assert(headquarters.visible and (headquarters.collision_layer & PICKING_LAYER) != 0, "The enemy base is revealed")
 
+	var gun := tank.get_node("Model/Suspension/Turret/Gun") as Node3D
+	var resting_gun := gun.position.z
+	assert(tank.global_position.distance_to(enemy.global_position) > 16.0, "The visible enemy starts out of range")
 	await _click(camera.unproject_position(enemy.global_position + Vector3.UP), MOUSE_BUTTON_RIGHT)
-	assert(tank.global_position.distance_to(scout_position) < 0.1, "A revealed enemy receives an attack order instead of a move")
+	var fired := false
+	for tick in range(180):
+		await physics_frame
+		if gun.position.z > resting_gun + 0.08:
+			fired = true
+			break
+	assert(fired, "One attack click on a visible enemy makes the tank approach and fire")
+	var firing_position := tank.global_position
+	assert(firing_position.distance_to(enemy.global_position) < 16.05, "The tank stops within firing range")
+	assert(firing_position.distance_to(enemy.global_position) > 14.0, "The tank stops short of the target")
+	for tick in range(12):
+		await physics_frame
+	assert(tank.global_position.distance_to(firing_position) < 0.02, "The tank holds its firing position")
 
 	await _move_to(tank, camera, start)
 	assert(not enemy.visible and (enemy.collision_layer & PICKING_LAYER) == 0, "Retreat removes the contact and picking shape")

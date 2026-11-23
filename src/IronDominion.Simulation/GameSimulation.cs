@@ -132,9 +132,7 @@ public sealed partial class GameSimulation : IGameSimulation
                 }
                 else if (command is AttackCommand attack && _combat is not null)
                 {
-                    result = _combat.OrderAttack(attack, _movement.Positions);
-                    if (result.Accepted)
-                        _movement.Stop(attack.Units);
+                    result = _combat.OrderAttack(attack, _movement);
                 }
                 else if (command is TrainUnitCommand train && _production is not null)
                 {
@@ -145,6 +143,8 @@ public sealed partial class GameSimulation : IGameSimulation
             events.Add(new CommandProcessed(tick, command, result));
         }
 
+        if (_combat is not null && _movement is not null)
+            _combat.UpdateApproaches(_movement, tick);
         _movement?.Advance(_combat, tick);
         if (_combat is not null && _movement is not null)
         {

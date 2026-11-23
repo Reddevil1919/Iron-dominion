@@ -34,13 +34,72 @@ public sealed class UnitCombatTests
     }
 
     [Fact]
-    public void OutOfRangeTargetTakesNoDamage()
+    public void AVisibleTargetOutOfRangeIsApproachedAndFiredOnWithoutAnotherOrder()
     {
-        var match = Match(new Sight(), Tank(First, Blue, 0), Tank(Second, Orange, 17));
+        var match = Match(new Sight(), Tank(First, Blue, 0),
+            new Building(Second, Orange, new SimVector(20, 0), BuildingKind.Headquarters, 1500),
+            new Building(Third, Orange, new SimVector(10, 0), BuildingKind.Barracks, 700));
         match.Schedule(new AttackCommand(Blue, 1, 1, [First], Second));
         var result = Assert.IsType<CommandProcessed>(Assert.Single(match.Tick()));
         Assert.True(result.Result.Accepted);
+        Assert.Equal(1500, HitPoints(match.World, Second));
+        Assert.True(Position(match, First).X > 0);
+
+        for (var i = 0; i < 40; i++)
+            match.Tick();
+        Assert.Equal(1455, HitPoints(match.World, Second));
+        Assert.Equal(700, HitPoints(match.World, Third));
+        Assert.InRange(Position(match, First).X, 4f, 4.2f);
+    }
+
+    [Fact]
+    public void LosingTheTargetCancelsItsApproachAndPreventsDamage()
+    {
+        var sight = new Sight();
+        var match = Match(sight, Tank(First, Blue, 0), Tank(Second, Orange, 20));
+        match.Schedule(new AttackCommand(Blue, 1, 1, [First], Second));
+        match.Tick();
+        var position = Position(match, First);
+
+        sight.Clear = false;
+        Assert.Empty(match.Tick());
+        Assert.Equal(position, Position(match, First));
+        sight.Clear = true;
+        for (var i = 0; i < 45; i++)
+            Assert.Empty(match.Tick());
+        Assert.Equal(position, Position(match, First));
         Assert.Equal(600, HitPoints(match.World, Second));
+    }
+
+    [Fact]
+    public void TheApproachAdjustsToATargetThatMovesOutOfTheOriginalFiringArc()
+    {
+        var match = Match(new Sight(), Tank(First, Blue, 0), Tank(Second, Orange, 20));
+        match.Schedule(new AttackCommand(Blue, 1, 1, [First], Second));
+        match.Schedule(new MoveCommand(Orange, 2, 1, [Second], new SimVector(28, 12)));
+
+        ShotFired? hit = null;
+        for (var i = 0; i < 240 && hit is null; i++)
+            hit = match.Tick().OfType<ShotFired>().SingleOrDefault(shot => shot.Attacker == First);
+
+        Assert.NotNull(hit);
+        Assert.Equal(Second, hit.Target);
+        Assert.True(Position(match, First).Z > 0);
+    }
+
+    [Fact]
+    public void UnreachableFiringPositionsRejectTheAttackWithoutCancellingThePreviousMove()
+    {
+        var match = new GameSimulation(new WorldEntities([Tank(First, Blue, 0), Tank(Second, Orange, 30)]),
+            Configuration, new RestrictedNavigation(), new Sight());
+        match.Schedule(new MoveCommand(Blue, 1, 1, [First], new SimVector(0, 10)));
+        match.Schedule(new AttackCommand(Blue, 2, 2, [First], Second));
+        match.Tick();
+        var before = Position(match, First);
+        var result = Assert.IsType<CommandProcessed>(Assert.Single(match.Tick()));
+
+        Assert.Equal(new CommandResult(false, "no_firing_position"), result.Result);
+        Assert.True(Position(match, First).Z > before.Z);
     }
 
     [Fact]
@@ -423,5 +482,11 @@ public sealed class UnitCombatTests
     private sealed class StraightNavigation : INavigationService
     {
         public IReadOnlyList<SimVector> FindPath(SimVector start, SimVector destination, int movementMask) => [destination];
+    }
+
+    private sealed class RestrictedNavigation : INavigationService
+    {
+        public IReadOnlyList<SimVector> FindPath(SimVector start, SimVector destination, int movementMask) =>
+            destination.X == 0 ? [destination] : [];
     }
 }
