@@ -38,7 +38,7 @@ func _run() -> void:
 	await _click(camera.unproject_position(Vector3(0.0, 0.0, 11.5)), MOUSE_BUTTON_RIGHT)
 	assert(tank.global_position.is_equal_approx(initial), "Blocked ground and the obstacle do not move the tank")
 
-	var goal := Vector3(22.0, 0.0, 7.0)
+	var goal := Vector3(17.0, 0.0, 7.0)
 	await _click(camera.unproject_position(goal), MOUSE_BUTTON_RIGHT)
 	var previous := tank.global_position
 	var steering_seen := false
@@ -66,6 +66,19 @@ func _run() -> void:
 		await physics_frame
 	assert(not dust.visible, "Track dust clears after stopping")
 	assert(abs(suspension.rotation.x) < 0.008, "The hull settles after braking")
+
+	var beyond_enemy := Vector3(17, 0, -15)
+	await _click(camera.unproject_position(beyond_enemy), MOUSE_BUTTON_RIGHT)
+	var detoured := false
+	for tick in range(380):
+		await physics_frame
+		var current := tank.global_position
+		assert(current.distance_to(enemy.global_position) >= 6.59, "Tank hulls stay apart throughout the pass")
+		detoured = detoured or abs(current.x - enemy_initial.x) > 5.0
+		if current.distance_to(beyond_enemy) < 0.08:
+			break
+	assert(detoured and tank.global_position.distance_to(beyond_enemy) < 0.08,
+		"The tank steers around the stationary tank and reaches its destination")
 	print("Unit movement smoke checks passed.")
 	quit()
 

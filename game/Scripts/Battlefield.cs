@@ -220,19 +220,19 @@ public partial class Battlefield : Node3D
                 && (visibleActors.Contains(shot.Attacker) || _visibleLosses.Contains(shot.Attacker))
                 && (visibleActors.Contains(shot.Target) || _visibleLosses.Contains(shot.Target))
                 && FindActorPosition(shot.Attacker, session.World) is { } origin
-                && FindActorPosition(shot.Target, session.World) is { } target)
+                && FindActorPosition(shot.Target, session.World) is { } target
+                && _views.Find(view => view.Id == shot.Attacker) is { } attacker)
             {
-                var attacker = _views.Find(view => view.Id == shot.Attacker);
-                attacker?.PlayShot(origin, target);
+                attacker.PlayShot(origin, target);
                 var contact = _views.Find(view => view.Id == shot.Target);
                 var impactRadius = contact?.Kind switch
                 {
-                    UnitKind.Tank => 1.35f,
+                    UnitKind.Tank => 2.2f,
                     UnitKind.InfantrySquad => 0.76f,
                     _ => 3.4f
                 };
-                _feedback?.Fire(shot, attacker?.ShotOrigin ?? origin, target, impactRadius,
-                    attacker?.Kind == UnitKind.Tank, _visibleLosses.Contains(shot.Attacker), _visibleLosses.Contains(shot.Target));
+                _feedback?.Fire(shot, attacker, target, impactRadius,
+                    _visibleLosses.Contains(shot.Attacker), _visibleLosses.Contains(shot.Target));
             }
             if (gameEvent is EntityDamaged damage && _healthBars.TryGetValue(damage.Entity, out var bar))
                 bar.SetHitPoints(damage.RemainingHitPoints);

@@ -117,6 +117,7 @@ internal sealed class UnitCombat(
             // Retain valid routes and limit path requests for moving or unreachable targets.
             if (tick % configuration.TickRate == 0
                 && (movement.RouteDestination(unit.Id) is not { } destination
+                    || !movement.CanOccupy(unit, destination)
                     || !CanFireAt(unit, target, destination, range * range, positions)))
                 movement.SetApproach(unit.Id, FindApproach(unit, target, movement));
         }
@@ -139,7 +140,8 @@ internal sealed class UnitCombat(
         foreach (var direction in directions.Distinct())
         {
             var destination = new SimVector(aim.X + direction.X * radius, aim.Z + direction.Y * radius);
-            if (CanFireAt(attacker, target, destination, range * range, positions)
+            if (movement.CanOccupy(attacker, destination)
+                && CanFireAt(attacker, target, destination, range * range, positions)
                 && movement.FindRoute(origin, destination) is { } route)
                 return route;
         }

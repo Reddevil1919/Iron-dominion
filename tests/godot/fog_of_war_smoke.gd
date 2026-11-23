@@ -27,6 +27,7 @@ func _run() -> void:
 	var enemy_tank := current_scene.get_node("Units/Unit6") as StaticBody3D
 	var headquarters := current_scene.get_node("OrangeHQ") as StaticBody3D
 	var camera := root.get_camera_3d()
+	var orders := current_scene.get_node("SelectionLayer/UnitSelection")
 	var start := tank.global_position
 	assert(fog.visible and fog.material_override is ShaderMaterial, "The battlefield has a fog overlay")
 	assert(tank.visible and tank.get_node("HealthBar").is_visible_in_tree(), "Friendly visuals remain visible")
@@ -35,6 +36,8 @@ func _run() -> void:
 	assert(not enemy.get_node("HealthBar").is_visible_in_tree(), "A hidden enemy does not leave a health bar")
 	assert(not headquarters.visible and headquarters.collision_layer == OBSTACLE_LAYER,
 		"A hidden enemy building still blocks line of sight without being pickable")
+	await _hover(camera.unproject_position(enemy.global_position + Vector3.UP))
+	assert(not orders.HasAttackCursor(), "Hidden enemies do not show a targeting cursor")
 
 	await _click(camera.unproject_position(start + Vector3.UP), MOUSE_BUTTON_LEFT)
 	assert(tank.get_node("SelectionRing").visible, "A friendly scout can be selected")
@@ -46,6 +49,10 @@ func _run() -> void:
 	assert(enemy.visible and (enemy.collision_layer & PICKING_LAYER) != 0, "Scouting reveals and exposes the unit to picking")
 	assert(enemy_tank.visible and enemy.get_node("HealthBar").is_visible_in_tree(), "Scouting reveals enemy visuals")
 	assert(headquarters.visible and (headquarters.collision_layer & PICKING_LAYER) != 0, "The enemy base is revealed")
+	await _hover(camera.unproject_position(enemy.global_position + Vector3.UP))
+	assert(orders.HasAttackCursor(), "A visible enemy gives the attack crosshair")
+	await _hover(camera.unproject_position(scout_position))
+	assert(not orders.HasAttackCursor(), "Leaving the enemy restores the pointer")
 
 	var gun := tank.get_node("Model/Suspension/Turret/Gun") as Node3D
 	var resting_gun := gun.position.z
@@ -65,6 +72,14 @@ func _run() -> void:
 		await physics_frame
 	assert(tank.global_position.distance_to(firing_position) < 0.02, "The tank holds its firing position")
 
+	var rifle_bursts := current_scene.get_node("RifleBursts") as MeshInstance3D
+	await _move_to(tank, camera, Vector3(11, 0, -21))
+	var saw_rifles := false
+	for tick in range(25):
+		await physics_frame
+		saw_rifles = saw_rifles or (rifle_bursts.visible and rifle_bursts.mesh.get_surface_count() == 1)
+	assert(saw_rifles, "Infantry fire uses the separate burst geometry")
+
 	await _move_to(tank, camera, start)
 	assert(not enemy.visible and (enemy.collision_layer & PICKING_LAYER) == 0, "Retreat removes the contact and picking shape")
 	assert(not enemy.get_node("HealthBar").is_visible_in_tree() and not headquarters.visible, "Retreat hides enemy models and bars again")
@@ -80,6 +95,15 @@ func _move_to(tank: Node3D, camera: Camera3D, point: Vector3) -> void:
 		if tank.global_position.distance_to(point) < 0.08:
 			return
 	assert(false, "The tank reaches the scouting waypoint")
+
+func _hover(point: Vector2) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = point
+	motion.global_position = point
+	Input.parse_input_event(motion)
+	Input.flush_buffered_events()
+	for tick in range(3):
+		await physics_frame
 
 
 func _click(point: Vector2, button: MouseButton) -> void:

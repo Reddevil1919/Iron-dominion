@@ -30,11 +30,11 @@ func _run() -> void:
 	var gun := turret.get_node("Gun") as Node3D
 	var initial := blue.global_position
 	var gun_rest := gun.position.z
-	var bursts := current_scene.get_node("CombatBursts") as MeshInstance3D
-	var tracers := current_scene.get_node("CombatTracers") as MeshInstance3D
+	var bursts := current_scene.get_node("CannonBursts") as MeshInstance3D
+	var shells := current_scene.get_node("CannonShells") as MeshInstance3D
 	await _click(camera.unproject_position(initial + Vector3.UP), MOUSE_BUTTON_LEFT)
 
-	var firing_position := Vector3(17.0, 0.0, -3.0)
+	var firing_position := Vector3(24.0, 0.0, -3.0)
 	await _click(camera.unproject_position(firing_position), MOUSE_BUTTON_RIGHT)
 	for tick in range(470):
 		await physics_frame
@@ -47,17 +47,21 @@ func _run() -> void:
 	var aimed := false
 	var recovered := false
 	var burst_seen := false
-	var tracer_in_motion := false
-	var was_tracing := false
-	var previous_tracer_center := Vector3.ZERO
+	var shell_in_motion := false
+	var shell_is_compact := false
+	var previous_shell := Vector3.ZERO
 	for tick in range(390):
 		await physics_frame
 		burst_seen = burst_seen or (bursts.visible and bursts.mesh.get_surface_count() == 1)
-		if tracers.visible:
-			var center := tracers.get_aabb().get_center()
-			tracer_in_motion = tracer_in_motion or (was_tracing and center.distance_to(previous_tracer_center) > 0.10)
-			previous_tracer_center = center
-		was_tracing = tracers.visible
+		if shells.visible:
+			var bounds := shells.get_aabb()
+			shell_is_compact = shell_is_compact or bounds.size.length() < 1.0
+			var center := bounds.get_center()
+			shell_in_motion = shell_in_motion or (previous_shell != Vector3.ZERO
+				and center.distance_to(previous_shell) > 0.10)
+			previous_shell = center
+		else:
+			previous_shell = Vector3.ZERO
 		recoiled = recoiled or gun.position.z > gun_rest + 0.08
 		aimed = aimed or abs(angle_difference(0.0, turret.rotation.y)) > 0.20
 		recovered = recovered or (recoiled and is_equal_approx(gun.position.z, gun_rest))
@@ -66,7 +70,7 @@ func _run() -> void:
 	assert(recoiled and recovered, "The tank's gun recoils and returns after firing")
 	assert(aimed, "The turret can turn independently of its hull")
 	assert(burst_seen, "Visible fire emits localized burst geometry")
-	assert(tracer_in_motion, "Cannon traces move through space instead of joining both actors")
+	assert(shell_is_compact and shell_in_motion, "A compact shell travels between the muzzle and the impact")
 	assert(not is_instance_valid(orange), "The ordered infantry target is destroyed and removed")
 	assert(is_instance_valid(orange_tank), "The closer tank remains alive after the focused attack")
 	assert(is_instance_valid(blue), "The attacking tank survives the test")

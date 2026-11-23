@@ -80,11 +80,11 @@ the exact damage per hit. The focused checks launch a passive opponent
 with `-- --passive-opponent` in the Debug game. The enemy AI smoke runs
 the default scene and observes the orange side train a tank, capture
 a sector and advance on the blue HQ. The HUD check verifies selection
-health, compact window layout, rejected orders and the tracer lifetime.
+health, compact window layout, rejected orders and the cannon shell lifetime.
 The tactical-order check uses the keyboard and HUD to engage along an
 attack-move route and cancel a route with hold position.
-The fog check scouts around the roadblock, reveals a unit and a building
-and hides them again on withdrawal. The lifecycle checks pause and resume
+The fog check scouts around the roadblock, verifies the cursor on a revealed
+enemy and hides the contacts again on withdrawal. The lifecycle checks pause and resume
 through the UI, win by destroying
 the enemy HQ, restart from the result screen and confirm defeat against
 the active opponent.
@@ -135,8 +135,8 @@ Right-click clear ground to move the selected blue units. Units route around
 the central roadblock and the buildings. For groups, the first unit goes to the
 clicked point and the others use adjacent 9 m slots in entity ID order. Pick
 open ground with room for the group. A blocked destination leaves existing
-orders in effect. Routes account for the static map. Moving units can pass
-through each other in this milestone.
+orders in effect. Tanks keep clear of other tank hulls and take a detour
+when there is room. They wait for an occupied destination to clear.
 
 Use **Shift+A** or the **Attack move** button, then left-click open ground.
 The selected units advance, pause to fire on visible enemies within weapon
@@ -145,12 +145,15 @@ awaiting ground click and gives the usual move or attack order. Press **H**
 or click **Hold position** to stop the selected units. They keep firing at
 visible enemies within range.
 
-Right-click a visible orange unit or building to focus fire. Selected units
+The pointer becomes a crosshair over a visible orange unit or building.
+Right-click the enemy to focus fire. Selected units
 approach a reachable position if needed and stop once they can
 fire. Units also fire automatically at visible enemies in range.
-The roadblock and buildings block line of sight. Watch for muzzle flashes,
-short moving tracers and dust at the point of impact. Health bars shrink
-and change from green to amber at 60% health, then red at 25%. The bottom-right panel shows exact hit
+The roadblock and buildings block line of sight. Infantry fire shows
+staggered flashes at the rifles and small impact puffs. Cannon fire has
+a larger flash, a compact shell, ground dust and a heavier impact.
+Health bars shrink and change from green to amber at 60% health, then
+red at 25%. The bottom-right panel shows exact hit
 points, group composition and cover for the current selection. Rejected
 orders briefly display a reason at the top right. Destroyed units leave
 the battlefield and destroyed buildings leave solid ruins.

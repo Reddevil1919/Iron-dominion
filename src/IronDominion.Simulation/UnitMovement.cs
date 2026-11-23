@@ -11,11 +11,19 @@ internal sealed class UnitMovement(
 {
     private const int GroundMask = 1;
     private const float GroupSpacing = 9f;
+    // A circle enclosing the tracks and hull at any heading.
+    private const float TankSeparation = 6.6f;
+    private const float TankSeparationSquared = TankSeparation * TankSeparation;
+    private const int DetourIntervalTicks = 8;
     private static readonly CommandResult Accepted = new(true, null);
+    private static readonly float[] DetourExitFractions = [0.6f, 1f];
 
     private readonly Dictionary<UnitKind, float> _stepSizes = configuration.Units.ToDictionary(
         unit => unit.Kind, unit => unit.SpeedMetersPerSecond / configuration.TickRate);
     private readonly Dictionary<EntityId, Route> _routes = new();
+    private readonly SortedSet<EntityId> _tanks = new(entities.Units
+        .Where(unit => unit.Kind == UnitKind.Tank && unit.HitPoints > 0).Select(unit => unit.Id),
+        Comparer<EntityId>.Create((first, second) => first.Value.CompareTo(second.Value)));
     private readonly float _suppressedMovement = (float)(configuration.Suppression?.MovementMultiplier ?? 1);
 
     public ImmutableDictionary<EntityId, SimVector> Positions { get; private set; } =
@@ -53,6 +61,10 @@ internal sealed class UnitMovement(
     public SimVector? RouteDestination(EntityId id) => _routes.TryGetValue(id, out var route)
         ? route.Waypoints.Last() : null;
 
+    public bool CanOccupy(Unit unit, SimVector point) => unit.Kind != UnitKind.Tank
+        || !_tanks.Any(other => other != unit.Id && Positions.TryGetValue(other, out var center)
+            && Vector2.DistanceSquared(Point(point), Point(center)) < TankSeparationSquared);
+
     public void SetApproach(EntityId id, IReadOnlyList<SimVector>? path)
     {
         if (path is { Count: > 0 })
@@ -77,7 +89,12 @@ internal sealed class UnitMovement(
 
     public bool IsMoving(EntityId id) => _routes.ContainsKey(id);
 
-    public void Register(Unit unit) => Positions = Positions.Add(unit.Id, unit.Position);
+    public void Register(Unit unit)
+    {
+        Positions = Positions.Add(unit.Id, unit.Position);
+        if (unit.Kind == UnitKind.Tank)
+            _tanks.Add(unit.Id);
+    }
 
     public void Stop(IEnumerable<EntityId> ids)
     {
@@ -90,6 +107,7 @@ internal sealed class UnitMovement(
     public void Remove(EntityId id)
     {
         Stop(id);
+        _tanks.Remove(id);
         Positions = Positions.Remove(id);
     }
 
@@ -100,8 +118,10 @@ internal sealed class UnitMovement(
 
         var positions = Positions.ToBuilder();
         var completed = new List<EntityId>();
-        foreach (var (id, route) in _routes)
+        // Resolve right of way in entity order, including after restoring a checkpoint.
+        foreach (var id in _routes.Keys.OrderBy(id => id.Value))
         {
+            var route = _routes[id];
             // All routes check for targets against the positions at the start of the movement phase.
             if (route.AttackMove && combat?.HasTargetInRange(id, Positions) == true)
                 continue;
@@ -115,14 +135,18 @@ internal sealed class UnitMovement(
             {
                 var delta = new Vector2(waypoint.X - position.X, waypoint.Z - position.Z);
                 var distance = delta.Length();
-                if (distance > remaining)
+                var step = distance > remaining ? Position(Point(position) + delta * (remaining / distance)) : waypoint;
+                if (unit.Kind == UnitKind.Tank && FindTankBlocker(id, position, step, positions) is { } blocker)
                 {
-                    var step = delta * (remaining / distance);
-                    position = new SimVector(position.X + step.X, position.Z + step.Y);
+                    if ((tick + id.Value) % DetourIntervalTicks == 0)
+                        TryDetour(position, route.Waypoints, blocker);
                     break;
                 }
 
-                position = route.Waypoints.Dequeue();
+                position = step;
+                if (distance > remaining)
+                    break;
+                route.Waypoints.Dequeue();
                 remaining -= distance;
             }
 
@@ -136,6 +160,86 @@ internal sealed class UnitMovement(
 
         Positions = positions.ToImmutable();
     }
+
+    private SimVector? FindTankBlocker(EntityId id, SimVector from, SimVector to,
+        IReadOnlyDictionary<EntityId, SimVector> positions)
+    {
+        foreach (var other in _tanks)
+            if (other != id && positions.TryGetValue(other, out var center) && CrossesTank(from, to, center))
+                return center;
+        return null;
+    }
+
+    private void TryDetour(SimVector from, Queue<SimVector> waypoints, SimVector blocker)
+    {
+        var destination = waypoints.Last();
+        var center = Point(blocker);
+        var startOffset = Point(from) - center;
+        var endOffset = Point(destination) - center;
+        if (endOffset.LengthSquared() < TankSeparationSquared || from == destination)
+            return; // Wait for an occupied destination to clear.
+
+        var forward = Vector2.Normalize(endOffset - startOffset);
+        var side = new Vector2(-forward.Y, forward.X);
+        if (Vector2.Dot(startOffset, side) < -0.05f)
+            side = -side;
+
+        const float clearance = TankSeparation + 0.6f;
+        for (var turn = 0; turn < 2; turn++, side = -side)
+        {
+            var outside = center + side * clearance;
+            var near = Position(outside + forward * Math.Clamp(Vector2.Dot(startOffset, forward), -clearance, clearance));
+            if (FindRoute(from, near) is not { } first || CrossesTank(from, first, blocker))
+                continue;
+
+            // Rejoin early when a building or the edge of the navmesh blocks the wider turn.
+            var exit = Math.Clamp(Vector2.Dot(endOffset, forward), -clearance, clearance);
+            foreach (var fraction in DetourExitFractions)
+            {
+                var far = Position(outside + forward * (exit * fraction));
+                if (FindRoute(near, far) is not { } middle || CrossesTank(near, middle, blocker)
+                    || FindRoute(far, destination) is not { } last || CrossesTank(far, last, blocker))
+                    continue;
+
+                waypoints.Clear();
+                foreach (var point in first.Concat(middle).Concat(last))
+                    waypoints.Enqueue(point);
+                return;
+            }
+        }
+    }
+
+    private static bool CrossesTank(SimVector from, IReadOnlyList<SimVector> path, SimVector center)
+    {
+        foreach (var to in path)
+        {
+            if (CrossesTank(from, to, center))
+                return true;
+            from = to;
+        }
+        return false;
+    }
+
+    private static bool CrossesTank(SimVector from, SimVector to, SimVector center)
+    {
+        var offset = Point(from) - Point(center);
+        var step = Point(to) - Point(from);
+        var lengthSquared = step.LengthSquared();
+        if (lengthSquared == 0f)
+            return false;
+
+        var dot = Vector2.Dot(offset, step);
+        // Legacy saves may already overlap. Allow separation without pushing a tank deeper inside.
+        if (offset.LengthSquared() < TankSeparationSquared)
+            return dot < 0f;
+
+        var fraction = Math.Clamp(-dot / lengthSquared, 0f, 1f);
+        return (offset + step * fraction).LengthSquared() < TankSeparationSquared;
+    }
+
+    private static Vector2 Point(SimVector position) => new(position.X, position.Z);
+
+    private static SimVector Position(Vector2 point) => new(point.X, point.Y);
 
     private readonly record struct Route(Queue<SimVector> Waypoints, bool AttackMove);
 }

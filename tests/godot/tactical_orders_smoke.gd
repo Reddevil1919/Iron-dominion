@@ -24,7 +24,7 @@ func _run() -> void:
 	var hud := current_scene.get_node("SelectionLayer/SelectionPanel") as Control
 	var attack_move := hud.find_child("AttackMoveButton", true, false) as Button
 	var hold := hud.find_child("HoldPositionButton", true, false) as Button
-	var bursts := current_scene.get_node("CombatBursts") as MeshInstance3D
+	var bursts := current_scene.get_node("CannonBursts") as MeshInstance3D
 	var start := tank.global_position
 	var staging := Vector3(-8, 0, -25)
 	await _click(camera.unproject_position(start + Vector3.UP), MOUSE_BUTTON_LEFT)

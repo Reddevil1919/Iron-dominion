@@ -20,10 +20,26 @@ void fragment() {
         float core = 1.0 - smoothstep(0.01, 0.42, r);
         mask = max(core, tongue);
         shade = mix(COLOR.rgb, vec3(1.0, 0.985, 0.89), core);
-    } else {
+    } else if (shape < 2.5) {
         float core = 1.0 - smoothstep(0.14, 0.83, r);
         mask = 1.0 - smoothstep(0.10, 0.98, r);
         shade = mix(COLOR.rgb, vec3(1.0, 0.97, 0.88), core * 0.83);
+    } else if (shape < 3.5) {
+        float angle = atan(p.y, p.x + 0.0001);
+        float lobes = 0.11 * sin(angle * 5.0 + 2.3) + 0.065 * sin(angle * 9.0);
+        float fire = 1.0 - smoothstep(0.31, 0.98, r + lobes);
+        float core = 1.0 - smoothstep(0.05, 0.62, r + lobes * 0.6);
+        shade = mix(COLOR.rgb, vec3(1.0, 0.98, 0.91), core);
+        mask = fire;
+    } else if (shape < 4.5) {
+        float body = length(vec2(p.x, p.y * 1.32));
+        mask = 1.0 - smoothstep(0.70, 0.95, body);
+        float glint = (1.0 - smoothstep(0.04, 0.69, length(p - vec2(0.28, -0.37))));
+        shade = mix(COLOR.rgb * 0.68, vec3(0.85, 0.84, 0.78), glint);
+    } else {
+        float swirl = sin(p.x * 11.0 + p.y * 7.0) * sin(p.y * 9.0 - p.x * 4.0);
+        float rim = 1.0 - smoothstep(0.02, 0.30, abs(r + swirl * 0.13 - 0.64));
+        mask = rim * (0.56 + swirl * 0.31);
     }
 
     ALBEDO = shade;

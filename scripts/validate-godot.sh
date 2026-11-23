@@ -42,7 +42,7 @@ run_smoke_test() {
 
 run_smoke_test rts_camera_smoke.gd 'RTS camera smoke checks passed.'
 run_smoke_test unit_selection_smoke.gd 'Unit selection smoke checks passed.'
-run_smoke_test unit_movement_smoke.gd 'Unit movement smoke checks passed.' 1500
+run_smoke_test unit_movement_smoke.gd 'Unit movement smoke checks passed.' 2400
 run_smoke_test unit_combat_smoke.gd 'Unit combat smoke checks passed.' 2800
 run_smoke_test fog_of_war_smoke.gd 'Fog of war smoke checks passed.' 2900
 run_smoke_test tactical_orders_smoke.gd 'Tactical order smoke checks passed.' 3100

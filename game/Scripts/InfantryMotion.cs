@@ -5,15 +5,17 @@ namespace IronDominion.Game;
 
 internal sealed class InfantryMotion
 {
+    public const int BurstShots = 3;
+    public const float ShotIntervalSeconds = 0.058f;
     private const float StanceFraction = 0.58f;
     private readonly Skeleton3D _skeleton;
     private readonly Transform3D[] _pose = new Transform3D[BonesPerSoldier];
+    private readonly Vector3[] _muzzles = new Vector3[Formation.Length];
 
     private float _phase;
     private float _pace;
     private float _crouch;
     private float _aim;
-    private Vector3 _muzzle;
 
     public InfantryMotion(Node3D model, InfantryArt art)
     {
@@ -28,13 +30,22 @@ internal sealed class InfantryMotion
         _skeleton.Scale = Vector3.One * DisplayScale;
         model.AddChild(_skeleton);
         _skeleton.AddChild(skinView);
-        PoseSquad(0f, 0f);
+        PoseSquad(0f, null);
     }
 
-    public Vector3 Muzzle => _skeleton.ToGlobal(_muzzle);
+    public Vector3 Muzzle(int soldier) => _skeleton.ToGlobal(_muzzles[soldier]);
 
-    public void Update(float delta, float speed, bool aiming, float recoil, bool suppressed)
+    public static int Shooter(int shot) => shot % 2;
+
+    public void BeginBurst()
     {
+        _aim = 1f;
+        PoseSquad(Stride(), 0f);
+    }
+
+    public void Update(float delta, float speed, float? shotAge, bool suppressed)
+    {
+        var aiming = shotAge.HasValue;
         var targetPace = Mathf.Clamp(speed / 4f, 0f, 1f);
         var targetCrouch = suppressed ? 1f : 0f;
         var targetAim = aiming ? 1f : 0f;
@@ -44,10 +55,12 @@ internal sealed class InfantryMotion
         _pace = Approach(_pace, targetPace, delta, 9f);
         _crouch = Approach(_crouch, targetCrouch, delta, 11f);
         _aim = Approach(_aim, targetAim, delta, aiming ? 14f : 7f);
-        var stride = Mathf.Lerp(0.99f, 1.49f, _pace) * (1f - 0.12f * _crouch);
+        var stride = Stride();
         _phase = Mathf.PosMod(_phase + speed * delta / (DisplayScale * stride), 1f);
-        PoseSquad(stride, recoil);
+        PoseSquad(stride, shotAge);
     }
+
+    private float Stride() => Mathf.Lerp(0.99f, 1.49f, _pace) * (1f - 0.12f * _crouch);
 
     private static float Approach(float value, float target, float delta, float response)
     {
@@ -55,10 +68,11 @@ internal sealed class InfantryMotion
         return Mathf.Abs(target - next) <= 0.003f ? target : next;
     }
 
-    private void PoseSquad(float stride, float recoil)
+    private void PoseSquad(float stride, float? shotAge)
     {
         for (var soldier = 0; soldier < Formation.Length; soldier++)
         {
+            var recoil = shotAge is { } age ? RifleKick(soldier, age) : 0f;
             var phase = Mathf.PosMod(_phase + soldier * 0.24f, 1f);
             var cycle = phase * Mathf.Tau;
             var shift = Mathf.Sin(cycle) * 0.024f * _pace;
@@ -81,8 +95,7 @@ internal sealed class InfantryMotion
             var gearPosition = chest * new Vector3(0.112f, 0.095f + _aim * 0.132f, -0.19f + recoil * 0.055f);
             var gear = new Transform3D(new Basis(Vector3.Right, gearPitch), gearPosition);
             _pose[Equipment] = gear;
-            if (soldier == 0)
-                _muzzle = gear * new Vector3(0f, 0.005f, -0.40f);
+            _muzzles[soldier] = gear * new Vector3(0f, 0.005f, -0.40f);
 
             PoseLeg(LeftHip, -1, phase, stride, offset, pelvis);
             PoseLeg(RightHip, 1, Mathf.PosMod(phase + 0.5f, 1f), stride, offset, pelvis);
@@ -97,6 +110,17 @@ internal sealed class InfantryMotion
                 _skeleton.SetBonePose(boneOffset + bone, local);
             }
         }
+    }
+
+    private static float RifleKick(int soldier, float age)
+    {
+        for (var shot = BurstShots - 1; shot >= 0; shot--)
+        {
+            var sinceShot = age - shot * ShotIntervalSeconds;
+            if (Shooter(shot) == soldier && sinceShot >= 0f)
+                return Mathf.Max(0f, 1f - sinceShot / 0.10f);
+        }
+        return 0f;
     }
 
     private void PoseLeg(int bone, int side, float phase, float stride, Vector3 offset, Transform3D pelvis)

@@ -48,16 +48,19 @@ steering drive the phases. The sprung armor above the belts responds to
 acceleration and braking. The paint finish and faction marks stay on the
 same panels while the suspension moves.
 
-A visible shot starts with a brief, directional flash and drifting smoke
-at the muzzle. Tank rounds and occasional infantry rounds show a short
-moving tracer. A local flash and expanding dust puff mark arrival, with
-short-lived sparks on tank impacts. The flight time belongs to the effect
-and damage still resolves on the simulation tick.
+Infantry fire poses the front pair's rifles and staggers three brief
+recoil pulses across them. Flashes stay at the rifle muzzles. Small
+smoke wisps and impact puffs follow the burst cadence.
 
-Tank movement leaves a low dust wake. Bursts, tracers and track dust use
-three bounded batches of camera-facing quads. The effects respect fog of
-war, with a final impact allowed at a position where a destroyed actor was
-visible. Loading a match clears the effect batches.
+A cannon shot produces one larger, irregular flash with gun recoil,
+layered smoke and low dust kicked up under the muzzle. A compact shell
+passes between the muzzle and the target. The heavier impact adds sparks
+and debris that fall and fade near the hit. Effects follow the existing
+shot event. Damage resolves on the simulation tick.
+
+Rifle bursts, cannon bursts, shells and track dust use four bounded
+mesh batches. They respect fog of war and can finish a lethal impact
+at a target's last visible position. Loading a match clears the batches.
 
 ## Depot landmarks and wayfinding
 
