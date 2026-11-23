@@ -609,6 +609,23 @@ Mesa llvmpipe and compares all three stages in the depot, including a
 critical tank at tactical zoom. Windows graphical performance remains
 unmeasured.
 
+## Infantry cover animations
+
+The squad shortens its steps and lowers its silhouette inside marked
+cover. At a halt, the front pair kneel on opposite knees and the rear
+pair hold a higher crouch and watch the flanks. They arrive in their poses
+at staggered times. Fire and suppression still drive the rifle and upper
+body, while foot placement keeps the low stance grounded. A new order
+brings soldiers up into motion and they return to their ordinary stance
+after leaving cover. Godot reads the existing simulation state.
+
+The Release build passed with zero warnings and errors. All 151 xUnit
+tests and all 13 Godot headless scenarios passed. The cover smoke checks
+quiet entry, staggered settling, planted boots, the rise into movement,
+and aiming low under fire. The close-up capture runs the original
+battlefield on Linux with Mesa llvmpipe. Windows graphical performance
+remains unmeasured.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

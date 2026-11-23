@@ -15,7 +15,9 @@ internal sealed partial class InfantryMotion
 
     private float _phase;
     private float _pace;
-    private float _crouch;
+    private float _suppression;
+    private float _cover;
+    private float _stationaryCover;
     private float _aim;
 
     public InfantryMotion(Node3D model, InfantryArt art)
@@ -44,24 +46,42 @@ internal sealed partial class InfantryMotion
         PoseSquad(Stride(), 0f);
     }
 
-    public void Update(float delta, float speed, float? shotAge, bool suppressed)
+    public void SetRestingStance(bool covered, bool suppressed)
+    {
+        if (!covered && !suppressed)
+            return;
+
+        _cover = covered ? 1f : 0f;
+        _stationaryCover = _cover;
+        _suppression = suppressed ? 1f : 0f;
+        PoseSquad(0f, null);
+    }
+
+    public void Update(float delta, float speed, float? shotAge, bool covered, bool suppressed)
     {
         var aiming = shotAge.HasValue;
         var targetPace = Mathf.Clamp(speed / 4f, 0f, 1f);
-        var targetCrouch = suppressed ? 1f : 0f;
+        var targetSuppression = suppressed ? 1f : 0f;
+        var targetCover = covered ? 1f : 0f;
+        var targetStationaryCover = covered && targetPace == 0f ? 1f : 0f;
         var targetAim = aiming ? 1f : 0f;
-        if (targetPace == 0f && _pace == 0f && targetCrouch == _crouch && targetAim == 0f && _aim == 0f)
+        if (targetPace == 0f && _pace == 0f && targetSuppression == _suppression
+            && targetCover == _cover && targetStationaryCover == _stationaryCover && targetAim == 0f && _aim == 0f)
             return;
 
         _pace = Approach(_pace, targetPace, delta, 9f);
-        _crouch = Approach(_crouch, targetCrouch, delta, 11f);
+        _suppression = Approach(_suppression, targetSuppression, delta, suppressed ? 13f : 6f);
+        _cover = Approach(_cover, targetCover, delta, covered ? 7f : 5f);
+        _stationaryCover = Approach(_stationaryCover, targetStationaryCover, delta, targetStationaryCover > 0f ? 4.6f : 10f);
         _aim = Approach(_aim, targetAim, delta, aiming ? 14f : 7f);
         var stride = Stride();
         _phase = Mathf.PosMod(_phase + speed * delta / (DisplayScale * stride), 1f);
         PoseSquad(stride, shotAge);
     }
 
-    private float Stride() => Mathf.Lerp(0.99f, 1.49f, _pace) * (1f - 0.12f * _crouch);
+    private float Stride() => Mathf.Lerp(0.99f, 1.49f, _pace) * (1f - 0.19f * Crouch);
+
+    private float Crouch => Mathf.Max(_suppression, _cover * 0.82f);
 
     private static float Approach(float value, float target, float delta, float response)
     {
@@ -71,35 +91,45 @@ internal sealed partial class InfantryMotion
 
     private void PoseSquad(float stride, float? shotAge)
     {
+        var crouch = Crouch;
         for (var soldier = 0; soldier < Formation.Length; soldier++)
         {
             var recoil = shotAge is { } age ? RifleKick(soldier, age) : 0f;
+            var front = soldier < 2;
+            var settled = Mathf.SmoothStep(0.05f + soldier * 0.15f, 0.98f, _stationaryCover);
+            var kneeSide = front ? (soldier == 0 ? 1 : -1) : 0;
+            var aim = _aim * (front ? 1f : 1f - settled * 0.52f);
             var phase = Mathf.PosMod(_phase + soldier * 0.24f, 1f);
             var cycle = phase * Mathf.Tau;
             var shift = Mathf.Sin(cycle) * 0.024f * _pace;
             var bob = Mathf.Cos(cycle * 2f) * 0.020f * _pace;
             var offset = Offset(soldier);
-            var pelvisPitch = 0.06f * _pace + 0.13f * _crouch;
+            var pelvisPitch = 0.06f * _pace + 0.13f * crouch;
+            var hipDrop = settled * (front ? 0.26f : 0.105f);
             var pelvis = new Transform3D(new Basis(Vector3.Right, pelvisPitch), offset
-                + new Vector3(shift, 0.902f - 0.105f * _pace - 0.17f * _crouch + bob, 0.09f * _crouch));
+                + new Vector3(shift + kneeSide * settled * 0.034f,
+                    0.902f - 0.105f * _pace - 0.17f * crouch - hipDrop + bob, 0.09f * crouch));
             _pose[Pelvis] = pelvis;
 
-            var twist = Mathf.Sin(cycle) * 0.16f * _pace * (1f - 0.72f * _aim);
-            var chestPitch = 0.045f + 0.17f * _pace + 0.24f * _crouch - 0.047f * recoil;
+            var watch = front ? 0f : (soldier == 2 ? -0.19f : 0.23f) * settled;
+            var twist = (Mathf.Sin(cycle) * 0.16f * _pace + watch) * (1f - 0.72f * aim);
+            var chestPitch = 0.045f + 0.17f * _pace + 0.24f * crouch
+                - settled * (front ? 0.12f : 0.015f) + 0.12f * _cover * _suppression - 0.047f * recoil;
             var chest = new Transform3D(new Basis(Vector3.Right, chestPitch) * new Basis(Vector3.Up, twist),
                 pelvis * (ChestPosition - Joints[Pelvis].BindPosition));
             _pose[Chest] = chest;
-            _pose[Head] = new Transform3D(new Basis(Vector3.Right, chestPitch * 0.20f),
+            _pose[Head] = new Transform3D(new Basis(Vector3.Right, chestPitch * 0.20f)
+                * new Basis(Vector3.Up, watch * (1f - aim)),
                 chest * (HeadPosition - ChestPosition));
 
-            var gearPitch = -0.43f * (1f - _aim) + 0.055f * recoil;
-            var gearPosition = chest * new Vector3(0.112f, 0.095f + _aim * 0.132f, -0.19f + recoil * 0.055f);
+            var gearPitch = -0.43f * (1f - aim) + 0.055f * recoil;
+            var gearPosition = chest * new Vector3(0.112f, 0.095f + aim * 0.132f, -0.19f + recoil * 0.055f);
             var gear = new Transform3D(new Basis(Vector3.Right, gearPitch), gearPosition);
             _pose[Equipment] = gear;
             _muzzles[soldier] = gear * new Vector3(0f, 0.005f, -0.40f);
 
-            PoseLeg(LeftHip, -1, phase, stride, offset, pelvis);
-            PoseLeg(RightHip, 1, Mathf.PosMod(phase + 0.5f, 1f), stride, offset, pelvis);
+            PoseLeg(LeftHip, -1, phase, stride, offset, pelvis, crouch, settled, kneeSide);
+            PoseLeg(RightHip, 1, Mathf.PosMod(phase + 0.5f, 1f), stride, offset, pelvis, crouch, settled, kneeSide);
             PoseArm(LeftShoulder, -1, chest, gear, new Vector3(-0.022f, -0.036f, -0.20f));
             PoseArm(RightShoulder, 1, chest, gear, new Vector3(0.01f, -0.062f, 0.027f));
 
@@ -126,7 +156,8 @@ internal sealed partial class InfantryMotion
         return 0f;
     }
 
-    private void PoseLeg(int bone, int side, float phase, float stride, Vector3 offset, Transform3D pelvis)
+    private void PoseLeg(int bone, int side, float phase, float stride, Vector3 offset, Transform3D pelvis,
+        float crouch, float settled, int kneeSide)
     {
         var swing = Mathf.Clamp((phase - StanceFraction) / (1f - StanceFraction), 0f, 1f);
         // During stance, backward foot travel cancels forward root motion at full pace.
@@ -136,12 +167,21 @@ internal sealed partial class InfantryMotion
         var z = (stanceTravel - swingReturn - stride * StanceFraction * 0.5f) * strideBlend
             + side * 0.063f * (1f - _pace);
         var lift = Mathf.Sin(swing * Mathf.Pi) * _pace;
-        var ankle = offset + new Vector3(side * (HipWidth + 0.020f + 0.016f * _crouch),
-            AnkleHeight + lift * (0.16f - 0.065f * _crouch), z);
+        var rearKnee = kneeSide == side;
+        var stanceZ = kneeSide == 0 ? side * 0.16f : rearKnee ? 0.55f : -0.40f;
+        // Lift the foot over the ground as it repositions between the gait and the low stance.
+        var placementLift = settled * (1f - settled) * 0.27f;
+        var ankle = offset + new Vector3(side * (HipWidth + 0.020f + 0.016f * crouch + 0.031f * settled),
+            AnkleHeight + lift * (0.16f - 0.065f * crouch) * (1f - settled)
+                + placementLift + (rearKnee ? 0.065f * settled : 0f),
+            Mathf.Lerp(z, stanceZ, settled));
         var hip = pelvis * (Vector3.Right * (side * HipWidth));
-        var foot = new Basis(Vector3.Right, 0.18f * lift * Mathf.Cos(swing * Mathf.Pi))
+        var footPitch = 0.18f * lift * Mathf.Cos(swing * Mathf.Pi) * (1f - settled)
+            - (rearKnee ? 0.82f * settled : 0f);
+        var foot = new Basis(Vector3.Right, footPitch)
             * new Basis(Vector3.Up, -side * 0.07f);
-        PoseChain(bone, hip, ankle, Vector3.Forward, Thigh, Shin, foot);
+        var knee = rearKnee ? Vector3.Forward.Lerp(new Vector3(0f, -1f, -0.15f), settled) : Vector3.Forward;
+        PoseChain(bone, hip, ankle, knee, Thigh, Shin, foot);
     }
 
     private void PoseArm(int bone, int side, Transform3D chest, Transform3D gear, Vector3 grip)

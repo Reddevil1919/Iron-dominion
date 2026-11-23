@@ -335,7 +335,7 @@ public partial class Battlefield : Node3D
             var travelled = view.ApplyPosition(new Vector3(position.X, 0f, position.Z), Engine.PhysicsTicksPerSecond);
             if (view.Kind == UnitKind.InfantrySquad)
             {
-                view.ShowInfantryStatus(world.HasCover(view.Id), world.IsSuppressed(view.Id));
+                view.ShowInfantryStatus(world.HasCover(view.Id), world.IsSuppressed(view.Id), snapPose: !emitEffects);
                 continue;
             }
 

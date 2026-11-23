@@ -48,7 +48,7 @@ run_smoke_test fog_of_war_smoke.gd 'Fog of war smoke checks passed.' 2900
 run_smoke_test tactical_orders_smoke.gd 'Tactical order smoke checks passed.' 3100
 run_smoke_test unit_production_smoke.gd 'Unit production smoke checks passed.' 3000
 run_smoke_test sector_capture_smoke.gd 'Sector capture smoke checks passed.' 1500
-run_smoke_test infantry_cover_smoke.gd 'Infantry cover smoke checks passed.' 1600
+run_smoke_test infantry_cover_smoke.gd 'Infantry cover smoke checks passed.' 2400
 run_smoke_test enemy_ai_smoke.gd 'Enemy AI smoke checks passed.' 8500 active
 run_smoke_test battlefield_hud_smoke.gd 'Battlefield HUD smoke checks passed.' 2000
 run_smoke_test match_lifecycle_smoke.gd 'Match lifecycle smoke checks passed.' 8000

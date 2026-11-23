@@ -18,6 +18,7 @@ public partial class UnitView : StaticBody3D
     private float _aimHeading;
     private float _speed;
     private float _shotTime;
+    private bool _covered;
     private bool _suppressed;
 
     public EntityId Id { get; private set; }
@@ -142,15 +143,18 @@ public partial class UnitView : StaticBody3D
         if (_tank is { } tank)
             tank.Update(seconds, _speed, previousHeading, heading, aiming ? _aimHeading : null, recoil);
         else
-            _infantry?.Update(seconds, _speed, aiming ? ShotAimDuration - _shotTime : null, _suppressed);
+            _infantry?.Update(seconds, _speed, aiming ? ShotAimDuration - _shotTime : null, _covered, _suppressed);
         _shotTime = Mathf.Max(0f, _shotTime - seconds);
     }
 
     private static float Heading(Vector3 direction) => Mathf.Atan2(-direction.X, -direction.Z);
 
-    public void ShowInfantryStatus(bool covered, bool suppressed)
+    public void ShowInfantryStatus(bool covered, bool suppressed, bool snapPose)
     {
+        _covered = covered;
         _suppressed = suppressed;
+        if (snapPose)
+            _infantry?.SetRestingStance(covered, suppressed);
         if (_coverIndicator is not { } indicator)
             return;
 

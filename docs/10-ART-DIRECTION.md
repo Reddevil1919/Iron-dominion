@@ -9,7 +9,7 @@ panels and existing tactical overlays distinguish the forces at overview zoom.
 
 | Subject | Visual language | Motion |
 | --- | --- | --- |
-| Infantry | Four helmeted soldiers with vests, packs and small identification panels. Cool olive-pattern fabric and a deeper pack for Blue. Warm clay tones and a flatter pack for Orange. | Weighted joints with staggered steps, planted stances, and foot lift. The torso lowers under suppression, and both hands follow the equipment through aim and recovery. |
+| Infantry | Four helmeted soldiers with vests, packs and small identification panels. Cool olive-pattern fabric and a deeper pack for Blue. Warm clay tones and a flatter pack for Orange. | Weighted joints with staggered steps, planted stances, and foot lift. The squad lowers in cover, takes staggered positions at the halt and recovers into a stride when leaving. |
 | Tracked armor | Low hull, exposed track wheels, weathered armor panels, rear grille and contrasting identification marks. | Each belt follows travel and steering. The armor pitches at launch and braking. The turret turns separately and the gun recoils and recovers. |
 | Buildings | Concrete command posts with roof equipment. Barracks use low ribbed metal roofs and repeated doors. | Building damage and destruction retain the tactical feedback used in the original battlefield. |
 | Ground | Service roads, slab yards and scrub transition through gravel verges. Directional cover uses a compacted gravel surface and a dark protective edge with ochre diagonal markings. | Surface wear and markings remain fixed in world space at every camera zoom. |
@@ -24,9 +24,17 @@ equipment and identification markings are fictional.
 One skinned mesh and one Godot skeleton render the four members of each
 squad. Each soldier uses sixteen joints. The meshes for each faction and
 their skin binds are shared by its squads. The view generates the final pose
-from movement speed, fire events and suppression. The planted part of the
+from movement speed, cover, fire events and suppression. The planted part of the
 gait moves the boot rearward to counter ground travel on straight runs.
 On turns and during transitions there can still be short foot slides.
+
+On marked gravel, movement uses a shorter, lower stride. At a halt the
+front pair settle onto opposite knees while the rear pair crouch and scan
+outward. Their boots reposition in short lifts with staggered timing.
+The front pair can shoulder and fire their rifles from the low stance.
+Suppression adds a deeper tuck. A renewed move brings the squad back into
+a stride. A loaded match restores the resting pose from the cover and
+suppression state.
 
 The uniform shader uses bind-space coordinates so the camouflage moves with
 the fabric. Pouches, webbing and boots use muted rough surfaces. Metal
@@ -36,7 +44,7 @@ The look uses original programmatic geometry and materials. Motion uses
 authored procedural poses and IK.
 
 The target for a later art pass is finer cloth detail and authored
-transitions for turns, kneeling and going prone. Check replacement models
+transitions for turns and going prone. Check replacement models
 at tactical zoom and overview. Preserve silhouette, faction identification
 and the frame budget at 50 and 100 units.
 

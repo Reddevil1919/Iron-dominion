@@ -48,6 +48,9 @@ func _run() -> void:
 	assert(not marker.visible, "Infantry starts exposed")
 	assert(not current_scene.get_node("Units/Unit3").has_node("CoverIndicator"), "Tanks have no cover indicator")
 	await _click(camera.unproject_position(squad.global_position + Vector3.UP), MOUSE_BUTTON_LEFT)
+	var west := current_scene.get_node("CoverZones/West") as MeshInstance3D
+	assert(await _verify_cover_stance(squad, rig, marker, west.global_position, rest_height),
+		"Infantry transitions into cover and back to its ordinary stance")
 
 	var covered := Vector3(patch.global_position.x, 0.0, patch.global_position.z)
 	await _click(camera.unproject_position(covered), MOUSE_BUTTON_RIGHT)
@@ -78,10 +81,11 @@ func _run() -> void:
 	var aimed := false
 	for tick in range(44):
 		await physics_frame
-		aimed = abs(rig.get_bone_global_pose(equipment).basis.z.y) < 0.17
+		aimed = abs(rig.get_bone_global_pose(equipment).basis.z.y) < 0.17 \
+			and rig.get_bone_global_pose(pelvis).origin.y < rest_height - 0.24
 		if aimed:
 			break
-	assert(aimed, "A visible combat shot blends the equipment into the aiming pose")
+	assert(aimed, "A visible combat shot shoulders the rifle in the low stance")
 
 	var exposed := covered + Vector3(0.0, 0.0, 6.0)
 	await _click(camera.unproject_position(exposed), MOUSE_BUTTON_RIGHT)
@@ -94,6 +98,54 @@ func _run() -> void:
 
 	print("Infantry cover smoke checks passed.")
 	quit()
+
+func _verify_cover_stance(squad: Node3D, rig: Skeleton3D, marker: Label3D, parcel: Vector3, rest_height: float) -> bool:
+	var camera := root.get_camera_3d()
+	var center := Vector3(parcel.x - 2.0, 0.0, parcel.z)
+	var front_pelvis := rig.find_bone("S0_Pelvis")
+	var second_pelvis := rig.find_bone("S1_Pelvis")
+	var rear_pelvis := rig.find_bone("S2_Pelvis")
+	var kneeling_joint := rig.find_bone("S0_KneeR")
+	var front_boot := rig.find_bone("S0_AnkleL")
+	await _click(camera.unproject_position(center), MOUSE_BUTTON_RIGHT)
+
+	var walked_low := false
+	for tick in range(130):
+		await physics_frame
+		if squad.global_position.distance_to(center) < 0.08:
+			break
+		walked_low = walked_low or (marker.visible and marker.text == "COVER"
+			and rig.get_bone_global_pose(front_pelvis).origin.y < rest_height - 0.18)
+	assert(squad.global_position.distance_to(center) < 0.08, "The squad reaches the quiet cover parcel")
+	assert(walked_low and marker.text == "COVER", "Infantry moves low in cover before taking fire")
+	assert(rig.get_bone_global_pose(front_pelvis).origin.y > rest_height - 0.29, "The squad does not snap into a kneel")
+	var first_kneel := -1
+	var second_kneel := -1
+	for tick in range(20):
+		await physics_frame
+		if first_kneel < 0 and rig.get_bone_global_pose(front_pelvis).origin.y < rest_height - 0.33:
+			first_kneel = tick
+		if second_kneel < 0 and rig.get_bone_global_pose(second_pelvis).origin.y < rest_height - 0.33:
+			second_kneel = tick
+	assert(first_kneel >= 0 and second_kneel > first_kneel, "The two lead soldiers settle at different times")
+	var frontal := rig.get_bone_global_pose(front_pelvis).origin.y
+	var rear := rig.get_bone_global_pose(rear_pelvis).origin.y
+	assert(frontal < rest_height - 0.34 and rear > frontal + 0.12, "Front soldiers kneel while rear soldiers stay crouched")
+	assert(rig.get_bone_global_pose(kneeling_joint).origin.y < 0.12, "The rear knee approaches the gravel")
+	assert(absf(rig.get_bone_global_pose(front_boot).origin.y - 0.09) < 0.01, "The front boot is planted")
+
+	var exit := center + Vector3(0.0, 0.0, 8.0)
+	await _click(camera.unproject_position(exit), MOUSE_BUTTON_RIGHT)
+	assert(rig.get_bone_global_pose(front_pelvis).origin.y > frontal + 0.045, "The lead soldier rises into the first steps")
+	for tick in range(70):
+		await physics_frame
+		if squad.global_position.distance_to(exit) < 0.08:
+			break
+	assert(squad.global_position.distance_to(exit) < 0.08 and not marker.visible, "The squad leaves the parcel")
+	for tick in range(20):
+		await physics_frame
+	assert(absf(rig.get_bone_global_pose(front_pelvis).origin.y - rest_height) < 0.018, "Exposed idle stance is restored")
+	return true
 
 
 func _click(point: Vector2, button: MouseButton) -> void:
