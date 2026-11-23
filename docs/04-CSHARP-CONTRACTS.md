@@ -72,6 +72,12 @@ focus a hostile target that at least one living allied unit can see. In the
 Godot battlefield, a living allied unit sees a target within 42 m when no
 solid obstacle blocks its view.
 
+Tank movement checks each swept step against a hull clearance of 6.6 m
+between tank centers. Updates use entity ID order. A detour uses the static
+navigation adapter to bypass a blocking tank and rejoin the original
+destination. An occupied destination can wait and resume once clear.
+Detours use the existing route checkpoints.
+
 An accepted focused attack replaces each selected unit's route with an
 approach to a reachable firing position when needed. The simulation stops
 the approach on engagement, loss of team visibility or destruction. It
@@ -165,8 +171,8 @@ bars use the current sector's capture ticks. The selection panel sums
 the current and maximum hit points of living selected units and reports
 cover from `IReadOnlyWorld.HasCover`.
 
-The Godot scene turns `ShotFired` events into muzzle flashes, short moving
-tracers and local impacts. It uses `CommandProcessed` rejection codes to
+The Godot scene turns `ShotFired` events into rifle bursts, cannon effects
+and local impacts. It uses `CommandProcessed` rejection codes to
 explain failed local orders.
 Blocked clicks receive feedback at the input boundary. These effects
 read simulation state and leave gameplay rules in the simulation.

@@ -31,8 +31,9 @@ func _run() -> void:
 	var health_bar := selection.find_child("SelectionHealthBar", true, false) as ProgressBar
 	var details := selection.find_child("Composition", true, false) as Label
 	var message := notice.find_child("OrderMessage", true, false) as Label
-	var tracers := current_scene.get_node("CombatTracers") as MeshInstance3D
-	assert(not current_scene.has_node("CombatTrails"), "Combat no longer draws a source-to-target line")
+	var shells := current_scene.get_node("CannonShells") as MeshInstance3D
+	assert(not current_scene.has_node("CombatTrails") and not current_scene.has_node("CombatTracers"),
+		"Combat has no beam or streak geometry")
 	assert(not selection.visible and not notice.visible, "Context panels start hidden")
 	await _click(camera.unproject_position(tank.global_position + Vector3.UP), MOUSE_BUTTON_LEFT)
 	assert(selection.visible and title.text == "Tank", "Tank selection shows its details")
@@ -61,23 +62,23 @@ func _run() -> void:
 	await _click(camera.unproject_position(Vector3(-62, 0, 0)), MOUSE_BUTTON_RIGHT)
 	assert(notice.visible and message.text == "No route to that position.", "The HUD explains a rejected simulation order")
 
-	await _click(camera.unproject_position(Vector3(17, 0, -3)), MOUSE_BUTTON_RIGHT)
-	var saw_tracer := false
+	await _click(camera.unproject_position(Vector3(24, 0, -3)), MOUSE_BUTTON_RIGHT)
+	var saw_shell := false
 	for tick in range(470):
 		await physics_frame
-		if tracers.visible:
-			saw_tracer = true
-		if health_bar.value < 1.0 and saw_tracer:
+		if shells.visible:
+			saw_shell = true
+		if health_bar.value < 1.0 and saw_shell:
 			break
-	assert(saw_tracer, "Cannon fire creates a brief airborne tracer")
+	assert(saw_shell, "Cannon fire creates a brief airborne shell")
 	assert(health_bar.value < 1.0 and health.text != "600 / 600 HP", "The selection panel follows combat damage")
-	var tracer_cleared := false
+	var shell_cleared := false
 	for tick in range(6):
 		await physics_frame
-		if not tracers.visible:
-			tracer_cleared = true
+		if not shells.visible:
+			shell_cleared = true
 			break
-	assert(tracer_cleared, "Airborne tracers clear between shots")
+	assert(shell_cleared, "Airborne shells clear between shots")
 
 	print("Battlefield HUD smoke checks passed.")
 	quit()

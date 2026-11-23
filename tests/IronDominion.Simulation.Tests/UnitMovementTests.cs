@@ -83,6 +83,53 @@ public sealed class UnitMovementTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void TanksDetourAroundStationaryAndMovingTanks(bool secondMoves)
+    {
+        var west = new SimVector(-12, 0);
+        var east = new SimVector(12, 0);
+        var blocker = secondMoves ? east : default;
+        var simulation = CreateSimulation(StraightRoutes(), Tank(First, west), Tank(Second, blocker));
+        simulation.Schedule(new MoveCommand(Blue, 1, 1, [First], east));
+        if (secondMoves)
+            simulation.Schedule(new MoveCommand(Blue, 1, 2, [Second], west));
+
+        var turned = false;
+        for (var tick = 0; tick < 340; tick++)
+        {
+            var previous = Position(simulation, First);
+            simulation.Tick();
+            var first = Position(simulation, First);
+            var second = Position(simulation, Second);
+            Assert.True(Distance(first, second) >= 6.599f);
+            Assert.InRange(Distance(previous, first), 0f, 0.1501f);
+            turned |= MathF.Abs(first.Z) > 0.5f;
+        }
+
+        Assert.True(turned);
+        Assert.Equal(east, Position(simulation, First));
+        Assert.Equal(secondMoves ? west : blocker, Position(simulation, Second));
+    }
+
+    [Fact]
+    public void ABlockedTankDestinationWaitsThenResumesWhenTheOtherTankMoves()
+    {
+        var parked = new SimVector(10, 0);
+        var simulation = CreateSimulation(StraightRoutes(), Tank(First, default), Tank(Second, parked));
+        simulation.Schedule(new MoveCommand(Blue, 1, 1, [First], parked));
+        Advance(simulation, 65);
+        var waiting = Position(simulation, First);
+        Assert.InRange(Distance(waiting, parked), 6.599f, 6.76f);
+        Advance(simulation, 15);
+        Assert.Equal(waiting, Position(simulation, First));
+
+        simulation.Schedule(new MoveCommand(Blue, 81, 2, [Second], new SimVector(10, 12)));
+        Advance(simulation, 120);
+        Assert.Equal(parked, Position(simulation, First));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void UnreachableOrderDoesNotReplaceAnExistingRoute(bool attackMove)
     {
         var navigation = new TestNavigation((_, destination) => destination.X <= 59 ? [destination] : []);
@@ -163,6 +210,16 @@ public sealed class UnitMovementTests
 
     private static Unit Squad(EntityId id, PlayerId owner, SimVector position) =>
         new(id, owner, position, UnitKind.InfantrySquad, 400);
+
+    private static Unit Tank(EntityId id, SimVector position) =>
+        new(id, Blue, position, UnitKind.Tank, 600);
+
+    private static float Distance(SimVector first, SimVector second)
+    {
+        var x = first.X - second.X;
+        var z = first.Z - second.Z;
+        return MathF.Sqrt(x * x + z * z);
+    }
 
     private static GameSimulation CreateSimulation(INavigationService navigation, params Unit[] units) =>
         new(new WorldEntities(units), Configuration, navigation);

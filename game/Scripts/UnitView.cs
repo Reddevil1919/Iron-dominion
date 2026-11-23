@@ -7,6 +7,7 @@ public partial class UnitView : StaticBody3D
 {
     public const int PickingLayerNumber = 2;
     public const uint PickingLayer = 1u << (PickingLayerNumber - 1);
+    private const float ShotAimDuration = 0.48f;
 
     private MeshInstance3D _ring = null!;
     private Label3D? _coverIndicator;
@@ -23,7 +24,7 @@ public partial class UnitView : StaticBody3D
     public UnitKind Kind { get; private set; }
     public PlayerId Player { get; private set; }
 
-    public Vector3 ShotOrigin => _tank?.Muzzle ?? _infantry!.Muzzle;
+    public Vector3 ShotOrigin(int rifle = 0) => _tank?.Muzzle ?? _infantry!.Muzzle(rifle);
     public Vector3 RearTrack => _model.ToGlobal(new Vector3(0f, 0.07f, 2.15f));
 
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;
@@ -96,14 +97,16 @@ public partial class UnitView : StaticBody3D
             return;
 
         _aimHeading = Heading(direction);
-        _shotTime = 0.48f;
-        if (_tank is null)
+        _shotTime = ShotAimDuration;
+        if (_infantry is { } infantry)
         {
             if (_speed < 0.05f)
                 _movementHeading = _aimHeading;
+            _model.Rotation = new Vector3(0f, _aimHeading, 0f);
+            infantry.BeginBurst();
         }
         else
-            _tank.Fire(_model.Rotation.Y, _aimHeading);
+            _tank?.Fire(_model.Rotation.Y, _aimHeading);
     }
 
     public override void _Process(double delta)
@@ -122,7 +125,7 @@ public partial class UnitView : StaticBody3D
         if (_tank is { } tank)
             tank.Update(seconds, _speed, previousHeading, heading, aiming ? _aimHeading : null, recoil);
         else
-            _infantry?.Update(seconds, _speed, aiming, recoil, _suppressed);
+            _infantry?.Update(seconds, _speed, aiming ? ShotAimDuration - _shotTime : null, _suppressed);
         _shotTime = Mathf.Max(0f, _shotTime - seconds);
     }
 

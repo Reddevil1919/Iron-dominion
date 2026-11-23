@@ -5,63 +5,105 @@ namespace IronDominion.Game;
 
 internal sealed class BattlefieldEffects
 {
-    private static readonly Color WarmFlash = new("ffe0a0");
-    private static readonly Color Smoke = new("73746d");
+    private static readonly Color RifleFlash = new("fff1db");
+    private static readonly Color CannonFlash = new("fbc58c");
+    private static readonly Color Smoke = new("74736b");
+    private static readonly Color PaleSmoke = new("bcb8ac");
     private static readonly Color Dust = new("b09a7d");
-    private static readonly Color Ember = new("ffa451");
 
-    private readonly EffectBatch _combat;
-    private readonly EffectBatch _tracers;
+    private readonly EffectBatch _rifles;
+    private readonly EffectBatch _cannons;
+    private readonly EffectBatch _shells;
     private readonly EffectBatch _dust;
     private long _tick = -1;
 
     public BattlefieldEffects(Node3D battlefield)
     {
         using var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/battlefield_effect.gdshader") };
-        _combat = new EffectBatch(battlefield, "CombatBursts", material, 120);
-        _tracers = new EffectBatch(battlefield, "CombatTracers", material, 32);
+        _rifles = new EffectBatch(battlefield, "RifleBursts", material, 144);
+        _cannons = new EffectBatch(battlefield, "CannonBursts", material, 96);
+        _shells = new EffectBatch(battlefield, "CannonShells", material, 24);
         _dust = new EffectBatch(battlefield, "TrackDust", material, 48);
     }
 
-    public void Fire(ShotFired shot, Vector3 muzzle, Vector3 target, float targetRadius, bool heavy,
+    public void Fire(ShotFired shot, UnitView attacker, Vector3 target, float targetRadius,
         bool sourceDestroyed, bool targetDestroyed)
+    {
+        var visibility = new Visibility(sourceDestroyed ? null : shot.Attacker, targetDestroyed ? null : shot.Target);
+        if (attacker.Kind == UnitKind.Tank)
+            FireCannon(visibility, shot.Tick, attacker.ShotOrigin(), target, targetRadius);
+        else
+            FireRifles(visibility, shot.Tick, attacker, target, targetRadius);
+    }
+
+    private void FireRifles(Visibility visibility, long tick, UnitView attacker, Vector3 target, float targetRadius)
+    {
+        var spacing = InfantryMotion.ShotIntervalSeconds * Engine.PhysicsTicksPerSecond;
+        for (var pulse = 0; pulse < InfantryMotion.BurstShots; pulse++)
+        {
+            var born = tick + (double)spacing * pulse;
+            var muzzle = attacker.ShotOrigin(InfantryMotion.Shooter(pulse));
+            var direction = (target - muzzle).Normalized();
+            var sideways = direction.Cross(Vector3.Up);
+            var flash = muzzle + direction * 0.11f;
+            _rifles.Emit(new Particle(visibility, born, 0.85f, flash, direction * 1.8f,
+                0.34f, RifleFlash, 0.96f, Shape.Flash));
+            if (pulse < 2)
+                _rifles.Emit(new Particle(visibility, born + 0.24, 7.5f, flash,
+                    direction * 0.82f + Vector3.Up * 0.60f, 0.31f, PaleSmoke, 0.40f, Shape.Cloud));
+
+            var hit = ImpactPoint(muzzle, target, targetRadius) + sideways * (pulse - 1) * 0.43f;
+            _rifles.Emit(new Particle(visibility, born + 0.8, 8.2f, hit,
+                Vector3.Up * 1.2f - direction * 0.60f, 0.38f, Dust, 0.50f, Shape.Cloud));
+        }
+    }
+
+    private void FireCannon(Visibility visibility, long tick, Vector3 muzzle, Vector3 target, float targetRadius)
+    {
+        var direction = (target - muzzle).Normalized();
+        var sideways = direction.Cross(Vector3.Up).Normalized();
+        var flash = muzzle + direction * 0.35f;
+        _cannons.Emit(new Particle(visibility, tick, 1.85f, flash, direction * 4f,
+            1.65f, CannonFlash, 0.98f, Shape.Blast));
+        _cannons.Emit(new Particle(visibility, tick + 0.10, 17f, flash,
+            direction * 2.1f + Vector3.Up * 1.5f, 1.55f, PaleSmoke, 0.72f, Shape.Cloud));
+        _cannons.Emit(new Particle(visibility, tick + 0.45, 21f, flash + sideways * 0.34f,
+            direction * 1.0f + Vector3.Up * 1.15f - sideways * 0.82f,
+            1.18f, Smoke, 0.58f, Shape.Cloud));
+        _cannons.Emit(new Particle(visibility, tick + 0.15, 13f, new Vector3(flash.X, 0.11f, flash.Z),
+            direction * 1.8f, 2.6f, Dust, 0.48f, Shape.GroundDust));
+
+        // This presentation flight follows the shot event. Simulation damage is already resolved.
+        var hit = ImpactPoint(muzzle, target, targetRadius);
+        var path = hit - muzzle;
+        var travel = path.Length();
+        var flight = Mathf.Clamp(travel * 0.18f, 1.15f, 2.7f);
+        if (travel > 0.85f)
+            _shells.Emit(new Particle(visibility, tick + 0.22, flight, muzzle,
+                path * (Engine.PhysicsTicksPerSecond / flight), 0.22f, new Color("8c8571"), 1f, Shape.Shell));
+
+        var arrival = tick + 0.22 + flight;
+        var outward = -direction + Vector3.Up * 1.1f;
+        _cannons.Emit(new Particle(visibility, arrival, 1.95f, hit, outward * 2.6f,
+            1.12f, CannonFlash, 0.93f, Shape.Blast));
+        _cannons.Emit(new Particle(visibility, arrival, 18f, hit, outward * 1.5f,
+            1.42f, Dust, 0.71f, Shape.Cloud));
+        _cannons.Emit(new Particle(visibility, arrival + 0.40, 21f, hit + sideways * 0.29f,
+            outward + sideways, 1.30f, Smoke, 0.56f, Shape.Cloud));
+
+        for (var fragment = 0; fragment < 4; fragment++)
+        {
+            var toss = outward * (3.5f + fragment * 0.4f) + sideways * (fragment - 1.5f) * 1.75f;
+            _cannons.Emit(new Particle(visibility, arrival + fragment * 0.16, 5.0f + fragment * 0.65f,
+                hit, toss, 0.18f - fragment * 0.023f, RifleFlash, 0.92f, Shape.Spark));
+        }
+    }
+
+    private static Vector3 ImpactPoint(Vector3 muzzle, Vector3 target, float radius)
     {
         var span = target - muzzle;
         var distance = span.Length();
-        var direction = span.Normalized();
-        var hit = target - direction * Mathf.Min(targetRadius, distance * 0.55f);
-        var path = hit - muzzle;
-        var travel = path.Length();
-        var visibility = new Visibility(sourceDestroyed ? null : shot.Attacker, targetDestroyed ? null : shot.Target);
-        var tickRate = Engine.PhysicsTicksPerSecond;
-
-        // The flight is visual timing. Damage has already resolved in the simulation.
-        var flight = heavy ? Mathf.Clamp(travel * 0.21f, 1.45f, 3.1f) : Mathf.Clamp(travel * 0.12f, 0.65f, 1.65f);
-        var arrival = (double)shot.Tick + flight;
-        var flashPosition = muzzle + direction * (heavy ? 0.17f : 0.09f);
-        _combat.Emit(new Particle(visibility, shot.Tick, heavy ? 2.05f : 1.0f, flashPosition,
-            direction * 2.2f, heavy ? 0.74f : 0.30f, WarmFlash, 0.93f, Shape.Flash));
-        _combat.Emit(new Particle(visibility, shot.Tick + 0.12, heavy ? 14f : 7f, flashPosition,
-            direction * (heavy ? 1.10f : 0.62f) + Vector3.Up * 0.94f,
-            heavy ? 0.80f : 0.36f, Smoke, heavy ? 0.47f : 0.24f, Shape.Cloud));
-
-        if (travel > 0.45f && (heavy || DrawInfantryTracer(shot)))
-            _tracers.Emit(new Particle(visibility, shot.Tick, flight, muzzle, path * (tickRate / flight),
-                heavy ? 0.112f : 0.061f, WarmFlash, 0.92f, Shape.Glow, heavy ? 0.82f : 0.49f));
-
-        var outward = -direction * 1.15f + Vector3.Up * 0.88f;
-        _combat.Emit(new Particle(visibility, arrival, heavy ? 16f : 10f, hit, outward,
-            heavy ? 0.86f : 0.33f, Dust, heavy ? 0.56f : 0.33f, Shape.Cloud));
-        _combat.Emit(new Particle(visibility, arrival, heavy ? 2.3f : 1.25f, hit,
-            outward, heavy ? 0.56f : 0.23f, Ember, 0.81f, Shape.Flash));
-        if (heavy)
-        {
-            var sideways = direction.Cross(Vector3.Up).Normalized() * 1.8f;
-            _combat.Emit(new Particle(visibility, arrival, 4.2f, hit, outward * 2.8f + sideways,
-                0.17f, Ember, 0.90f, Shape.Glow));
-            _combat.Emit(new Particle(visibility, arrival + 0.24, 4.7f, hit, outward * 2.1f - sideways,
-                0.135f, WarmFlash, 0.78f, Shape.Glow));
-        }
+        return target - span.Normalized() * Mathf.Min(radius, distance * 0.67f);
     }
 
     public void TrackDust(EntityId tank, long tick, Vector3 position) =>
@@ -71,8 +113,9 @@ internal sealed class BattlefieldEffects
     public void Advance(long tick, IReadOnlySet<EntityId> visibleActors)
     {
         _tick = tick;
-        _combat.Prune(tick, visibleActors);
-        _tracers.Prune(tick, visibleActors);
+        _rifles.Prune(tick, visibleActors);
+        _cannons.Prune(tick, visibleActors);
+        _shells.Prune(tick, visibleActors);
         _dust.Prune(tick, visibleActors);
     }
 
@@ -82,27 +125,22 @@ internal sealed class BattlefieldEffects
             return;
 
         var time = _tick + fraction;
-        _combat.Render(time);
-        _tracers.Render(time);
+        _rifles.Render(time);
+        _cannons.Render(time);
+        _shells.Render(time);
         _dust.Render(time);
     }
 
     public void Reset()
     {
         _tick = -1;
-        _combat.Reset();
-        _tracers.Reset();
+        _rifles.Reset();
+        _cannons.Reset();
+        _shells.Reset();
         _dust.Reset();
     }
 
-    private static bool DrawInfantryTracer(ShotFired shot)
-    {
-        // Mix the event tick with the squad ID so a fixed fire cadence still varies the accents.
-        var value = unchecked((uint)shot.Tick * 1103515245u + (uint)shot.Attacker.Value * 2654435761u);
-        return (value >> 29) == 0;
-    }
-
-    private enum Shape { Cloud, Flash, Glow }
+    private enum Shape { Cloud, Flash, Spark, Blast, Shell, GroundDust }
 
     private readonly record struct Visibility(EntityId? Source, EntityId? Target)
     {
@@ -112,8 +150,7 @@ internal sealed class BattlefieldEffects
     }
 
     private readonly record struct Particle(Visibility Visibility, double Born, float Lifetime,
-        Vector3 Origin, Vector3 Velocity, float Radius, Color Color, float Opacity, Shape Shape,
-        float Length = 0f);
+        Vector3 Origin, Vector3 Velocity, float Radius, Color Color, float Opacity, Shape Shape);
 
     private sealed class EffectBatch
     {
@@ -167,9 +204,10 @@ internal sealed class BattlefieldEffects
                 var age = (float)(time - particle.Born);
                 if (age < 0f || age >= particle.Lifetime)
                     continue;
-                var movement = particle.Velocity * (age / Engine.PhysicsTicksPerSecond);
-                if (particle.Length > 0f && movement.LengthSquared() < 0.001f)
-                    continue;
+                var seconds = age / Engine.PhysicsTicksPerSecond;
+                var movement = particle.Velocity * seconds;
+                if (particle.Shape == Shape.Spark)
+                    movement.Y -= 7f * seconds * seconds;
 
                 if (!drawing)
                 {
@@ -178,12 +216,9 @@ internal sealed class BattlefieldEffects
                 }
 
                 var progress = age / particle.Lifetime;
-                _mesh.SurfaceSetColor(new Color(particle.Color, particle.Opacity * (1f - progress)));
-                var center = particle.Origin + movement;
-                if (particle.Length > 0f)
-                    Streak(center, movement, particle, camera);
-                else
-                    Burst(center, particle, progress, camera);
+                var alpha = particle.Shape == Shape.Shell ? particle.Opacity : particle.Opacity * (1f - progress);
+                _mesh.SurfaceSetColor(new Color(particle.Color, alpha));
+                DrawParticle(particle.Origin + movement, particle, progress, camera);
             }
 
             if (drawing)
@@ -191,27 +226,30 @@ internal sealed class BattlefieldEffects
             _view.Visible = drawing;
         }
 
-        private void Streak(Vector3 head, Vector3 movement, Particle particle, Basis camera)
+        private void DrawParticle(Vector3 center, Particle particle, float progress, Basis camera)
         {
-            var direction = movement.Normalized();
-            var along = direction * (Mathf.Min(movement.Length(), particle.Length) * 0.5f);
-            var across = camera.Z.Cross(direction);
-            var width = across.LengthSquared() > 0.001f ? across.Normalized() : camera.Y;
-            Quad(head - along, along, width * particle.Radius, particle.Shape);
-        }
-
-        private void Burst(Vector3 center, Particle particle, float progress, Basis camera)
-        {
-            var scale = particle.Shape == Shape.Cloud ? 0.63f + progress * 1.25f : 1f - progress * 0.63f;
+            var scale = particle.Shape switch
+            {
+                Shape.Cloud => 0.56f + progress * 1.25f,
+                Shape.GroundDust => 0.55f + progress * 1.64f,
+                Shape.Blast => 0.79f + progress * 0.41f,
+                Shape.Shell => 1f,
+                _ => 1f - progress * 0.57f
+            };
             var size = particle.Radius * scale;
             var x = camera.X;
             var y = camera.Y;
-            if (particle.Shape == Shape.Flash && particle.Velocity.LengthSquared() > 0.001f)
+            if (particle.Shape == Shape.GroundDust)
+            {
+                x = Vector3.Right;
+                y = Vector3.Back;
+            }
+            else if (particle.Shape is Shape.Flash or Shape.Shell)
             {
                 var projected = particle.Velocity.Slide(camera.Z);
                 if (projected.LengthSquared() > 0.001f)
                 {
-                    x = projected.Normalized() * 1.35f;
+                    x = projected.Normalized() * 1.36f;
                     y = camera.Z.Cross(x).Normalized();
                 }
             }

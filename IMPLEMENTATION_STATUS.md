@@ -547,6 +547,26 @@ reference during setup so Godot can free the mask when closing the scene.
 | Godot headless | All 13 scenarios passed. Combat checks a moving tracer and localized bursts. The HUD check verifies tracer expiry and the absence of the old beam node. |
 | Linux desktop | Captured a tank shot from muzzle flash to impact in the playable depot. The cloud rendered with Mesa softpipe. Graphical frame rates on Windows hardware remain unmeasured. |
 
+## Targeting cursor, tank clearance and weapon effects
+
+The world pointer changes to a crosshair using the attack order's picking
+rules. Ground, friendly units and fogged contacts use the ordinary
+pointer. HUD controls retain their own cursors. Tanks keep 6.6 m between hull centers and
+find a detour through the existing navigation mesh when there is room.
+Blocked destinations wait for clearance. This movement uses entity order
+and the existing saved waypoints.
+
+Infantry shots use staggered recoil and flashes at two rifle muzzles, with
+small impact puffs. Cannon fire has a larger flash, muzzle smoke and
+ground dust, a compact shell and a heavier impact. The effects follow the existing
+combat events and visibility rules.
+
+The Release build completed with zero warnings and errors. All 151 xUnit
+tests passed, including stationary, head-on and blocked-destination tank
+cases. All 13 Godot headless scenarios passed. The focused checks verify
+the cursor, rifle and cannon effects, and a detour around the opposing tank
+in the depot. Graphical frame rates on Windows hardware remain unmeasured.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

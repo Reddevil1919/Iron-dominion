@@ -22,8 +22,13 @@ public partial class UnitSelectionController : Control
     private Vector2? _start;
     private Vector2 _pointer;
     private bool _dragging;
+    private bool _mouseInWindow = true;
+    private bool _windowFocused = true;
+    private bool _targetCursor;
 
     public bool AttackMoveArmed { get; private set; }
+
+    public bool HasAttackCursor() => _targetCursor;
 
     public void Initialize(UnitSelection selection, IReadOnlyList<UnitView> units,
         StaticBody3D ground, Action<IReadOnlyList<EntityId>, SimVector, bool> move,
@@ -40,9 +45,24 @@ public partial class UnitSelectionController : Control
         _reject = reject;
     }
 
-    public override void _Ready() => GetWindow().FocusExited += CancelInput;
+    public override void _Ready()
+    {
+        var window = GetWindow();
+        window.FocusExited += OnFocusExited;
+        window.FocusEntered += OnFocusEntered;
+        window.MouseExited += OnMouseExited;
+        window.MouseEntered += OnMouseEntered;
+    }
 
-    public override void _ExitTree() => GetWindow().FocusExited -= CancelInput;
+    public override void _ExitTree()
+    {
+        var window = GetWindow();
+        window.FocusExited -= OnFocusExited;
+        window.FocusEntered -= OnFocusEntered;
+        window.MouseExited -= OnMouseExited;
+        window.MouseEntered -= OnMouseEntered;
+        SetTargetCursor(false);
+    }
 
     public override void _Notification(int what)
     {
@@ -134,14 +154,51 @@ public partial class UnitSelectionController : Control
 
     public override void _PhysicsProcess(double delta)
     {
-        if (_pending.Count == 0 || _selection is not { } selection)
+        if (_selection is not { } selection)
             return;
 
-        while (_pending.TryDequeue(out var update))
-            update();
+        if (_pending.Count != 0)
+        {
+            while (_pending.TryDequeue(out var update))
+                update();
+            ShowSelection(selection);
+        }
 
-        ShowSelection(selection);
+        var viewport = GetViewport();
+        if (!_mouseInWindow || !_windowFocused || _start.HasValue || AttackMoveArmed
+            || viewport.GuiGetHoveredControl() is not null)
+        {
+            SetTargetCursor(false);
+            return;
+        }
+
+        using var hit = RaycastOrderTarget(viewport.GetMousePosition());
+        SetTargetCursor(HitActor(hit) is { } actor && _hostile(actor).HasValue);
     }
+
+    private void SetTargetCursor(bool targeting)
+    {
+        if (_targetCursor == targeting)
+            return;
+        _targetCursor = targeting;
+        Input.SetDefaultCursorShape(targeting ? Input.CursorShape.Cross : Input.CursorShape.Arrow);
+    }
+
+    private void OnFocusExited()
+    {
+        _windowFocused = false;
+        CancelInput();
+    }
+
+    private void OnFocusEntered() => _windowFocused = true;
+
+    private void OnMouseExited()
+    {
+        _mouseInWindow = false;
+        SetTargetCursor(false);
+    }
+
+    private void OnMouseEntered() => _mouseInWindow = true;
 
     public void ArmAttackMove()
     {
@@ -211,8 +268,8 @@ public partial class UnitSelectionController : Control
         if (selection.Selected.IsEmpty)
             return;
 
-        using var hit = Raycast(point, _ground.CollisionLayer | UnitView.PickingLayer);
-        if (hit is null || !hit.TryGetValue("collider", out var collider) || collider.AsGodotObject() is not { } actor)
+        using var hit = RaycastOrderTarget(point);
+        if (hit is null || HitActor(hit) is not { } actor)
         {
             _reject("outside_battlefield");
             return;
@@ -230,6 +287,12 @@ public partial class UnitSelectionController : Control
             _reject("blocked_ground");
         }
     }
+
+    private Godot.Collections.Dictionary? RaycastOrderTarget(Vector2 point) =>
+        Raycast(point, _ground.CollisionLayer | UnitView.PickingLayer);
+
+    private static GodotObject? HitActor(Godot.Collections.Dictionary? hit) =>
+        hit is not null && hit.TryGetValue("collider", out var collider) ? collider.AsGodotObject() : null;
 
     private Godot.Collections.Dictionary? Raycast(Vector2 point, uint mask)
     {
@@ -262,6 +325,7 @@ public partial class UnitSelectionController : Control
     {
         AttackMoveArmed = false;
         CancelGesture();
+        SetTargetCursor(false);
     }
 
     private void CancelGesture()

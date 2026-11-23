@@ -26,9 +26,9 @@ internal sealed class BattlefieldFeedback
         canvas.AddChild(_notice);
     }
 
-    public void Fire(ShotFired shot, Vector3 muzzle, Vector3 target, float targetRadius, bool heavy,
+    public void Fire(ShotFired shot, UnitView attacker, Vector3 target, float targetRadius,
         bool sourceDestroyed, bool targetDestroyed) =>
-        _effects.Fire(shot, muzzle, target, targetRadius, heavy, sourceDestroyed, targetDestroyed);
+        _effects.Fire(shot, attacker, target, targetRadius, sourceDestroyed, targetDestroyed);
 
     public void TrackDust(EntityId tank, long tick, Vector3 position) => _effects.TrackDust(tank, tick, position);
 
