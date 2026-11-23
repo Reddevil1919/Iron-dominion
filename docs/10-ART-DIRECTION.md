@@ -127,9 +127,16 @@ clear when a save is loaded.
 ## Depot landmarks and wayfinding
 
 The central loading frame is built into the freight yard footprint. The
-relay mast belongs to the western barracks roof. The two perimeter gates
-stand outside the existing navigable edge. Road arrows and stop lines
-mark the approaches to the gates.
+yard also has a parked forklift, strapped pallets, a marked handling lane
+and container doors with lock bars. The handling equipment sits inside
+the roadblock's existing footprint. Selected painted surfaces use
+procedural runoff and settled dust. The static freight yard takes its
+light level from nearby visible ground around the roadblock.
+
+The barracks show shuttered maintenance bays with protective bollards and
+roof ventilation. Photovoltaic panels accompany the western relay mast.
+The two perimeter gates have glazed guard booths outside the navigable
+edge. Road arrows and stop lines mark the approaches.
 
 The three capture points have ground names and distinct concrete aprons.
 A marks Relay, B marks Service, and C marks Checkpoint. The segmented

@@ -16,11 +16,12 @@ internal static class BattlefieldArt
         mesh.Box(new(0f, 1.92f, 0f), new(10.4f, 3.4f, 8.4f), wall);
         mesh.Box(new(0f, 3.68f, 0f), new(10.9f, 0.32f, 8.9f), "73766c");
         mesh.Box(new(0f, 3.86f, 0f), new(10.58f, 0.14f, 8.58f), roof);
+        var windowHeight = headquarters ? 2.41f : 2.81f;
         for (var x = -4; x <= 4; x += 2)
         {
-            mesh.Box(new(x, 2.41f, 4.24f), new(1.32f, 0.74f, 0.09f), "414e51");
-            mesh.Box(new(x, 2.21f, 4.31f), new(1.26f, 0.15f, 0.10f), "89978f");
-            mesh.Box(new(x, 2.41f, -4.24f), new(1.32f, 0.74f, 0.09f), "414e51");
+            mesh.Box(new(x, windowHeight, 4.24f), new(1.32f, 0.74f, 0.09f), "414e51");
+            mesh.Box(new(x, windowHeight - 0.20f, 4.31f), new(1.26f, 0.15f, 0.10f), "89978f");
+            mesh.Box(new(x, windowHeight, -4.24f), new(1.32f, 0.74f, 0.09f), "414e51");
         }
 
         for (var side = -1; side <= 1; side += 2)
@@ -46,12 +47,14 @@ internal static class BattlefieldArt
             for (var z = -3; z <= 3; z++)
                 mesh.Box(new(0f, 4.03f + (3 - Mathf.Abs(z)) * 0.16f, z), new(10.56f, 0.49f, 1.04f), roof);
             mesh.Box(new(0f, 4.78f, 0f), new(6.44f, 0.12f, 0.55f), identification);
-            for (var x = -3; x <= 3; x += 3)
-                mesh.Box(new(x, 1.04f, 4.28f), new(1.75f, 1.88f, 0.11f), "4c544e");
+            DepotDetails.AddWorkshop(mesh);
         }
 
         if (relayRoof)
+        {
             AddRelayMast(mesh);
+            DepotDetails.AddRelayPower(mesh);
+        }
         return mesh.Build();
     }
 
@@ -65,11 +68,24 @@ internal static class BattlefieldArt
         mesh.Box(new Vector3(2.50f, 5.61f, -0.24f), new Vector3(0.83f, 0.10f, 0.10f), "6f7668");
     }
 
-    public static void Decorate(Node3D battlefield, Material surface)
+    public static void Decorate(Node3D battlefield, ShaderMaterial surface)
     {
         var roadblock = battlefield.GetNode<MeshInstance3D>("Roadblock/Mesh");
+        var bounds = BattlefieldNavigation.BoxBounds(battlefield.GetNode<CollisionShape3D>("Roadblock/Collision"));
+        surface.SetShaderParameter("freight_yard", new Vector4(bounds.Position.X, bounds.Position.Z, bounds.End.X, bounds.End.Z));
         roadblock.Mesh = Depot();
         roadblock.MaterialOverride = surface;
+        roadblock.GetParent().AddChild(new MeshInstance3D
+        {
+            Name = "CargoHandling", Mesh = DepotDetails.CargoHandling(), MaterialOverride = surface
+        });
+        var gates = new ArtMesh();
+        AddPerimeterGate(gates, -61.8f);
+        AddPerimeterGate(gates, 61.8f);
+        battlefield.AddChild(new MeshInstance3D
+        {
+            Name = "PerimeterGates", Mesh = gates.Build(), MaterialOverride = surface
+        });
         DepotWayfinding.AddGroundMarkings(battlefield);
         var perimeter = new MeshInstance3D
         {
@@ -110,7 +126,6 @@ internal static class BattlefieldArt
             var barrel = new Vector3(-3.9f + row * 0.92f, -0.64f, 4.84f);
             mesh.Cylinder(barrel, new(0.64f, 0.86f, 0.64f), new Color("555c4a"));
             mesh.Cylinder(barrel + Vector3.Up * 0.29f, new(0.68f, 0.08f, 0.68f), new Color("72776a"));
-            mesh.Box(new(2.05f + row * 1.1f, -0.76f, -5.03f), new(1.0f, 0.68f, 1.0f), "72694f");
         }
         return mesh.Build();
     }
@@ -141,13 +156,14 @@ internal static class BattlefieldArt
     private static void AddContainer(ArtMesh mesh, float x, float z, string paint)
     {
         var center = new Vector3(x, -0.02f, z);
-        mesh.Box(center, new(3.34f, 2.48f, 6.48f), paint);
+        var siding = DepotDetails.Weathered(paint);
+        mesh.Box(center, new(3.34f, 2.48f, 6.48f), siding);
         for (var i = -7; i <= 7; i++)
         {
             var part = i * 0.41f;
-            mesh.Box(center + new Vector3(1.69f, 0f, part), new(0.10f, 2.31f, 0.13f), paint);
-            mesh.Box(center + new Vector3(-1.69f, 0f, part), new(0.10f, 2.31f, 0.13f), paint);
-            mesh.Box(center + new Vector3(0f, 1.27f, part), new(3.23f, 0.07f, 0.13f), paint);
+            mesh.Box(center + new Vector3(1.69f, 0f, part), new(0.10f, 2.31f, 0.13f), siding);
+            mesh.Box(center + new Vector3(-1.69f, 0f, part), new(0.10f, 2.31f, 0.13f), siding);
+            mesh.Box(center + new Vector3(0f, 1.27f, part), new(3.23f, 0.07f, 0.13f), siding);
         }
         foreach (var offset in new[] { -1.53f, 1.53f })
         foreach (var y in new[] { -1.08f, 1.08f })
@@ -156,6 +172,19 @@ internal static class BattlefieldArt
             mesh.Cylinder(center + new Vector3(offset, y, 3.28f), new(0.17f, 0.13f, 0.17f),
                 new Color("a9a895"), AlongZ);
         }
+
+        for (var leaf = -1; leaf <= 1; leaf += 2)
+        {
+            mesh.Box(center + new Vector3(leaf * 0.72f, 0f, 3.25f), new(1.39f, 2.17f, 0.055f), siding.Darkened(0.12f));
+            for (var rod = 0; rod <= 1; rod++)
+                mesh.Box(center + new Vector3(leaf * (0.42f + rod * 0.51f), 0f, 3.30f),
+                    new(0.055f, 2.02f, 0.059f), "9b9d8e");
+            for (var hinge = -1; hinge <= 1; hinge++)
+                mesh.Box(center + new Vector3(leaf * 1.42f, hinge * 0.75f, 3.30f),
+                    new(0.24f, 0.08f, 0.084f), "5c6055");
+            mesh.Box(center + new Vector3(leaf * 0.54f, -0.28f, 3.34f), new(0.36f, 0.075f, 0.065f), "63675c");
+        }
+        mesh.Box(center + new Vector3(0.99f, 0.69f, 3.293f), new(0.48f, 0.22f, 0.020f), "b6af97");
     }
 
     private static Mesh Perimeter()
@@ -179,7 +208,7 @@ internal static class BattlefieldArt
             {
                 var offset = random.NextSingle() * 4.5f - 2.25f;
                 var p = point + (side < 2 ? Vector3.Back : Vector3.Right) * offset;
-                if (side < 2 && Mathf.Abs(p.Z) < 6.5f)
+                if (side < 2 && Mathf.Abs(p.Z) < 8.6f)
                     continue;
                 var h = 2.2f + random.NextSingle() * 3.8f;
                 mesh.Cylinder(p + Vector3.Up * (h * 0.22f), new(0.22f, h * 0.45f, 0.22f), new Color("5c5746"));
@@ -188,13 +217,12 @@ internal static class BattlefieldArt
                 mesh.Conifer(p + Vector3.Up * (h * 0.79f), new(h * 0.31f, h * 0.42f, h * 0.31f), foliage[cluster % 3]);
             }
         }
-        AddPerimeterGate(mesh, -61.8f);
-        AddPerimeterGate(mesh, 61.8f);
         return mesh.Build();
     }
 
     private static void AddPerimeterGate(ArtMesh mesh, float x)
     {
+        DepotDetails.AddGateBooth(mesh, x);
         foreach (var z in new[] { -4.15f, 4.15f })
         {
             mesh.Box(new Vector3(x, 0.24f, z), new Vector3(1.30f, 0.48f, 1.30f), "7d7b6f");
