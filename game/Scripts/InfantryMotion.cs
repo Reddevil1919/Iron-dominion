@@ -19,6 +19,7 @@ internal sealed partial class InfantryMotion
     private float _cover;
     private float _stationaryCover;
     private float _aim;
+    private Vector3? _footfall;
 
     public InfantryMotion(Node3D model, InfantryArt art)
     {
@@ -37,6 +38,13 @@ internal sealed partial class InfantryMotion
     }
 
     public Vector3 Muzzle(int soldier) => _skeleton.ToGlobal(_muzzles[soldier]);
+
+    public Vector3? TakeFootfall()
+    {
+        var result = _footfall;
+        _footfall = null;
+        return result;
+    }
 
     public static int Shooter(int shot) => shot % 2;
 
@@ -75,8 +83,12 @@ internal sealed partial class InfantryMotion
         _stationaryCover = Approach(_stationaryCover, targetStationaryCover, delta, targetStationaryCover > 0f ? 4.6f : 10f);
         _aim = Approach(_aim, targetAim, delta, aiming ? 14f : 7f);
         var stride = Stride();
-        _phase = Mathf.PosMod(_phase + speed * delta / (DisplayScale * stride), 1f);
-        PoseSquad(stride, shotAge);
+        var nextPhase = _phase + speed * delta / (DisplayScale * stride);
+        var landed = speed > 0.2f && _stationaryCover < 0.45f
+            && Mathf.FloorToInt(nextPhase * 2f) != Mathf.FloorToInt(_phase * 2f);
+        _phase = Mathf.PosMod(nextPhase, 1f);
+        var ankle = landed ? (_phase < 0.5f ? LeftHip : RightHip) + 2 : -1;
+        PoseSquad(stride, shotAge, ankle);
     }
 
     private float Stride() => Mathf.Lerp(0.99f, 1.49f, _pace) * (1f - 0.19f * Crouch);
@@ -89,7 +101,7 @@ internal sealed partial class InfantryMotion
         return Mathf.Abs(target - next) <= 0.003f ? target : next;
     }
 
-    private void PoseSquad(float stride, float? shotAge)
+    private void PoseSquad(float stride, float? shotAge, int footfall = -1)
     {
         var crouch = Crouch;
         for (var soldier = 0; soldier < Formation.Length; soldier++)
@@ -130,6 +142,8 @@ internal sealed partial class InfantryMotion
 
             PoseLeg(LeftHip, -1, phase, stride, offset, pelvis, crouch, settled, kneeSide);
             PoseLeg(RightHip, 1, Mathf.PosMod(phase + 0.5f, 1f), stride, offset, pelvis, crouch, settled, kneeSide);
+            if (soldier == 0 && footfall >= 0)
+                _footfall = _skeleton.ToGlobal(_pose[footfall].Origin);
             PoseArm(LeftShoulder, -1, chest, gear, new Vector3(-0.022f, -0.036f, -0.20f));
             PoseArm(RightShoulder, 1, chest, gear, new Vector3(0.01f, -0.062f, 0.027f));
 

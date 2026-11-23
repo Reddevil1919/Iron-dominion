@@ -149,7 +149,7 @@ public partial class Battlefield : Node3D
         _productionPanel = new ProductionPanel(canvas, LocalPlayer, configuration,
             [blueBarracks, blueHq], (producer, kind) => _session!.Commands.ScheduleTraining(LocalPlayer, producer, kind));
         _productionPanel.Update(session.World);
-        sectorBoard.Update(session.World, fog.CanSeeSector);
+        sectorBoard.Update(session.World, fog.CanSeeGround);
         UpdateActorVisibility(fog.VisibleActors);
         UpdateUnitViews(session.World);
     }
@@ -247,11 +247,11 @@ public partial class Battlefield : Node3D
             _unitSelection.RefreshSelection();
 
         _productionPanel?.Update(session.World);
-        _sectorBoard?.Update(session.World, fog.CanSeeSector);
+        _sectorBoard?.Update(session.World, fog.CanSeeGround);
         _selectionPanel?.Update(session.World, _views);
         UpdateActorVisibility(visibleActors);
         UpdateUnitViews(session.World, emitEffects: true);
-        _feedback?.Update(session.World.Tick, visibleActors);
+        _feedback?.Update(session.World.Tick, fog);
         _casualties?.Advance(session.World.Tick, fog);
         if (session.World.Result != MatchResult.Running)
             _matchMenu?.ShowOutcome(session.World.Result);
@@ -336,6 +336,8 @@ public partial class Battlefield : Node3D
             if (view.Kind == UnitKind.InfantrySquad)
             {
                 view.ShowInfantryStatus(world.HasCover(view.Id), world.IsSuppressed(view.Id), snapPose: !emitEffects);
+                if (view.TakeFootfall() is { } footfall && emitEffects && view.Visible)
+                    _feedback?.FootstepDust(view.Id, world.Tick, footfall);
                 continue;
             }
 
@@ -344,8 +346,8 @@ public partial class Battlefield : Node3D
             if (!emitEffects || !view.Visible)
                 continue;
 
-            if (travelled > 0f && view.AdvanceDust(travelled))
-                _feedback?.TrackDust(view.Id, world.Tick, view.RearTrack);
+            if (travelled > 0f && view.AdvanceTreadMarks(travelled) is { } overshoot)
+                _feedback?.TrackTerrain(view, world.Tick, overshoot, view.Player == LocalPlayer);
             if ((world.Tick + view.Id.Value) % EngineSmokeIntervalTicks == 0 && view.EngineSmokeOrigin is { } engine)
                 _feedback?.EngineSmoke(view.Id, world.Tick, engine);
         }

@@ -626,6 +626,23 @@ and aiming low under fire. The close-up capture runs the original
 battlefield on Linux with Mesa llvmpipe. Windows graphical performance
 remains unmeasured.
 
+## Tread marks and footstep dust
+
+Tanks stamp two parallel tread marks and lift dust from the rear of the
+belts. Turf shows compressed tracks and warm dust. Gravel shows a weaker
+imprint and paler dust. Paved areas stay clean. Infantry lifts small
+puffs from the leading soldier's footfalls on loose ground. The terrain
+classifier uses the same authored parcels and paving as the impact
+effects. Marks stay on the ground and fade away within twelve match
+seconds. A bounded pool keeps the rendering cost predictable. Enemy
+marks respect ground visibility, and loading clears old trails.
+
+The Release build passed with zero warnings and errors. The 151 xUnit
+tests and all 13 Godot headless scenarios passed. Movement crosses both
+pavement types and checks tread expiry. The cover and save scenarios check
+footstep dust and trail reset. The Linux desktop capture uses Mesa
+llvmpipe. Graphical performance on Windows remains unmeasured.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

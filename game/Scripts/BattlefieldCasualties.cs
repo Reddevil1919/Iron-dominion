@@ -116,7 +116,7 @@ internal sealed class BattlefieldCasualties : IDisposable
     }
 
     private bool IsVisible(long born, Vector3 site, bool friendly, BattlefieldFog fog) =>
-        friendly || born == _tick || fog.CanSeeSector(new SimVector(site.X, site.Z));
+        friendly || born == _tick || fog.CanSeeGround(new SimVector(site.X, site.Z));
 
     public void Render(double fraction)
     {

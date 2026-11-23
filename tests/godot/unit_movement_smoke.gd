@@ -30,7 +30,9 @@ func _run() -> void:
 	var belts := model.get_node("TrackBelts") as MeshInstance3D
 	var belt_material := belts.material_override as ShaderMaterial
 	var dust := current_scene.get_node("TrackDust") as MeshInstance3D
+	var marks := (current_scene.get_node("TrackMarks") as MultiMeshInstance3D).multimesh
 	assert(not dust.visible, "An idle tank produces no track dust")
+	assert(marks.visible_instance_count == 0, "An idle tank leaves no marks")
 	await _click(camera.unproject_position(initial + Vector3.UP), MOUSE_BUTTON_LEFT)
 	assert(tank.get_node("SelectionRing").visible, "The blue tank is selected")
 
@@ -44,6 +46,7 @@ func _run() -> void:
 	var steering_seen := false
 	var suspension_seen := false
 	var dust_seen := false
+	var pair_seen := false
 	for tick in range(440):
 		await physics_frame
 		var current := tank.global_position
@@ -51,6 +54,7 @@ func _run() -> void:
 		steering_seen = steering_seen or abs(travel.x - travel.y) > 0.06
 		suspension_seen = suspension_seen or abs(suspension.rotation.x) > 0.006
 		dust_seen = dust_seen or dust.visible
+		pair_seen = pair_seen or marks.visible_instance_count >= 2
 		assert(current.distance_to(previous) <= 0.151, "The tank moves at its configured tick speed")
 		assert(abs(current.x) >= 10.99 or abs(current.z) >= 12.99, "The tank stays outside the expanded obstacle")
 		if current.distance_to(goal) < 0.08:
@@ -62,9 +66,11 @@ func _run() -> void:
 	assert(steering_seen, "The two belts advance by different amounts on a turn")
 	assert(suspension_seen, "The hull reacts to acceleration")
 	assert(dust_seen, "Travel creates dust")
+	assert(pair_seen, "Both belts leave marks")
 	for tick in range(25):
 		await physics_frame
 	assert(not dust.visible, "Track dust clears after stopping")
+	assert(marks.visible_instance_count > 0, "The tread marks outlast the dust")
 	assert(abs(suspension.rotation.x) < 0.008, "The hull settles after braking")
 
 	var beyond_enemy := Vector3(17, 0, -15)
@@ -79,8 +85,33 @@ func _run() -> void:
 			break
 	assert(detoured and tank.global_position.distance_to(beyond_enemy) < 0.08,
 		"The tank steers around the stationary tank and reaches its destination")
+
+	assert(await _verify_pavement(tank, dust, marks), "Treads fade and hard surfaces stay clean")
 	print("Unit movement smoke checks passed.")
 	quit()
+
+func _verify_pavement(tank: Node3D, dust: MeshInstance3D, marks: MultiMesh) -> bool:
+	var camera := root.get_camera_3d()
+	var road := Vector3(-32, 0, 8)
+	await _click(camera.unproject_position(road), MOUSE_BUTTON_RIGHT)
+	for tick in range(500):
+		await physics_frame
+		if tank.global_position.distance_to(road) < 0.08:
+			break
+	assert(tank.global_position.distance_to(road) < 0.08, "The tank reaches the paved approach")
+	for tick in range(244):
+		await physics_frame
+	assert(marks.visible_instance_count == 0, "Tread marks are gone after twelve seconds")
+
+	var slab := Vector3(-32, 0, -7)
+	await _click(camera.unproject_position(slab), MOUSE_BUTTON_RIGHT)
+	for tick in range(130):
+		await physics_frame
+		assert(not dust.visible and marks.visible_instance_count == 0, "Asphalt and concrete produce no dirt or prints")
+		if tank.global_position.distance_to(slab) < 0.08:
+			break
+	assert(tank.global_position.distance_to(slab) < 0.08, "The tank crosses from asphalt onto concrete")
+	return true
 
 
 func _click(point: Vector2, button: MouseButton) -> void:
