@@ -62,6 +62,23 @@ Rifle bursts, cannon bursts, shells and track dust use four bounded
 mesh batches. They respect fog of war and can finish a lethal impact
 at a target's last visible position. Loading a match clears the batches.
 
+## Tank destruction and infantry casualties
+
+The tank blast throws the turret and several armor and track fragments
+through the flash, dust and smoke. Fragments tumble, settle individually
+and stay on the ground for three seconds each.
+
+Infantry still has one shared health pool per squad. On defeat, each of
+its four soldiers blends from their current pose through a buckling pose
+into a prone position. The timing and limb poses vary within the squad.
+The fallen uniforms have localized stains, and the bodies stay down for
+three seconds. Ground stains start on contact, stay red for three seconds,
+dry toward brown until ten seconds and fade to clear by thirteen seconds.
+
+Enemy effects start at a visible loss. Bodies, stains and debris respect
+ground visibility as units move. These effects use the match clock and
+clear when a save is loaded.
+
 ## Depot landmarks and wayfinding
 
 The central loading frame is built into the freight yard footprint. The

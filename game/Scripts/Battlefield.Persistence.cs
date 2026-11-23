@@ -40,6 +40,7 @@ public partial class Battlefield
         _enemyCommands = enemy is null ? null : session.Commands.ForPlayer(Opponent);
         _unitSelection.ResetForLoad();
         _feedback?.Reset();
+        _casualties?.Reset();
 
         foreach (var view in _views)
         {

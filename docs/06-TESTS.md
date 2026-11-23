@@ -94,6 +94,13 @@ recording and verifies the timeline after loading them in reverse order. The
 Godot smoke sends keyboard and mouse input to confirm the same order modes
 through the HUD and input shortcuts.
 
+## Casualty effects scenario
+
+The combat smoke follows an eliminated tank fragment from launch through
+landing and its three-second hold. It also checks the infantry skeleton's
+ground pose, three-second body hold and paint lifetime through the
+thirteen-second disappearance.
+
 ## Save and load scenario
 
 The golden match saves and loads at three ticks covering active orders,

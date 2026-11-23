@@ -30,6 +30,7 @@ public partial class Battlefield : Node3D
     private SelectionPanel? _selectionPanel;
     private BattlefieldFeedback? _feedback;
     private BattlefieldFog? _fog;
+    private BattlefieldCasualties? _casualties;
     private MatchMenu? _matchMenu;
     private GameSession? _session;
     private BattlefieldBenchmark? _benchmark;
@@ -240,7 +241,7 @@ public partial class Battlefield : Node3D
                 AddUnitView(spawn.Unit);
             if (gameEvent is EntityDestroyed death)
             {
-                DestroyView(death.Entity);
+                DestroyView(death.Entity, death.Tick);
                 destroyed = true;
             }
         }
@@ -254,13 +255,16 @@ public partial class Battlefield : Node3D
         UpdateActorVisibility(visibleActors);
         UpdateUnitViews(session.World, showMovementEffects: true);
         _feedback?.Update(session.World.Tick, visibleActors);
+        _casualties?.Advance(session.World.Tick, fog);
         if (session.World.Result != MatchResult.Running)
             _matchMenu?.ShowOutcome(session.World.Result);
     }
 
     public override void _Process(double delta)
     {
-        _feedback?.Render(Engine.GetPhysicsInterpolationFraction());
+        var tickFraction = Engine.GetPhysicsInterpolationFraction();
+        _feedback?.Render(tickFraction);
+        _casualties?.Render(tickFraction);
         if (_benchmark is null || _navigation is null)
             return;
 
@@ -279,7 +283,11 @@ public partial class Battlefield : Node3D
     public override void _ExitTree()
     {
         _benchmark?.Dispose();
+        _casualties?.Dispose();
         _fog?.Dispose();
+        // Drain managed input and resource wrappers while the Godot runtime still owns their native objects.
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true);
+        GC.WaitForPendingFinalizers();
     }
 
     private Vector3? FindActorPosition(EntityId id, IReadOnlyWorld world)
@@ -325,7 +333,7 @@ public partial class Battlefield : Node3D
         }
     }
 
-    private void DestroyView(EntityId id)
+    private void DestroyView(EntityId id, long tick)
     {
         _healthBars.Remove(id);
         if (_buildings.TryGetValue(id, out var building))
@@ -341,6 +349,14 @@ public partial class Battlefield : Node3D
 
         var view = _views[index];
         _views.RemoveAt(index);
+        if (_visibleLosses.Contains(id))
+        {
+            var casualties = _casualties ??= new BattlefieldCasualties(this,
+                BattlefieldNavigation.BoxBounds(GetNode<CollisionShape3D>("Terrain/GroundCollision")));
+            casualties.Emit(view, tick, view.Player == LocalPlayer);
+            if (view.Kind == UnitKind.Tank)
+                _feedback?.ExplodeTank(tick, view.GlobalPosition);
+        }
         view.QueueFree();
     }
 }

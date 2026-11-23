@@ -25,6 +25,7 @@ public partial class UnitView : StaticBody3D
     public PlayerId Player { get; private set; }
 
     public Vector3 ShotOrigin(int rifle = 0) => _tank?.Muzzle ?? _infantry!.Muzzle(rifle);
+    public Mesh? TurretMesh => _tank?.TurretMesh;
     public Vector3 RearTrack => _model.ToGlobal(new Vector3(0f, 0.07f, 2.15f));
 
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;
@@ -89,6 +90,18 @@ public partial class UnitView : StaticBody3D
     }
 
     public bool AdvanceDust(float distance) => _tank?.AdvanceDust(distance) ?? false;
+
+    internal InfantryMotion? DetachInfantry(Node3D parent)
+    {
+        if (_infantry is not { } infantry)
+            return null;
+
+        _model.Reparent(parent);
+        _model.ResetPhysicsInterpolation();
+        _infantry = null;
+        SetProcess(false);
+        return infantry;
+    }
 
     public void PlayShot(Vector3 origin, Vector3 target)
     {

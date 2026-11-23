@@ -11,14 +11,17 @@ internal sealed class BattlefieldEffects
     private static readonly Color PaleSmoke = new("bcb8ac");
     private static readonly Color Dust = new("b09a7d");
 
+    private readonly Node3D _battlefield;
     private readonly EffectBatch _rifles;
     private readonly EffectBatch _cannons;
     private readonly EffectBatch _shells;
     private readonly EffectBatch _dust;
+    private EffectBatch? _explosions;
     private long _tick = -1;
 
     public BattlefieldEffects(Node3D battlefield)
     {
+        _battlefield = battlefield;
         using var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/battlefield_effect.gdshader") };
         _rifles = new EffectBatch(battlefield, "RifleBursts", material, 144);
         _cannons = new EffectBatch(battlefield, "CannonBursts", material, 96);
@@ -106,6 +109,41 @@ internal sealed class BattlefieldEffects
         return target - span.Normalized() * Mathf.Min(radius, distance * 0.67f);
     }
 
+    public void ExplodeTank(long tick, Vector3 site)
+    {
+        if (_explosions is null)
+        {
+            using var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/battlefield_effect.gdshader") };
+            _explosions = new EffectBatch(_battlefield, "TankExplosions", material);
+        }
+
+        // This site was observed at destruction. The burst stays at that fixed location.
+        var origin = site + Vector3.Up * 1.45f;
+        _explosions.Emit(new Particle(default, tick, 5.2f, origin, Vector3.Up * 2.2f,
+            3.7f, new Color("f98d48"), 0.94f, Shape.Blast));
+        _explosions.Emit(new Particle(default, tick, 2.55f, origin + Vector3.Up * 0.45f, Vector3.Up * 3.0f,
+            1.9f, CannonFlash, 1f, Shape.Blast));
+        _explosions.Emit(new Particle(default, tick + 0.6, 26f, site + Vector3.Up * 0.1f, Vector3.Zero,
+            4.35f, Dust, 0.68f, Shape.GroundDust));
+
+        for (var lobe = 0; lobe < 5; lobe++)
+        {
+            var angle = lobe * 2.4f;
+            var sideways = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+            _explosions.Emit(new Particle(default, tick + 1.1 + lobe * 1.15, 39f + lobe * 2f,
+                origin + sideways * (0.34f + lobe * 0.18f),
+                sideways * 1.1f + Vector3.Up * (1.6f + lobe * 0.27f), 2.15f + lobe * 0.16f,
+                new Color("393634"), 0.76f, Shape.Cloud));
+        }
+        for (var spark = 0; spark < 10; spark++)
+        {
+            var angle = spark * 2.4f;
+            var velocity = new Vector3(Mathf.Cos(angle) * 6.6f, 4.1f + spark * 0.37f, Mathf.Sin(angle) * 6.6f);
+            _explosions.Emit(new Particle(default, tick + spark * 0.14, 13f + spark * 0.42f,
+                origin, velocity, 0.18f + spark % 3 * 0.035f, RifleFlash, 0.94f, Shape.Spark));
+        }
+    }
+
     public void TrackDust(EntityId tank, long tick, Vector3 position) =>
         _dust.Emit(new Particle(new Visibility(tank, null), tick, 14f, position, Vector3.Up * 0.73f,
             0.48f, new Color("a38d69"), 0.36f, Shape.Cloud));
@@ -117,6 +155,7 @@ internal sealed class BattlefieldEffects
         _cannons.Prune(tick, visibleActors);
         _shells.Prune(tick, visibleActors);
         _dust.Prune(tick, visibleActors);
+        _explosions?.Prune(tick, visibleActors);
     }
 
     public void Render(double fraction)
@@ -129,6 +168,7 @@ internal sealed class BattlefieldEffects
         _cannons.Render(time);
         _shells.Render(time);
         _dust.Render(time);
+        _explosions?.Render(time);
     }
 
     public void Reset()
@@ -138,6 +178,7 @@ internal sealed class BattlefieldEffects
         _cannons.Reset();
         _shells.Reset();
         _dust.Reset();
+        _explosions?.Reset();
     }
 
     private enum Shape { Cloud, Flash, Spark, Blast, Shell, GroundDust }
@@ -154,13 +195,13 @@ internal sealed class BattlefieldEffects
 
     private sealed class EffectBatch
     {
-        private readonly int _capacity;
+        private readonly int? _capacity;
         private readonly ImmediateMesh _mesh = new();
         private readonly MeshInstance3D _view;
         private readonly List<Particle> _particles = new();
         private double _lastTime = -1;
 
-        public EffectBatch(Node3D battlefield, string name, ShaderMaterial material, int capacity)
+        public EffectBatch(Node3D battlefield, string name, ShaderMaterial material, int? capacity = null)
         {
             _capacity = capacity;
             _view = new MeshInstance3D

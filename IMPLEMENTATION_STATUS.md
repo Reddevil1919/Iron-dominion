@@ -567,6 +567,20 @@ cases. All 13 Godot headless scenarios passed. The focused checks verify
 the cursor, rifle and cannon effects, and a detour around the opposing tank
 in the depot. Graphical frame rates on Windows hardware remain unmeasured.
 
+## Unit destruction effects
+
+A visible tank loss produces a blast with dust, sparks and rising smoke.
+The turret and smaller fragments tumble, land, and remain for three
+seconds after landing. The squad's four existing soldier rigs buckle and
+fall with different poses and a three-second hold on the ground. Their
+uniforms show localized blood marks. Ground stains stay red for three
+seconds from contact, turn brown by ten seconds, and finish fading by
+thirteen seconds. Temporary effects use match time and clear on load.
+
+The combat smoke checks these timelines during normal attacks, including
+the moving debris and the infantry rig's final pose. The Linux desktop
+capture shows real gameplay effects with Mesa software rendering.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

@@ -32,6 +32,8 @@ internal sealed class BattlefieldFeedback
 
     public void TrackDust(EntityId tank, long tick, Vector3 position) => _effects.TrackDust(tank, tick, position);
 
+    public void ExplodeTank(long tick, Vector3 position) => _effects.ExplodeTank(tick, position);
+
     public void Reset()
     {
         _notice.Hide();

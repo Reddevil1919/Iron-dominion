@@ -156,7 +156,11 @@ Health bars shrink and change from green to amber at 60% health, then
 red at 25%. The bottom-right panel shows exact hit
 points, group composition and cover for the current selection. Rejected
 orders briefly display a reason at the top right. Destroyed units leave
-the battlefield and destroyed buildings leave solid ruins.
+the battlefield and destroyed buildings leave solid ruins. An eliminated
+tank explodes and its fragments stay for three seconds after landing.
+Members of a defeated squad collapse and stay on the ground for three
+seconds. Ground bloodstains stay red for the first three seconds, turn
+brown by ten seconds and then fade away over three seconds.
 
 Use the panel at the bottom left to train infantry at the barracks for
 100 credits (8 seconds) or a tank at the HQ for 500 credits (20 seconds).
