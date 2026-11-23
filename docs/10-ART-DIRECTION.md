@@ -75,6 +75,16 @@ in the main scene. Gravel parcels take precedence over the pavement under
 them. Rifle bursts use smaller impacts than cannon fire. Marks fade over a
 few seconds. Visible impacts follow the existing combat events.
 
+## Damage on living tanks
+
+At 65% health or below, chips and abrasions expose metal on the hull and
+turret. At 30% or below, the panels show deeper soot and the rear grille
+emits dark smoke. The faction markings remain visible. The smoke rises
+and spreads behind a moving tank. Emission follows match time and visible
+actors, and destruction hands the effect over to the existing blast.
+The thresholds are presentation rules derived from the match's health data.
+The same armor finish is restored when loading a save.
+
 ## Tank destruction and infantry casualties
 
 The tank blast throws the turret and several armor and track fragments

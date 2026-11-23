@@ -27,6 +27,7 @@ public partial class UnitView : StaticBody3D
     public Vector3 ShotOrigin(int rifle = 0) => _tank?.Muzzle ?? _infantry!.Muzzle(rifle);
     public Mesh? TurretMesh => _tank?.TurretMesh;
     internal MeshInstance3D? ArmorMesh => _tank?.Hull;
+    internal Vector3? EngineSmokeOrigin => _tank?.EngineSmokeOrigin;
     public Vector3 RearTrack => _model.ToGlobal(new Vector3(0f, 0.07f, 2.15f));
 
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;
@@ -70,7 +71,7 @@ public partial class UnitView : StaticBody3D
         view._model = new Node3D { Name = "Model", Rotation = new Vector3(0f, heading, 0f) };
         view.AddChild(view._model);
         if (tank)
-            view._tank = new TankMotion(view._model, art.Tank);
+            view._tank = new TankMotion(view._model, art.Tank, unit.HitPoints);
         else
             view.AddInfantry(art);
 
@@ -91,6 +92,8 @@ public partial class UnitView : StaticBody3D
     }
 
     public bool AdvanceDust(float distance) => _tank?.AdvanceDust(distance) ?? false;
+
+    internal void ShowTankDamage(int hitPoints) => _tank?.ShowDamage(hitPoints);
 
     internal InfantryMotion? DetachInfantry(Node3D parent)
     {

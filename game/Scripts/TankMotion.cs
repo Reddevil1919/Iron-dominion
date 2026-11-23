@@ -10,15 +10,20 @@ internal sealed class TankMotion : IDisposable
     private readonly MeshInstance3D _turret;
     private readonly MeshInstance3D _gun;
     private readonly ShaderMaterial _trackMaterial;
+    private readonly TankArt _art;
+    private readonly int _startingHitPoints;
 
     private Vector2 _travel;
     private float _filteredSpeed;
     private float _travelSinceDust;
     private float _pitch;
     private float _pitchVelocity;
+    private DamageStage _damageStage;
 
-    public TankMotion(Node3D model, TankArt art)
+    public TankMotion(Node3D model, TankArt art, int startingHitPoints)
     {
+        _art = art;
+        _startingHitPoints = startingHitPoints;
         _trackMaterial = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/tank_tracks.gdshader") };
         model.AddChild(new MeshInstance3D
         {
@@ -42,6 +47,29 @@ internal sealed class TankMotion : IDisposable
 
     public Vector3 Muzzle => _gun.ToGlobal(new Vector3(0f, 0f, -2.70f));
     public Mesh TurretMesh => _turret.Mesh;
+    public Vector3? EngineSmokeOrigin => _damageStage == DamageStage.Critical
+        ? Hull.ToGlobal(new Vector3(0.47f, 1.55f, 1.96f))
+        : null;
+
+    public void ShowDamage(int hitPoints)
+    {
+        var health = 100L * hitPoints;
+        var stage = health <= 30L * _startingHitPoints ? DamageStage.Critical
+            : health <= 65L * _startingHitPoints ? DamageStage.Worn
+            : DamageStage.Intact;
+        if (stage == _damageStage)
+            return;
+
+        _damageStage = stage;
+        var material = stage switch
+        {
+            DamageStage.Critical => _art.Scorched,
+            DamageStage.Worn => _art.Scuffed,
+            _ => null
+        };
+        Hull.MaterialOverride = material;
+        _turret.MaterialOverride = material;
+    }
 
     public bool AdvanceDust(float distance)
     {
@@ -87,4 +115,6 @@ internal sealed class TankMotion : IDisposable
     private void SetRecoil(float recoil) => _gun.Position = new Vector3(0f, 0.38f, RestGunZ + recoil * 0.29f);
 
     public void Dispose() => _trackMaterial.Dispose();
+
+    private enum DamageStage { Intact, Worn, Critical }
 }

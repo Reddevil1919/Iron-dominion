@@ -10,6 +10,7 @@ internal sealed partial class BattlefieldEffects
     private static readonly Color Smoke = new("74736b");
     private static readonly Color PaleSmoke = new("bcb8ac");
     private static readonly Color Dust = new("b09a7d");
+    private static readonly Color EngineSoot = new("474340");
 
     private readonly Node3D _battlefield;
     private readonly DepotImpactSurfaces _surfaces;
@@ -18,6 +19,7 @@ internal sealed partial class BattlefieldEffects
     private readonly EffectBatch _cannons;
     private readonly EffectBatch _shells;
     private readonly EffectBatch _dust;
+    private EffectBatch? _engineSmoke;
     private EffectBatch? _explosions;
     private long _tick = -1;
 
@@ -128,6 +130,20 @@ internal sealed partial class BattlefieldEffects
         _dust.Emit(new Particle(new Visibility(tank, null), tick, 14f, position, Vector3.Up * 0.73f,
             0.48f, new Color("a38d69"), 0.36f, Shape.Cloud));
 
+    public void EngineSmoke(EntityId tank, long tick, Vector3 position)
+    {
+        if (_engineSmoke is null)
+        {
+            using var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/battlefield_effect.gdshader") };
+            _engineSmoke = new EffectBatch(_battlefield, "DamagedTankSmoke", material, 240);
+        }
+
+        var drift = Mathf.Sin(tick * 0.37f);
+        var velocity = new Vector3(1.05f + drift * 0.32f, 3.15f, -0.38f + drift * 0.29f);
+        _engineSmoke.Emit(new Particle(new Visibility(tank, null), tick, 42f, position,
+            velocity, 1.36f + drift * 0.18f, EngineSoot, 0.93f, Shape.Cloud));
+    }
+
     public void Advance(long tick, IReadOnlySet<EntityId> visibleActors)
     {
         _tick = tick;
@@ -135,6 +151,7 @@ internal sealed partial class BattlefieldEffects
         _cannons.Prune(tick, visibleActors);
         _shells.Prune(tick, visibleActors);
         _dust.Prune(tick, visibleActors);
+        _engineSmoke?.Prune(tick, visibleActors);
         _explosions?.Prune(tick, visibleActors);
         foreach (var batch in _impactBatches.Values)
             batch.Prune(tick, visibleActors);
@@ -150,6 +167,7 @@ internal sealed partial class BattlefieldEffects
         _cannons.Render(time);
         _shells.Render(time);
         _dust.Render(time);
+        _engineSmoke?.Render(time);
         _explosions?.Render(time);
         foreach (var batch in _impactBatches.Values)
             batch.Render(time);
@@ -162,6 +180,7 @@ internal sealed partial class BattlefieldEffects
         _cannons.Reset();
         _shells.Reset();
         _dust.Reset();
+        _engineSmoke?.Reset();
         _explosions?.Reset();
         foreach (var batch in _impactBatches.Values)
             batch.Reset();

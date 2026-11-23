@@ -51,6 +51,16 @@ func _run() -> void:
 	assert(status.text == "Match saved." and not load_saved.disabled, "Saving writes and enables the slot")
 	var document = JSON.parse_string(FileAccess.get_file_as_string(SAVE))
 	assert(document is Dictionary and document.get("schemaVersion") == 2, "The slot uses versioned JSON")
+	# Restore a tank at the critical threshold through the same save format.
+	for unit in document.state.session.simulation.units:
+		if unit.id == 3 or unit.id == 6:
+			unit.hitPoints = unit.startingHitPoints * 0.3
+		if unit.id == 6:
+			unit.position = {"x": 43, "z": -55}
+	var fixture := FileAccess.open(SAVE, FileAccess.WRITE)
+	assert(fixture != null, "The test can write a damaged-tank checkpoint")
+	fixture.store_string(JSON.stringify(_restore_integer_tokens(document), "", true, true))
+	fixture.close()
 
 	await _click(resume.get_global_rect().get_center())
 	await _wait_ticks(30)
@@ -63,9 +73,18 @@ func _run() -> void:
 	assert(restored.global_position == saved_position and credits.text == saved_credits and queue.text == saved_queue,
 		"Loading restores the unit, balance and production progress")
 	assert(not panel.visible, "Loading clears selection from the replaced timeline")
+	var hull := restored.get_node("Model/Suspension/ArmoredHull") as MeshInstance3D
+	var armor := hull.material_override as ShaderMaterial
+	assert(armor != null and armor.get_shader_parameter("damage_stage") == 2.0,
+		"The critical armor finish is restored before resuming")
 
 	await _click(resume.get_global_rect().get_center())
 	await _wait_ticks(32)
+	var smoke := current_scene.get_node("DamagedTankSmoke") as MeshInstance3D
+	assert(smoke.visible and smoke.mesh.get_surface_count() == 1, "The moving tank resumes smoking once unpaused")
+	var orange := current_scene.get_node("Units/Unit6") as Node3D
+	assert(not orange.visible and smoke.get_aabb().end.x < restored.global_position.x + 8.0,
+		"The unseen critical tank produces no visible smoke")
 	await _escape()
 	assert(restored.global_position.distance_to(saved_position) > 1 and queue.text != saved_queue, "Saved orders continue")
 	var position_after_resume := restored.global_position
@@ -80,6 +99,18 @@ func _run() -> void:
 
 	print("Save and load smoke checks passed.")
 	quit()
+
+func _restore_integer_tokens(value: Variant) -> Variant:
+	# JSON.parse maps every number to double. The save reader expects integer tokens for IDs and ticks.
+	if value is Dictionary:
+		for key in value:
+			value[key] = _restore_integer_tokens(value[key])
+	elif value is Array:
+		for index in range(value.size()):
+			value[index] = _restore_integer_tokens(value[index])
+	elif value is float and value == floor(value):
+		return int(value)
+	return value
 
 
 func _wait_ticks(count: int) -> void:

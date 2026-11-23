@@ -10,6 +10,7 @@ namespace IronDominion.Game;
 
 public partial class Battlefield : Node3D
 {
+    private const int EngineSmokeIntervalTicks = 5;
     private static readonly PlayerId LocalPlayer = new(1);
     private static readonly PlayerId Opponent = new(2);
 
@@ -249,7 +250,7 @@ public partial class Battlefield : Node3D
         _sectorBoard?.Update(session.World, fog.CanSeeSector);
         _selectionPanel?.Update(session.World, _views);
         UpdateActorVisibility(visibleActors);
-        UpdateUnitViews(session.World, showMovementEffects: true);
+        UpdateUnitViews(session.World, emitEffects: true);
         _feedback?.Update(session.World.Tick, visibleActors);
         _casualties?.Advance(session.World.Tick, fog);
         if (session.World.Result != MatchResult.Running)
@@ -324,7 +325,7 @@ public partial class Battlefield : Node3D
         actor.SetCollisionLayerValue(UnitView.PickingLayerNumber, visible);
     }
 
-    private void UpdateUnitViews(IReadOnlyWorld world, bool showMovementEffects = false)
+    private void UpdateUnitViews(IReadOnlyWorld world, bool emitEffects = false)
     {
         foreach (var view in _views)
         {
@@ -332,9 +333,21 @@ public partial class Battlefield : Node3D
                 continue;
 
             var travelled = view.ApplyPosition(new Vector3(position.X, 0f, position.Z), Engine.PhysicsTicksPerSecond);
-            if (showMovementEffects && view.Visible && travelled > 0f && view.AdvanceDust(travelled))
+            if (view.Kind == UnitKind.InfantrySquad)
+            {
+                view.ShowInfantryStatus(world.HasCover(view.Id), world.IsSuppressed(view.Id));
+                continue;
+            }
+
+            if (world.TryGetHitPoints(view.Id, out var hitPoints))
+                view.ShowTankDamage(hitPoints);
+            if (!emitEffects || !view.Visible)
+                continue;
+
+            if (travelled > 0f && view.AdvanceDust(travelled))
                 _feedback?.TrackDust(view.Id, world.Tick, view.RearTrack);
-            view.ShowInfantryStatus(world.HasCover(view.Id), world.IsSuppressed(view.Id));
+            if ((world.Tick + view.Id.Value) % EngineSmokeIntervalTicks == 0 && view.EngineSmokeOrigin is { } engine)
+                _feedback?.EngineSmoke(view.Id, world.Tick, engine);
         }
     }
 
