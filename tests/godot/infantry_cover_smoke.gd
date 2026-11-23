@@ -107,17 +107,22 @@ func _verify_cover_stance(squad: Node3D, rig: Skeleton3D, marker: Label3D, parce
 	var rear_pelvis := rig.find_bone("S2_Pelvis")
 	var kneeling_joint := rig.find_bone("S0_KneeR")
 	var front_boot := rig.find_bone("S0_AnkleL")
+	var step_dust := current_scene.get_node("FootstepDust") as MeshInstance3D
+	assert(not step_dust.visible, "Idle boots produce no dust")
 	await _click(camera.unproject_position(center), MOUSE_BUTTON_RIGHT)
 
 	var walked_low := false
+	var kicked_dust := false
 	for tick in range(130):
 		await physics_frame
 		if squad.global_position.distance_to(center) < 0.08:
 			break
 		walked_low = walked_low or (marker.visible and marker.text == "COVER"
 			and rig.get_bone_global_pose(front_pelvis).origin.y < rest_height - 0.18)
+		kicked_dust = kicked_dust or (step_dust.visible and step_dust.mesh.get_surface_count() == 1)
 	assert(squad.global_position.distance_to(center) < 0.08, "The squad reaches the quiet cover parcel")
 	assert(walked_low and marker.text == "COVER", "Infantry moves low in cover before taking fire")
+	assert(kicked_dust, "Infantry steps lift small clouds on loose surfaces")
 	assert(rig.get_bone_global_pose(front_pelvis).origin.y > rest_height - 0.29, "The squad does not snap into a kneel")
 	var first_kneel := -1
 	var second_kneel := -1
@@ -133,6 +138,7 @@ func _verify_cover_stance(squad: Node3D, rig: Skeleton3D, marker: Label3D, parce
 	assert(frontal < rest_height - 0.34 and rear > frontal + 0.12, "Front soldiers kneel while rear soldiers stay crouched")
 	assert(rig.get_bone_global_pose(kneeling_joint).origin.y < 0.12, "The rear knee approaches the gravel")
 	assert(absf(rig.get_bone_global_pose(front_boot).origin.y - 0.09) < 0.01, "The front boot is planted")
+	assert(not step_dust.visible, "Footstep dust clears once the squad settles")
 
 	var exit := center + Vector3(0.0, 0.0, 8.0)
 	await _click(camera.unproject_position(exit), MOUSE_BUTTON_RIGHT)

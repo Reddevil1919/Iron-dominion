@@ -63,7 +63,7 @@ internal sealed class BattlefieldFog : IDisposable
 
     public IReadOnlySet<EntityId> VisibleActors => _visibleActors;
 
-    public bool CanSeeSector(SimVector position)
+    public bool CanSeeGround(SimVector position)
     {
         var cell = (new Vector2(position.X, position.Z) - _origin) / _cellSize;
         var x = Mathf.FloorToInt(cell.X);

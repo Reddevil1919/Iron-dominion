@@ -123,6 +123,14 @@ foot and knee positions, the rise into a move, and a low firing pose
 while under suppression. It checks the infantry and selection status
 during combat.
 
+## Terrain trails
+
+The movement smoke checks that driving on loose ground generates two
+tracks and dust, the marks outlast the airborne dust, and an asphalt to
+concrete run stays clean after the marks expire. The cover smoke checks
+that dust appears on footfalls and clears at a halt. The save smoke
+checks that loading clears the old trail.
+
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.
 

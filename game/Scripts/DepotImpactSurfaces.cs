@@ -3,6 +3,9 @@ using Godot;
 namespace IronDominion.Game;
 
 internal enum ImpactMaterial { Soil, Concrete, Asphalt, Armor }
+internal enum GroundMaterial { Soil, Gravel, Concrete, Asphalt }
+
+internal readonly record struct GroundContact(Vector3 Point, GroundMaterial Material);
 
 internal readonly record struct ShotSurface(Vector3 Center, MeshInstance3D? Mesh = null,
     ImpactMaterial Material = ImpactMaterial.Soil);
@@ -35,24 +38,31 @@ internal sealed class DepotImpactSurfaces
         var outward = (muzzle - target.Center) with { Y = 0f };
         outward = outward.Normalized();
         var point = target.Center + outward * 0.68f + outward.Cross(Vector3.Up) * spread;
-        return GroundAt(point);
+        var ground = GroundAt(point);
+        var material = ground.Material switch
+        {
+            GroundMaterial.Concrete => ImpactMaterial.Concrete,
+            GroundMaterial.Asphalt => ImpactMaterial.Asphalt,
+            _ => ImpactMaterial.Soil
+        };
+        return new SurfaceImpact(ground.Point, Vector3.Up, material);
     }
 
-    private SurfaceImpact GroundAt(Vector3 point)
+    public GroundContact GroundAt(Vector3 point)
     {
         foreach (var parcel in _gravel)
         {
             if (point.X >= parcel.Position.X && point.X <= parcel.End.X
                 && point.Z >= parcel.Position.Z && point.Z <= parcel.End.Z)
-                return new SurfaceImpact(new Vector3(point.X, parcel.End.Y, point.Z), Vector3.Up, ImpactMaterial.Soil);
+                return new GroundContact(new Vector3(point.X, parcel.End.Y, point.Z), GroundMaterial.Gravel);
         }
 
         var local = new Vector2(point.X, point.Z);
         var mirrored = local.Abs();
         var material = Inside(_mirroredSlabs, mirrored) || Inside(_localSlabs, local)
-            ? ImpactMaterial.Concrete
-            : Inside(_roads, mirrored) ? ImpactMaterial.Asphalt : ImpactMaterial.Soil;
-        return new SurfaceImpact(new Vector3(point.X, _groundHeight, point.Z), Vector3.Up, material);
+            ? GroundMaterial.Concrete
+            : Inside(_roads, mirrored) ? GroundMaterial.Asphalt : GroundMaterial.Soil;
+        return new GroundContact(new Vector3(point.X, _groundHeight, point.Z), material);
     }
 
     private static SurfaceImpact FaceOf(MeshInstance3D mesh, Vector3 source, ImpactMaterial material, float spread)

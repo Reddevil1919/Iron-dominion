@@ -83,6 +83,20 @@ in the main scene. Gravel parcels take precedence over the pavement under
 them. Rifle bursts use smaller impacts than cannon fire. Marks fade over a
 few seconds. Visible impacts follow the existing combat events.
 
+## Tracks and footstep dust
+
+Each belt leaves an independent tread pattern on loose soil and gravel.
+The soil shows darker compressed tracks and warmer dust. The gravel has
+lighter, shorter-lived dust and a weaker imprint. The authored asphalt
+and concrete remain clean. A small cloud starts at the leading soldier's
+boot during a footfall on loose ground.
+
+The tread marks stay in place as the tank moves on. They fade between
+7.5 and 12 seconds on the match clock. Enemy marks render in visible
+ground cells after a visible pass. Loading clears the earlier trails.
+The tread mesh uses a bounded instance pool, and puffs use bounded
+particle batches.
+
 ## Damage on living tanks
 
 At 65% health or below, chips and abrasions expose metal on the hull and

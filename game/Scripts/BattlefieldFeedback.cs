@@ -30,7 +30,10 @@ internal sealed class BattlefieldFeedback
         bool sourceDestroyed, bool targetDestroyed) =>
         _effects.Fire(shot, attacker, target, sourceDestroyed, targetDestroyed);
 
-    public void TrackDust(EntityId tank, long tick, Vector3 position) => _effects.TrackDust(tank, tick, position);
+    public void TrackTerrain(UnitView tank, long tick, float overshoot, bool friendly) =>
+        _effects.TrackTerrain(tank, tick, overshoot, friendly);
+
+    public void FootstepDust(EntityId squad, long tick, Vector3 position) => _effects.FootstepDust(squad, tick, position);
 
     public void EngineSmoke(EntityId tank, long tick, Vector3 position) => _effects.EngineSmoke(tank, tick, position);
 
@@ -61,9 +64,9 @@ internal sealed class BattlefieldFeedback
         _noticeUntil = tick + NoticeTicks;
     }
 
-    public void Update(long tick, IReadOnlySet<EntityId> visibleActors)
+    public void Update(long tick, BattlefieldFog fog)
     {
-        _effects.Advance(tick, visibleActors);
+        _effects.Advance(tick, fog);
         if (_notice.Visible && tick >= _noticeUntil)
             _notice.Hide();
     }

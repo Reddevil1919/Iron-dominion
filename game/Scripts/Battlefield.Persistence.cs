@@ -78,7 +78,7 @@ public partial class Battlefield
         foreach (var view in _views)
             view.ResetPhysicsInterpolation();
         _productionPanel?.Update(session.World);
-        _sectorBoard?.Update(session.World, fog.CanSeeSector);
+        _sectorBoard?.Update(session.World, fog.CanSeeGround);
         _selectionPanel?.Update(session.World, _views);
         return session;
     }

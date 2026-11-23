@@ -32,6 +32,7 @@ func _run() -> void:
 	var queue := production.find_child("InfantryQueue", true, false) as Label
 	var credits := production.find_child("Credits", true, false) as Label
 	var tank := current_scene.get_node("Units/Unit3") as Node3D
+	var marks := (current_scene.get_node("TrackMarks") as MultiMeshInstance3D).multimesh
 	var camera := root.get_camera_3d()
 
 	await _escape()
@@ -67,12 +68,14 @@ func _run() -> void:
 	await _escape()
 	var later_position := tank.global_position
 	assert(later_position.distance_to(saved_position) > 1 and queue.text != saved_queue, "The current timeline diverges")
+	assert(marks.visible_instance_count > 0, "The timeline has temporary tread marks before loading")
 	await _click(load_saved.get_global_rect().get_center())
 	var restored := current_scene.get_node("Units/Unit3") as Node3D
 	assert(paused and status.text == "Saved match loaded.", "Load returns to the saved pause point")
 	assert(restored.global_position == saved_position and credits.text == saved_credits and queue.text == saved_queue,
 		"Loading restores the unit, balance and production progress")
 	assert(not panel.visible, "Loading clears selection from the replaced timeline")
+	assert(marks.visible_instance_count == 0, "Loading clears tread marks from the replaced timeline")
 	var hull := restored.get_node("Model/Suspension/ArmoredHull") as MeshInstance3D
 	var armor := hull.material_override as ShaderMaterial
 	assert(armor != null and armor.get_shader_parameter("damage_stage") == 2.0,

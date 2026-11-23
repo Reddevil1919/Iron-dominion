@@ -5,6 +5,7 @@ namespace IronDominion.Game;
 internal sealed class TankMotion : IDisposable
 {
     private const float RestGunZ = -1.12f;
+    public const float TreadMarkSpacing = 0.62f;
     private readonly Node3D _chassis;
     public MeshInstance3D Hull { get; }
     private readonly MeshInstance3D _turret;
@@ -15,7 +16,7 @@ internal sealed class TankMotion : IDisposable
 
     private Vector2 _travel;
     private float _filteredSpeed;
-    private float _travelSinceDust;
+    private float _travelSinceMark;
     private float _pitch;
     private float _pitchVelocity;
     private DamageStage _damageStage;
@@ -71,13 +72,13 @@ internal sealed class TankMotion : IDisposable
         _turret.MaterialOverride = material;
     }
 
-    public bool AdvanceDust(float distance)
+    public float? AdvanceTreadMarks(float distance)
     {
-        _travelSinceDust += distance;
-        if (_travelSinceDust < 0.82f)
-            return false;
-        _travelSinceDust %= 0.82f;
-        return true;
+        _travelSinceMark += distance;
+        if (_travelSinceMark < TreadMarkSpacing)
+            return null;
+        _travelSinceMark %= TreadMarkSpacing;
+        return _travelSinceMark;
     }
 
     public void Fire(float hullHeading, float aimHeading)

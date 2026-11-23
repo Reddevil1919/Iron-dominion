@@ -29,7 +29,8 @@ public partial class UnitView : StaticBody3D
     public Mesh? TurretMesh => _tank?.TurretMesh;
     internal MeshInstance3D? ArmorMesh => _tank?.Hull;
     internal Vector3? EngineSmokeOrigin => _tank?.EngineSmokeOrigin;
-    public Vector3 RearTrack => _model.ToGlobal(new Vector3(0f, 0.07f, 2.15f));
+    internal Vector3 TrackForward => -_model.GlobalBasis.Z;
+    internal Vector3 RearTrack(int side) => _model.ToGlobal(new Vector3(side * TankArt.TrackGauge, 0f, 2.08f));
 
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;
 
@@ -92,7 +93,9 @@ public partial class UnitView : StaticBody3D
         return distance;
     }
 
-    public bool AdvanceDust(float distance) => _tank?.AdvanceDust(distance) ?? false;
+    internal float? AdvanceTreadMarks(float distance) => _tank?.AdvanceTreadMarks(distance);
+
+    internal Vector3? TakeFootfall() => _infantry?.TakeFootfall();
 
     internal void ShowTankDamage(int hitPoints) => _tank?.ShowDamage(hitPoints);
 
