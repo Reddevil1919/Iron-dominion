@@ -1,6 +1,7 @@
 shader_type spatial;
 
 uniform vec3 canvas_shade = vec3(0.78, 0.78, 0.78);
+uniform bool casualty_stains = false;
 
 float hash_cell(vec2 cell) {
     vec3 p = fract(vec3(cell.xyx) * 0.1031);
@@ -30,4 +31,14 @@ void fragment() {
         * (1.0 + (wear - 0.5) * (cloth * 0.10 + equipment * 0.18 + metal * 0.16));
     ROUGHNESS = 0.91 - 0.17 * equipment - 0.36 * metal;
     METALLIC = 0.52 * metal;
+    if (casualty_stains) {
+        float torso = length((UV - vec2(0.06, 1.31)) / vec2(0.20, 0.15));
+        float sleeve = length((UV - vec2(-0.27, 1.13)) / vec2(0.10, 0.13));
+        float thigh = length((UV - vec2(0.14, 0.77)) / vec2(0.10, 0.17));
+        float patch_distance = min(torso, min(sleeve, thigh));
+        float stain = (1.0 - smoothstep(0.58, 1.03, patch_distance + (wear - 0.50) * 0.45))
+            * (cloth + equipment) * 0.91;
+        ALBEDO = mix(ALBEDO, vec3(0.30, 0.033, 0.025), stain);
+        ROUGHNESS = mix(ROUGHNESS, 0.58, stain);
+    }
 }

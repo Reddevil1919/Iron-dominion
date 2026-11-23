@@ -39,6 +39,7 @@ internal sealed class TankMotion : IDisposable
     }
 
     public Vector3 Muzzle => _gun.ToGlobal(new Vector3(0f, 0f, -2.70f));
+    public Mesh TurretMesh => _turret.Mesh;
 
     public bool AdvanceDust(float distance)
     {

@@ -14,7 +14,8 @@ save_test_data=$(mktemp -d)
 trap 'rm -f "$log"; rm -rf "$save_test_data"' EXIT
 
 run_godot() {
-    "$godot" --headless --path "$repo_root/game" "$@" 2>&1 | tee "$log"
+    # Godot 4.6.3 Mono can race pending input-event finalizers at the end of short headless runs.
+    DOTNET_gcConcurrent=0 "$godot" --headless --path "$repo_root/game" "$@" 2>&1 | tee "$log"
     # Engine and resource errors can appear in the log even when Godot exits zero.
     if grep -Eq '(^|[[:space:]])(ERROR|Error):' "$log"; then
         return 1
@@ -43,7 +44,7 @@ run_smoke_test() {
 run_smoke_test rts_camera_smoke.gd 'RTS camera smoke checks passed.'
 run_smoke_test unit_selection_smoke.gd 'Unit selection smoke checks passed.'
 run_smoke_test unit_movement_smoke.gd 'Unit movement smoke checks passed.' 2400
-run_smoke_test unit_combat_smoke.gd 'Unit combat smoke checks passed.' 2800
+run_smoke_test unit_combat_smoke.gd 'Unit combat smoke checks passed.' 4200
 run_smoke_test fog_of_war_smoke.gd 'Fog of war smoke checks passed.' 2900
 run_smoke_test tactical_orders_smoke.gd 'Tactical order smoke checks passed.' 3100
 run_smoke_test unit_production_smoke.gd 'Unit production smoke checks passed.' 3000

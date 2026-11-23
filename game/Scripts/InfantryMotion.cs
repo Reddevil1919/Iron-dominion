@@ -3,12 +3,13 @@ using static IronDominion.Game.InfantryRig;
 
 namespace IronDominion.Game;
 
-internal sealed class InfantryMotion
+internal sealed partial class InfantryMotion
 {
     public const int BurstShots = 3;
     public const float ShotIntervalSeconds = 0.058f;
     private const float StanceFraction = 0.58f;
     private readonly Skeleton3D _skeleton;
+    private readonly MeshInstance3D _skinView;
     private readonly Transform3D[] _pose = new Transform3D[BonesPerSoldier];
     private readonly Vector3[] _muzzles = new Vector3[Formation.Length];
 
@@ -21,7 +22,7 @@ internal sealed class InfantryMotion
     {
         _skeleton = new Skeleton3D { Name = "InfantryRig" };
         AddBones(_skeleton);
-        var skinView = new MeshInstance3D
+        _skinView = new MeshInstance3D
         {
             Name = "InfantrySkin", Mesh = art.Mesh, Skin = art.Skin, Skeleton = new NodePath(".."),
             CustomAabb = new Aabb(new Vector3(-2.6f, -0.1f, -2.8f), new Vector3(5.2f, 2.3f, 5.6f))
@@ -29,7 +30,7 @@ internal sealed class InfantryMotion
         // Apply the scale before skinning by placing the whole skeleton and its mesh in the same space.
         _skeleton.Scale = Vector3.One * DisplayScale;
         model.AddChild(_skeleton);
-        _skeleton.AddChild(skinView);
+        _skeleton.AddChild(_skinView);
         PoseSquad(0f, null);
     }
 
@@ -104,12 +105,14 @@ internal sealed class InfantryMotion
 
             var boneOffset = soldier * BonesPerSoldier;
             for (var bone = 0; bone < Joints.Length; bone++)
-            {
-                var parent = Joints[bone].Parent;
-                var local = parent < 0 ? _pose[bone] : _pose[parent].Inverse() * _pose[bone];
-                _skeleton.SetBonePose(boneOffset + bone, local);
-            }
+                _skeleton.SetBonePose(boneOffset + bone, LocalPose(bone));
         }
+    }
+
+    private Transform3D LocalPose(int bone)
+    {
+        var parent = Joints[bone].Parent;
+        return parent < 0 ? _pose[bone] : _pose[parent].Inverse() * _pose[bone];
     }
 
     private static float RifleKick(int soldier, float age)

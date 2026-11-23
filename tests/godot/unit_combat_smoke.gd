@@ -76,8 +76,80 @@ func _run() -> void:
 	assert(is_instance_valid(blue), "The attacking tank survives the test")
 	assert(blue.global_position.distance_to(firing_position) < 0.08, "Attack clicks preserve the firing position")
 
+	assert(await _verify_casualties(blue), "The casualty effects complete their full timeline")
 	print("Unit combat smoke checks passed.")
 	quit()
+
+
+func _verify_casualties(blue: Node3D) -> bool:
+	var casualty_effects := current_scene.get_node("CasualtyEffects")
+	var body := casualty_effects.get_node("FallenSquad4") as Node3D
+	var rig := body.get_node("Model/InfantryRig") as Skeleton3D
+	var skin := rig.get_node("InfantrySkin") as MeshInstance3D
+	var uniform := skin.material_override as ShaderMaterial
+	var stains := casualty_effects.get_node("Blood4") as Node3D
+	var paint := (stains.get_node("Stain0") as MeshInstance3D).material_override as ShaderMaterial
+	var explosion: MeshInstance3D
+	assert(uniform.get_shader_parameter("casualty_stains"), "Only the detached body uses the blood-stained uniform")
+	assert(stains.get_child_count() == 4, "Each member has a ground stain")
+	assert(not stains.visible, "Ground stains appear when the bodies touch down")
+	assert(body.find_children("*", "CollisionObject3D", true, false).is_empty(), "Bodies have no picking or blocking collider")
+	var start_height := rig.get_bone_global_pose(1).origin.y
+	var saw_ground_pose := false
+	var saw_full_body_hold := false
+	var saw_stain_after_body := false
+	var saw_stain_fade := false
+	var last_stain_age := 0.0
+	var saw_tank_loss := false
+	var saw_explosion := false
+	var shard: Node3D
+	var first_height := 0.0
+	var airborne := false
+	var last_position := Vector3.ZERO
+	var settled_at := -1
+	var expired_at := -1
+
+	for tick in range(320):
+		await physics_frame
+		if is_instance_valid(stains):
+			var age: float = paint.get_shader_parameter("age_seconds")
+			last_stain_age = age
+			if age > 0.1 and age < 2.9:
+				assert(is_instance_valid(body), "Bodies stay on the ground through the hold")
+				saw_ground_pose = saw_ground_pose or rig.get_bone_global_pose(1).origin.y < start_height * 0.55
+				saw_full_body_hold = saw_full_body_hold or age > 2.84
+			if age > 3.13:
+				assert(not is_instance_valid(body), "Bodies leave after three seconds on the ground")
+				saw_stain_after_body = true
+			saw_stain_fade = saw_stain_fade or age > 10.1
+
+		if not saw_tank_loss and not is_instance_valid(blue):
+			saw_tank_loss = true
+			explosion = current_scene.get_node("TankExplosions") as MeshInstance3D
+			var wreck := casualty_effects.get_node("Wreck3") as Node3D
+			assert(wreck.get_child_count() == 9, "Destroying the tank scatters several solid fragments")
+			shard = wreck.get_node("Fragment0") as Node3D
+			first_height = shard.position.y
+			last_position = shard.position
+		saw_explosion = saw_explosion or (saw_tank_loss and explosion.visible)
+		if is_instance_valid(shard) and shard.visible:
+			var position := shard.position
+			airborne = airborne or position.y > first_height + 0.25
+			if airborne and settled_at < 0 and position.distance_to(last_position) < 0.0001:
+				settled_at = tick
+				assert(position.y < first_height, "The fragment settles below its launch height")
+			last_position = position
+		elif settled_at >= 0 and expired_at < 0:
+			expired_at = tick
+
+	assert(saw_ground_pose and saw_full_body_hold, "Infantry falls and remains grounded for three seconds")
+	assert(saw_stain_after_body and saw_stain_fade, "Stains outlive the bodies and reach the fade phase")
+	assert(not is_instance_valid(stains) and last_stain_age >= 12.88, "Stains disappear at the end of their fade")
+	assert(saw_tank_loss and saw_explosion and airborne, "An eliminated tank explodes and throws debris")
+	assert(settled_at >= 0 and expired_at - settled_at >= 57 and expired_at - settled_at <= 61,
+		"Each tracked fragment remains grounded for three seconds")
+	assert(not casualty_effects.has_node("Wreck3"), "Wreck fragments are cleaned up")
+	return true
 
 
 func _click(point: Vector2, button: MouseButton) -> void:
