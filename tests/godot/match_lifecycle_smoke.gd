@@ -57,10 +57,15 @@ func _run() -> void:
 	await _move_to(tank, camera, Vector3(-11, 0, -43))
 	await _move_to(tank, camera, Vector3(32, 0, -38))
 	await _click(camera.unproject_position(orange_hq.global_position + Vector3.UP * 3), MOUSE_BUTTON_RIGHT)
+	var saw_concrete_impact := false
 	for tick in range(1450):
 		await physics_frame
+		var concrete := current_scene.get_node_or_null("ConcreteImpacts") as MeshInstance3D
+		saw_concrete_impact = saw_concrete_impact or (concrete != null and concrete.visible
+			and concrete.mesh.get_surface_count() == 1)
 		if overlay.visible:
 			break
+	assert(saw_concrete_impact, "Shots against the HQ produce concrete impact effects")
 	assert(paused and overlay.visible and title.text == "Victory", "Destroying the orange HQ ends the match")
 	assert(not resume.visible, "A finished match has no resume action")
 	assert(not orange_hq.has_node("HealthBar"), "Destruction updates the battlefield before the result")

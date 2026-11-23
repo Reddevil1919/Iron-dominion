@@ -25,6 +25,8 @@ func _run() -> void:
 	var orange := current_scene.get_node("Units/Unit4") as Node3D
 	var orange_tank := current_scene.get_node("Units/Unit6") as Node3D
 	assert(orange.get_node("HealthBar") is Sprite3D, "The target has a health bar")
+	assert(_armor_stage(blue) == 0.0 and not current_scene.has_node("DamagedTankSmoke"),
+		"A fresh tank has clean armor and no engine smoke")
 	var hull := blue.get_node("Model") as Node3D
 	var turret := hull.get_node("Suspension/Turret") as Node3D
 	var gun := turret.get_node("Gun") as Node3D
@@ -47,12 +49,20 @@ func _run() -> void:
 	var aimed := false
 	var recovered := false
 	var burst_seen := false
+	var soil_seen := false
+	var armor_seen := false
 	var shell_in_motion := false
 	var shell_is_compact := false
 	var previous_shell := Vector3.ZERO
+	var worn_armor := false
+	var engine_smoke := false
 	for tick in range(390):
 		await physics_frame
+		worn_armor = worn_armor or _armor_stage(blue) == 1.0
+		engine_smoke = engine_smoke or (_armor_stage(blue) == 2.0 and _impact_visible("DamagedTankSmoke"))
 		burst_seen = burst_seen or (bursts.visible and bursts.mesh.get_surface_count() == 1)
+		soil_seen = soil_seen or _impact_visible("SoilImpacts")
+		armor_seen = armor_seen or _impact_visible("ArmorImpacts")
 		if shells.visible:
 			var bounds := shells.get_aabb()
 			shell_is_compact = shell_is_compact or bounds.size.length() < 1.0
@@ -71,17 +81,28 @@ func _run() -> void:
 	assert(aimed, "The turret can turn independently of its hull")
 	assert(burst_seen, "Visible fire emits localized burst geometry")
 	assert(shell_is_compact and shell_in_motion, "A compact shell travels between the muzzle and the impact")
+	assert(soil_seen and armor_seen, "Combat distinguishes soil strikes from hits against tank armor")
 	assert(not is_instance_valid(orange), "The ordered infantry target is destroyed and removed")
 	assert(is_instance_valid(orange_tank), "The closer tank remains alive after the focused attack")
 	assert(is_instance_valid(blue), "The attacking tank survives the test")
 	assert(blue.global_position.distance_to(firing_position) < 0.08, "Attack clicks preserve the firing position")
 
-	assert(await _verify_casualties(blue), "The casualty effects complete their full timeline")
+	assert(await _verify_casualties(blue, worn_armor, engine_smoke), "The damage and casualty effects complete their full timeline")
 	print("Unit combat smoke checks passed.")
 	quit()
 
+func _impact_visible(path: NodePath) -> bool:
+	var effect := current_scene.get_node_or_null(path) as MeshInstance3D
+	return effect != null and effect.visible and effect.mesh.get_surface_count() == 1
 
-func _verify_casualties(blue: Node3D) -> bool:
+func _armor_stage(tank: Node3D) -> float:
+	var hull := tank.get_node("Model/Suspension/ArmoredHull") as MeshInstance3D
+	var turret := tank.get_node("Model/Suspension/Turret") as MeshInstance3D
+	var material := hull.material_override as ShaderMaterial
+	assert(turret.material_override == material, "Armor damage follows both hull and turret")
+	return 0.0 if material == null else material.get_shader_parameter("damage_stage")
+
+func _verify_casualties(blue: Node3D, worn_armor: bool, engine_smoke: bool) -> bool:
 	var casualty_effects := current_scene.get_node("CasualtyEffects")
 	var body := casualty_effects.get_node("FallenSquad4") as Node3D
 	var rig := body.get_node("Model/InfantryRig") as Skeleton3D
@@ -111,6 +132,9 @@ func _verify_casualties(blue: Node3D) -> bool:
 
 	for tick in range(320):
 		await physics_frame
+		if is_instance_valid(blue):
+			worn_armor = worn_armor or _armor_stage(blue) == 1.0
+			engine_smoke = engine_smoke or (_armor_stage(blue) == 2.0 and _impact_visible("DamagedTankSmoke"))
 		if is_instance_valid(stains):
 			var age: float = paint.get_shader_parameter("age_seconds")
 			last_stain_age = age
@@ -146,6 +170,8 @@ func _verify_casualties(blue: Node3D) -> bool:
 	assert(saw_stain_after_body and saw_stain_fade, "Stains outlive the bodies and reach the fade phase")
 	assert(not is_instance_valid(stains) and last_stain_age >= 12.88, "Stains disappear at the end of their fade")
 	assert(saw_tank_loss and saw_explosion and airborne, "An eliminated tank explodes and throws debris")
+	assert(worn_armor and engine_smoke, "Combat scuffs armor before the critically damaged tank smokes")
+	assert(not _impact_visible("DamagedTankSmoke"), "The destroyed tank no longer emits engine smoke")
 	assert(settled_at >= 0 and expired_at - settled_at >= 57 and expired_at - settled_at <= 61,
 		"Each tracked fragment remains grounded for three seconds")
 	assert(not casualty_effects.has_node("Wreck3"), "Wreck fragments are cleaned up")

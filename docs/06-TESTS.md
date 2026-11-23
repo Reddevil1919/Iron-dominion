@@ -99,7 +99,8 @@ through the HUD and input shortcuts.
 The combat smoke follows an eliminated tank fragment from launch through
 landing and its three-second hold. It also checks the infantry skeleton's
 ground pose, three-second body hold and paint lifetime through the
-thirteen-second disappearance.
+thirteen-second disappearance. The combat and match lifecycle checks
+distinguish impacts on dirt, armor and a concrete headquarters wall.
 
 ## Save and load scenario
 
@@ -117,7 +118,10 @@ The balance tests check protected and exposed angles, diagonal boundaries,
 same-tick shots from different sides, the 24 reduced movement steps,
 refresh and recovery. Integration checks restore active suppression
 and read a format 1 save. The Godot cover scenario checks the map's
-marked edge and the infantry and selection status during combat.
+marked edge, a low walk and staggered halt in quiet cover, grounded
+foot and knee positions, the rise into a move, and a low firing pose
+while under suppression. It checks the infantry and selection status
+during combat.
 
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.

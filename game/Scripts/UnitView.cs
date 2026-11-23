@@ -18,6 +18,7 @@ public partial class UnitView : StaticBody3D
     private float _aimHeading;
     private float _speed;
     private float _shotTime;
+    private bool _covered;
     private bool _suppressed;
 
     public EntityId Id { get; private set; }
@@ -26,6 +27,8 @@ public partial class UnitView : StaticBody3D
 
     public Vector3 ShotOrigin(int rifle = 0) => _tank?.Muzzle ?? _infantry!.Muzzle(rifle);
     public Mesh? TurretMesh => _tank?.TurretMesh;
+    internal MeshInstance3D? ArmorMesh => _tank?.Hull;
+    internal Vector3? EngineSmokeOrigin => _tank?.EngineSmokeOrigin;
     public Vector3 RearTrack => _model.ToGlobal(new Vector3(0f, 0.07f, 2.15f));
 
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;
@@ -69,7 +72,7 @@ public partial class UnitView : StaticBody3D
         view._model = new Node3D { Name = "Model", Rotation = new Vector3(0f, heading, 0f) };
         view.AddChild(view._model);
         if (tank)
-            view._tank = new TankMotion(view._model, art.Tank);
+            view._tank = new TankMotion(view._model, art.Tank, unit.HitPoints);
         else
             view.AddInfantry(art);
 
@@ -90,6 +93,8 @@ public partial class UnitView : StaticBody3D
     }
 
     public bool AdvanceDust(float distance) => _tank?.AdvanceDust(distance) ?? false;
+
+    internal void ShowTankDamage(int hitPoints) => _tank?.ShowDamage(hitPoints);
 
     internal InfantryMotion? DetachInfantry(Node3D parent)
     {
@@ -138,15 +143,18 @@ public partial class UnitView : StaticBody3D
         if (_tank is { } tank)
             tank.Update(seconds, _speed, previousHeading, heading, aiming ? _aimHeading : null, recoil);
         else
-            _infantry?.Update(seconds, _speed, aiming ? ShotAimDuration - _shotTime : null, _suppressed);
+            _infantry?.Update(seconds, _speed, aiming ? ShotAimDuration - _shotTime : null, _covered, _suppressed);
         _shotTime = Mathf.Max(0f, _shotTime - seconds);
     }
 
     private static float Heading(Vector3 direction) => Mathf.Atan2(-direction.X, -direction.Z);
 
-    public void ShowInfantryStatus(bool covered, bool suppressed)
+    public void ShowInfantryStatus(bool covered, bool suppressed, bool snapPose)
     {
+        _covered = covered;
         _suppressed = suppressed;
+        if (snapPose)
+            _infantry?.SetRestingStance(covered, suppressed);
         if (_coverIndicator is not { } indicator)
             return;
 

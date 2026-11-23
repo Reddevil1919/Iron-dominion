@@ -581,6 +581,51 @@ The combat smoke checks these timelines during normal attacks, including
 the moving debris and the infantry rig's final pose. The Linux desktop
 capture shows real gameplay effects with Mesa software rendering.
 
+## Surface-dependent impacts
+
+The depot uses its authored pavement bounds to choose impact effects on
+dirt, gravel, concrete and asphalt. Hits on tank armor produce sparks and
+leave a temporary soot mark that moves with the hull. Rifle impacts use
+smaller particles and marks than cannon impacts.
+
+The combat smoke checks the dirt and armor effects during a real engagement.
+The match lifecycle smoke checks concrete impacts on the orange headquarters.
+
+## Progressive tank damage
+
+At 65% of starting health or below, the hull and turret show paint loss
+and exposed metal. At 30% or below, scorch marks darken the armor and
+smoke rises from the rear grille. The smoke batch follows match time
+and actor visibility. A destroyed tank switches to the existing blast
+and debris. Loading restores the armor from health in the checkpoint
+and clears the previous smoke. The simulation and save schema are unchanged.
+
+The Release solution build passed with zero warnings and errors. All 151
+xUnit tests passed, and `scripts/validate-godot.sh` passed all 13 headless
+scenarios. The combat smoke observes both damage stages before destruction.
+The save smoke checks the critical threshold at load and verifies that an
+enemy outside sight contributes no smoke. The Linux desktop capture used
+Mesa llvmpipe and compares all three stages in the depot, including a
+critical tank at tactical zoom. Windows graphical performance remains
+unmeasured.
+
+## Infantry cover animations
+
+The squad shortens its steps and lowers its silhouette inside marked
+cover. At a halt, the front pair kneel on opposite knees and the rear
+pair hold a higher crouch and watch the flanks. They arrive in their poses
+at staggered times. Fire and suppression still drive the rifle and upper
+body, while foot placement keeps the low stance grounded. A new order
+brings soldiers up into motion and they return to their ordinary stance
+after leaving cover. Godot reads the existing simulation state.
+
+The Release build passed with zero warnings and errors. All 151 xUnit
+tests and all 13 Godot headless scenarios passed. The cover smoke checks
+quiet entry, staggered settling, planted boots, the rise into movement,
+and aiming low under fire. The close-up capture runs the original
+battlefield on Linux with Mesa llvmpipe. Windows graphical performance
+remains unmeasured.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield
