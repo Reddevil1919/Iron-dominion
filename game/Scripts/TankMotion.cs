@@ -6,6 +6,7 @@ internal sealed class TankMotion : IDisposable
 {
     private const float RestGunZ = -1.12f;
     private readonly Node3D _chassis;
+    public MeshInstance3D Hull { get; }
     private readonly MeshInstance3D _turret;
     private readonly MeshInstance3D _gun;
     private readonly ShaderMaterial _trackMaterial;
@@ -24,10 +25,11 @@ internal sealed class TankMotion : IDisposable
             Name = "TrackBelts", Mesh = art.Tracks, MaterialOverride = _trackMaterial
         });
         _chassis = new Node3D { Name = "Suspension", Position = Vector3.Up * 0.80f };
-        _chassis.AddChild(new MeshInstance3D
+        Hull = new MeshInstance3D
         {
             Name = "ArmoredHull", Mesh = art.Hull, Position = Vector3.Down * 0.80f
-        });
+        };
+        _chassis.AddChild(Hull);
         _turret = new MeshInstance3D
         {
             Name = "Turret", Mesh = art.Turret, Position = Vector3.Up * 0.63f

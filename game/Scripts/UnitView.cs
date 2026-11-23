@@ -26,6 +26,7 @@ public partial class UnitView : StaticBody3D
 
     public Vector3 ShotOrigin(int rifle = 0) => _tank?.Muzzle ?? _infantry!.Muzzle(rifle);
     public Mesh? TurretMesh => _tank?.TurretMesh;
+    internal MeshInstance3D? ArmorMesh => _tank?.Hull;
     public Vector3 RearTrack => _model.ToGlobal(new Vector3(0f, 0.07f, 2.15f));
 
     public Vector3 SelectionCenter => GlobalPosition + Vector3.Up;

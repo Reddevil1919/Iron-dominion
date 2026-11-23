@@ -3,7 +3,7 @@ using IronDominion.Domain;
 
 namespace IronDominion.Game;
 
-internal sealed class BattlefieldEffects
+internal sealed partial class BattlefieldEffects
 {
     private static readonly Color RifleFlash = new("fff1db");
     private static readonly Color CannonFlash = new("fbc58c");
@@ -12,6 +12,8 @@ internal sealed class BattlefieldEffects
     private static readonly Color Dust = new("b09a7d");
 
     private readonly Node3D _battlefield;
+    private readonly DepotImpactSurfaces _surfaces;
+    private readonly Dictionary<ImpactMaterial, EffectBatch> _impactBatches = [];
     private readonly EffectBatch _rifles;
     private readonly EffectBatch _cannons;
     private readonly EffectBatch _shells;
@@ -19,9 +21,10 @@ internal sealed class BattlefieldEffects
     private EffectBatch? _explosions;
     private long _tick = -1;
 
-    public BattlefieldEffects(Node3D battlefield)
+    public BattlefieldEffects(Node3D battlefield, DepotImpactSurfaces surfaces)
     {
         _battlefield = battlefield;
+        _surfaces = surfaces;
         using var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/battlefield_effect.gdshader") };
         _rifles = new EffectBatch(battlefield, "RifleBursts", material, 144);
         _cannons = new EffectBatch(battlefield, "CannonBursts", material, 96);
@@ -29,25 +32,25 @@ internal sealed class BattlefieldEffects
         _dust = new EffectBatch(battlefield, "TrackDust", material, 48);
     }
 
-    public void Fire(ShotFired shot, UnitView attacker, Vector3 target, float targetRadius,
+    public void Fire(ShotFired shot, UnitView attacker, ShotSurface target,
         bool sourceDestroyed, bool targetDestroyed)
     {
         var visibility = new Visibility(sourceDestroyed ? null : shot.Attacker, targetDestroyed ? null : shot.Target);
         if (attacker.Kind == UnitKind.Tank)
-            FireCannon(visibility, shot.Tick, attacker.ShotOrigin(), target, targetRadius);
+            FireCannon(visibility, shot.Tick, attacker.ShotOrigin(), target);
         else
-            FireRifles(visibility, shot.Tick, attacker, target, targetRadius);
+            FireRifles(visibility, shot.Tick, attacker, target);
     }
 
-    private void FireRifles(Visibility visibility, long tick, UnitView attacker, Vector3 target, float targetRadius)
+    private void FireRifles(Visibility visibility, long tick, UnitView attacker, ShotSurface target)
     {
         var spacing = InfantryMotion.ShotIntervalSeconds * Engine.PhysicsTicksPerSecond;
         for (var pulse = 0; pulse < InfantryMotion.BurstShots; pulse++)
         {
             var born = tick + (double)spacing * pulse;
             var muzzle = attacker.ShotOrigin(InfantryMotion.Shooter(pulse));
-            var direction = (target - muzzle).Normalized();
-            var sideways = direction.Cross(Vector3.Up);
+            var hit = _surfaces.Resolve(target, muzzle, (pulse - 1) * 0.34f);
+            var direction = (hit.Point - muzzle).Normalized();
             var flash = muzzle + direction * 0.11f;
             _rifles.Emit(new Particle(visibility, born, 0.85f, flash, direction * 1.8f,
                 0.34f, RifleFlash, 0.96f, Shape.Flash));
@@ -55,15 +58,14 @@ internal sealed class BattlefieldEffects
                 _rifles.Emit(new Particle(visibility, born + 0.24, 7.5f, flash,
                     direction * 0.82f + Vector3.Up * 0.60f, 0.31f, PaleSmoke, 0.40f, Shape.Cloud));
 
-            var hit = ImpactPoint(muzzle, target, targetRadius) + sideways * (pulse - 1) * 0.43f;
-            _rifles.Emit(new Particle(visibility, born + 0.8, 8.2f, hit,
-                Vector3.Up * 1.2f - direction * 0.60f, 0.38f, Dust, 0.50f, Shape.Cloud));
+            EmitSurfaceImpact(visibility, born + 0.8, hit, direction, heavy: false);
         }
     }
 
-    private void FireCannon(Visibility visibility, long tick, Vector3 muzzle, Vector3 target, float targetRadius)
+    private void FireCannon(Visibility visibility, long tick, Vector3 muzzle, ShotSurface target)
     {
-        var direction = (target - muzzle).Normalized();
+        var hit = _surfaces.Resolve(target, muzzle, 0f);
+        var direction = (hit.Point - muzzle).Normalized();
         var sideways = direction.Cross(Vector3.Up).Normalized();
         var flash = muzzle + direction * 0.35f;
         _cannons.Emit(new Particle(visibility, tick, 1.85f, flash, direction * 4f,
@@ -77,36 +79,14 @@ internal sealed class BattlefieldEffects
             direction * 1.8f, 2.6f, Dust, 0.48f, Shape.GroundDust));
 
         // This presentation flight follows the shot event. Simulation damage is already resolved.
-        var hit = ImpactPoint(muzzle, target, targetRadius);
-        var path = hit - muzzle;
+        var path = hit.Point - muzzle;
         var travel = path.Length();
         var flight = Mathf.Clamp(travel * 0.18f, 1.15f, 2.7f);
         if (travel > 0.85f)
             _shells.Emit(new Particle(visibility, tick + 0.22, flight, muzzle,
                 path * (Engine.PhysicsTicksPerSecond / flight), 0.22f, new Color("8c8571"), 1f, Shape.Shell));
 
-        var arrival = tick + 0.22 + flight;
-        var outward = -direction + Vector3.Up * 1.1f;
-        _cannons.Emit(new Particle(visibility, arrival, 1.95f, hit, outward * 2.6f,
-            1.12f, CannonFlash, 0.93f, Shape.Blast));
-        _cannons.Emit(new Particle(visibility, arrival, 18f, hit, outward * 1.5f,
-            1.42f, Dust, 0.71f, Shape.Cloud));
-        _cannons.Emit(new Particle(visibility, arrival + 0.40, 21f, hit + sideways * 0.29f,
-            outward + sideways, 1.30f, Smoke, 0.56f, Shape.Cloud));
-
-        for (var fragment = 0; fragment < 4; fragment++)
-        {
-            var toss = outward * (3.5f + fragment * 0.4f) + sideways * (fragment - 1.5f) * 1.75f;
-            _cannons.Emit(new Particle(visibility, arrival + fragment * 0.16, 5.0f + fragment * 0.65f,
-                hit, toss, 0.18f - fragment * 0.023f, RifleFlash, 0.92f, Shape.Spark));
-        }
-    }
-
-    private static Vector3 ImpactPoint(Vector3 muzzle, Vector3 target, float radius)
-    {
-        var span = target - muzzle;
-        var distance = span.Length();
-        return target - span.Normalized() * Mathf.Min(radius, distance * 0.67f);
+        EmitSurfaceImpact(visibility, tick + 0.22 + flight, hit, direction, heavy: true);
     }
 
     public void ExplodeTank(long tick, Vector3 site)
@@ -156,6 +136,8 @@ internal sealed class BattlefieldEffects
         _shells.Prune(tick, visibleActors);
         _dust.Prune(tick, visibleActors);
         _explosions?.Prune(tick, visibleActors);
+        foreach (var batch in _impactBatches.Values)
+            batch.Prune(tick, visibleActors);
     }
 
     public void Render(double fraction)
@@ -169,6 +151,8 @@ internal sealed class BattlefieldEffects
         _shells.Render(time);
         _dust.Render(time);
         _explosions?.Render(time);
+        foreach (var batch in _impactBatches.Values)
+            batch.Render(time);
     }
 
     public void Reset()
@@ -179,9 +163,11 @@ internal sealed class BattlefieldEffects
         _shells.Reset();
         _dust.Reset();
         _explosions?.Reset();
+        foreach (var batch in _impactBatches.Values)
+            batch.Reset();
     }
 
-    private enum Shape { Cloud, Flash, Spark, Blast, Shell, GroundDust }
+    private enum Shape { Cloud, Flash, Spark, Blast, Shell, GroundDust, Chip, Scar }
 
     private readonly record struct Visibility(EntityId? Source, EntityId? Target)
     {
@@ -191,7 +177,8 @@ internal sealed class BattlefieldEffects
     }
 
     private readonly record struct Particle(Visibility Visibility, double Born, float Lifetime,
-        Vector3 Origin, Vector3 Velocity, float Radius, Color Color, float Opacity, Shape Shape);
+        Vector3 Origin, Vector3 Velocity, float Radius, Color Color, float Opacity, Shape Shape,
+        Vector3 Normal = default, MeshInstance3D? Anchor = null);
 
     private sealed class EffectBatch
     {
@@ -226,7 +213,8 @@ internal sealed class BattlefieldEffects
                 return;
 
             var removed = _particles.RemoveAll(particle => tick - particle.Born >= particle.Lifetime
-                || !particle.Visibility.IsVisible(actors));
+                || !particle.Visibility.IsVisible(actors)
+                || (particle.Anchor is { } anchor && !GodotObject.IsInstanceValid(anchor)));
             if (removed > 0)
                 _lastTime = -1;
         }
@@ -245,9 +233,20 @@ internal sealed class BattlefieldEffects
                 var age = (float)(time - particle.Born);
                 if (age < 0f || age >= particle.Lifetime)
                     continue;
+                var center = particle.Origin;
+                var normal = particle.Normal;
+                if (particle.Anchor is { } anchor)
+                {
+                    if (!GodotObject.IsInstanceValid(anchor) || !anchor.IsVisibleInTree())
+                        continue;
+                    var transform = anchor.GetGlobalTransformInterpolated();
+                    center = transform * center;
+                    normal = (transform.Basis * normal).Normalized();
+                }
+
                 var seconds = age / Engine.PhysicsTicksPerSecond;
                 var movement = particle.Velocity * seconds;
-                if (particle.Shape == Shape.Spark)
+                if (particle.Shape is Shape.Spark or Shape.Chip)
                     movement.Y -= 7f * seconds * seconds;
 
                 if (!drawing)
@@ -257,9 +256,14 @@ internal sealed class BattlefieldEffects
                 }
 
                 var progress = age / particle.Lifetime;
-                var alpha = particle.Shape == Shape.Shell ? particle.Opacity : particle.Opacity * (1f - progress);
-                _mesh.SurfaceSetColor(new Color(particle.Color, alpha));
-                DrawParticle(particle.Origin + movement, particle, progress, camera);
+                var opacity = particle.Shape switch
+                {
+                    Shape.Shell => 1f,
+                    Shape.Scar => 1f - Mathf.SmoothStep(0.71f, 1f, progress),
+                    _ => 1f - progress
+                };
+                _mesh.SurfaceSetColor(new Color(particle.Color, particle.Opacity * opacity));
+                DrawParticle(center + movement, normal, particle, progress, camera);
             }
 
             if (drawing)
@@ -267,14 +271,14 @@ internal sealed class BattlefieldEffects
             _view.Visible = drawing;
         }
 
-        private void DrawParticle(Vector3 center, Particle particle, float progress, Basis camera)
+        private void DrawParticle(Vector3 center, Vector3 normal, Particle particle, float progress, Basis camera)
         {
             var scale = particle.Shape switch
             {
                 Shape.Cloud => 0.56f + progress * 1.25f,
                 Shape.GroundDust => 0.55f + progress * 1.64f,
                 Shape.Blast => 0.79f + progress * 0.41f,
-                Shape.Shell => 1f,
+                Shape.Shell or Shape.Scar => 1f,
                 _ => 1f - progress * 0.57f
             };
             var size = particle.Radius * scale;
@@ -284,6 +288,12 @@ internal sealed class BattlefieldEffects
             {
                 x = Vector3.Right;
                 y = Vector3.Back;
+            }
+            else if (particle.Shape == Shape.Scar)
+            {
+                var reference = Mathf.Abs(normal.Y) > 0.92f ? Vector3.Right : Vector3.Up;
+                x = normal.Cross(reference).Normalized();
+                y = normal.Cross(x).Normalized() * 0.81f;
             }
             else if (particle.Shape is Shape.Flash or Shape.Shell)
             {

@@ -88,7 +88,8 @@ public partial class Battlefield : Node3D
         var canvas = GetNode("SelectionLayer");
         var sectorBoard = new SectorBoard(GetNode<Node3D>("Sectors"), canvas, configuration, _teamMaterials);
         _sectorBoard = sectorBoard;
-        var cover = GetNode<Node3D>("CoverZones").GetChildren().OfType<MeshInstance3D>().Select(ReadCoverZone);
+        var parcels = GetNode<Node3D>("CoverZones").GetChildren().OfType<MeshInstance3D>().ToArray();
+        var cover = parcels.Select(ReadCoverZone);
         var world = new WorldEntities([.. units, blueHq, orangeHq, blueBarracks, orangeBarracks, .. sectorBoard.Sectors],
             cover);
         var ground = GetNode<StaticBody3D>("Terrain");
@@ -122,7 +123,8 @@ public partial class Battlefield : Node3D
             _enemyCommands = session.Commands.ForPlayer(Opponent);
         }
         var selection = new UnitSelection(LocalPlayer, id => _session!.World.LivingUnitOwner(id));
-        var feedback = new BattlefieldFeedback(this, canvas);
+        var surfaces = new DepotImpactSurfaces(ground.GetNode<MeshInstance3D>("GroundMesh"), parcels);
+        var feedback = new BattlefieldFeedback(this, canvas, surfaces);
         _feedback = feedback;
         _selectionPanel = new SelectionPanel(canvas, selection, configuration, _unitSelection);
         _unitSelection.Initialize(selection, _views, ground,
@@ -225,14 +227,8 @@ public partial class Battlefield : Node3D
                 && _views.Find(view => view.Id == shot.Attacker) is { } attacker)
             {
                 attacker.PlayShot(origin, target);
-                var contact = _views.Find(view => view.Id == shot.Target);
-                var impactRadius = contact?.Kind switch
-                {
-                    UnitKind.Tank => 2.2f,
-                    UnitKind.InfantrySquad => 0.76f,
-                    _ => 3.4f
-                };
-                _feedback?.Fire(shot, attacker, target, impactRadius,
+                var impact = ResolveShotSurface(shot.Target, target);
+                _feedback?.Fire(shot, attacker, impact,
                     _visibleLosses.Contains(shot.Attacker), _visibleLosses.Contains(shot.Target));
             }
             if (gameEvent is EntityDamaged damage && _healthBars.TryGetValue(damage.Entity, out var bar))
@@ -300,6 +296,15 @@ public partial class Battlefield : Node3D
         if (_views.Find(view => view.Id == id) is { } lastView)
             return lastView.GlobalPosition + height;
         return null;
+    }
+
+    private ShotSurface ResolveShotSurface(EntityId id, Vector3 center)
+    {
+        if (_views.Find(view => view.Id == id)?.ArmorMesh is { } armor)
+            return new ShotSurface(center, armor, ImpactMaterial.Armor);
+        if (_buildings.TryGetValue(id, out var building))
+            return new ShotSurface(center, building.GetNode<MeshInstance3D>("Base"), ImpactMaterial.Concrete);
+        return new ShotSurface(center);
     }
 
     private void UpdateActorVisibility(IReadOnlySet<EntityId> visibleActors)
