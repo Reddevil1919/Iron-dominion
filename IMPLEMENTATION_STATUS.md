@@ -107,9 +107,9 @@ damage simultaneously in entity ID order and reports destruction once.
 Godot shows health bars, removes destroyed units and leaves HQ ruins as
 solid terrain obstacles. The roadblock and HQs block fire.
 
-The current visibility rule uses line of sight from living allies. Move
-units within range before giving an attack order. Cover and match outcomes
-are tracked in RTS-010 and RTS-013.
+Visibility uses line of sight from living allies. See [Focused attack
+approach](#focused-attack-approach) for current movement on attack orders.
+Cover and match outcomes are tracked in RTS-010 and RTS-013.
 
 ### Verification on 20 November 2026
 
@@ -499,6 +499,21 @@ dust. The effects are limited in count and exist in the presentation.
 | Release build and xUnit | Zero build warnings and errors. All 145 tests passed. |
 | Godot headless | All 13 scenarios passed. Movement checks track phases, suspension and dust expiry. Combat checks recoil and the burst lifetime. |
 | Linux desktop | Rendered the moving tank with dust and the tank firing at an opposing squad in the playable depot. The cloud rendered with Mesa softpipe. Graphical frame rates on Windows hardware remain unmeasured. |
+
+## Focused attack approach
+
+With a visible enemy squad about 29 m away, a right-click previously
+accepted the attack and left the tank stationary outside its 16 m range.
+An attack click now sends units toward viable firing positions and keeps
+the clicked target as their focus. Units stop once they can fire, and a
+moving target can trigger a new route. Losing team line of sight or
+destroying the target ends the approach. If the entire selection is
+unable to reach a firing position, the HUD shows the rejection.
+
+The Release build completed with zero warnings and errors, and all 148
+xUnit tests passed. The Godot headless fog scenario uses one right-click
+from outside weapon range and checks the approach, cannon recoil and
+stationary firing position. It also passed with the localized firing effects.
 
 ## Depot landmarks and wayfinding
 

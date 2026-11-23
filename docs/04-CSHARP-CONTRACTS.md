@@ -72,6 +72,14 @@ focus a hostile target that at least one living allied unit can see. In the
 Godot battlefield, a living allied unit sees a target within 42 m when no
 solid obstacle blocks its view.
 
+An accepted focused attack replaces each selected unit's route with an
+approach to a reachable firing position when needed. The simulation stops
+the approach on engagement, loss of team visibility or destruction. It
+revalidates routes against moving targets once per second. Units only fire
+at the assigned target while the order is active. If no selected unit can
+fire or reach a firing position, the order is rejected with
+`no_firing_position` and the previous orders stay active.
+
 `ShotFired` events are ordered by attacker ID. Damage from that tick is
 applied together in target ID order and produces `EntityDamaged` and
 `EntityDestroyed` events. `IReadOnlyWorld.TryGetHitPoints` reports the

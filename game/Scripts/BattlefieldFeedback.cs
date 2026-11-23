@@ -69,6 +69,7 @@ internal sealed class BattlefieldFeedback
             "blocked_ground" => "That ground is blocked.",
             "outside_battlefield" => "Choose a point on the battlefield.",
             "target_not_visible" => "Your units cannot see that target.",
+            "no_firing_position" => "No reachable firing position found.",
             "invalid_target" => "That target is no longer available.",
             "actor_destroyed" => "That unit or building was destroyed.",
             "insufficient_credits" => "Not enough credits for that unit.",

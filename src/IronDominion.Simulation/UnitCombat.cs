@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Numerics;
 using IronDominion.Domain;
 
 namespace IronDominion.Simulation;
@@ -9,6 +10,12 @@ internal sealed class UnitCombat(
     ILineOfSightService sight)
 {
     private static readonly CommandResult Accepted = new(true, null);
+    private static readonly Vector2[] ApproachDirections =
+    [
+        Vector2.UnitX, -Vector2.UnitX, Vector2.UnitY, -Vector2.UnitY,
+        Vector2.Normalize(new Vector2(1, 1)), Vector2.Normalize(new Vector2(1, -1)),
+        Vector2.Normalize(new Vector2(-1, 1)), Vector2.Normalize(new Vector2(-1, -1))
+    ];
 
     private readonly List<Unit> _units = world.Units.OrderBy(unit => unit.Id.Value).ToList();
     private readonly List<WorldEntity> _targets = world.Units.Cast<WorldEntity>().Concat(world.Buildings)
@@ -56,19 +63,88 @@ internal sealed class UnitCombat(
         Health = Health.Add(unit.Id, unit.HitPoints);
     }
 
-    public CommandResult OrderAttack(AttackCommand command, IReadOnlyDictionary<EntityId, SimVector> positions)
+    public CommandResult OrderAttack(AttackCommand command, UnitMovement movement)
     {
+        var positions = movement.Positions;
         if (world.Find(command.Target) is not { Owner: { } owner } target
             || owner == command.Player || !Alive(target.Id))
             return new(false, "invalid_target");
 
-        if (!LivingUnits(command.Player).Any(unit => CanSee(unit, target, positions)))
+        if (!CanSeeTarget(command.Player, target, positions))
             return new(false, "target_not_visible");
 
-        foreach (var unit in command.Units)
-            _orderedTargets[unit] = target.Id;
+        var approaches = command.Units.Distinct().OrderBy(id => id.Value)
+            .Select(id => (Id: id, Path: FindApproach((Unit)world.Find(id)!, target, movement)))
+            .ToArray();
+        if (approaches.All(approach => approach.Path is null))
+            return new(false, "no_firing_position");
+
+        foreach (var (id, path) in approaches)
+        {
+            _orderedTargets[id] = target.Id;
+            movement.SetApproach(id, path);
+        }
 
         return Accepted;
+    }
+
+    public void UpdateApproaches(UnitMovement movement, long tick)
+    {
+        if (_orderedTargets.Count == 0)
+            return;
+
+        var positions = movement.Positions;
+        foreach (var unit in _units)
+        {
+            if (!_orderedTargets.TryGetValue(unit.Id, out var id))
+                continue;
+
+            var target = world.Find(id)!;
+            var range = _definitions[unit.Kind].AttackRangeMeters;
+            if (CanFireAt(unit, target, positions[unit.Id], range * range, positions))
+            {
+                movement.Stop(unit.Id);
+                continue;
+            }
+
+            if (!Alive(id) || !CanSeeTarget(unit.Owner!.Value, target, positions))
+            {
+                _orderedTargets.Remove(unit.Id);
+                movement.Stop(unit.Id);
+                continue;
+            }
+
+            // Retain valid routes and limit path requests for moving or unreachable targets.
+            if (tick % configuration.TickRate == 0
+                && (movement.RouteDestination(unit.Id) is not { } destination
+                    || !CanFireAt(unit, target, destination, range * range, positions)))
+                movement.SetApproach(unit.Id, FindApproach(unit, target, movement));
+        }
+    }
+
+    private IReadOnlyList<SimVector>? FindApproach(Unit attacker, WorldEntity target, UnitMovement movement)
+    {
+        var positions = movement.Positions;
+        var origin = positions[attacker.Id];
+        var range = _definitions[attacker.Kind].AttackRangeMeters;
+        if (CanFireAt(attacker, target, origin, range * range, positions))
+            return [];
+
+        var aim = PositionOf(target, positions);
+        var offset = new Vector2(origin.X - aim.X, origin.Z - aim.Z);
+        var nearSide = offset == Vector2.Zero ? Vector2.UnitX : Vector2.Normalize(offset);
+        var radius = MathF.Max(0f, range - 0.5f);
+        var directions = ApproachDirections.OrderByDescending(direction => Vector2.Dot(direction, nearSide))
+            .Prepend(nearSide);
+        foreach (var direction in directions.Distinct())
+        {
+            var destination = new SimVector(aim.X + direction.X * radius, aim.Z + direction.Y * radius);
+            if (CanFireAt(attacker, target, destination, range * range, positions)
+                && movement.FindRoute(origin, destination) is { } route)
+                return route;
+        }
+
+        return null;
     }
 
     public ImmutableArray<EnemyContact> ObserveEnemies(PlayerId player, IReadOnlyDictionary<EntityId, SimVector> positions)
@@ -102,6 +178,9 @@ internal sealed class UnitCombat(
 
     private IEnumerable<Unit> LivingUnits(PlayerId player) =>
         _units.Where(unit => unit.Owner == player && Alive(unit.Id));
+
+    private bool CanSeeTarget(PlayerId player, WorldEntity target, IReadOnlyDictionary<EntityId, SimVector> positions) =>
+        LivingUnits(player).Any(unit => CanSee(unit, target, positions));
 
     private bool CanSee(Unit observer, WorldEntity target, IReadOnlyDictionary<EntityId, SimVector> positions) =>
         sight.HasLineOfSight(positions[observer.Id], PositionOf(target, positions), target.Id);
@@ -184,9 +263,8 @@ internal sealed class UnitCombat(
     {
         var origin = positions[attacker.Id];
         var maxDistanceSquared = range * range;
-        if (_orderedTargets.TryGetValue(attacker.Id, out var id) && world.Find(id) is { } ordered
-            && CanFireAt(attacker, ordered, origin, maxDistanceSquared, positions))
-            return ordered;
+        if (_orderedTargets.TryGetValue(attacker.Id, out var id) && world.Find(id) is { } ordered)
+            return CanFireAt(attacker, ordered, origin, maxDistanceSquared, positions) ? ordered : null;
 
         WorldEntity? nearest = null;
         var nearestDistance = maxDistanceSquared;

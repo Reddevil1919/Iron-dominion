@@ -79,8 +79,9 @@ results at 50, 100 and 200 units.
 The Godot smoke checks that a roadblock conceals an enemy tank within
 sight range and that distant contacts are hidden. It uses normal mouse
 input to distinguish a ground move from a targeted attack, reveal an
-opposing squad and HQ and conceal them again by withdrawing. The xUnit
-AI visibility test covers scouting for a hidden enemy HQ.
+opposing squad and HQ, approach and fire on the squad with one attack click
+from outside weapon range, and conceal the contacts again by withdrawing.
+The xUnit AI visibility test covers scouting for a hidden enemy HQ.
 
 ## Tactical order scenarios
 
