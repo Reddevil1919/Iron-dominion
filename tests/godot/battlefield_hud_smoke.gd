@@ -18,6 +18,7 @@ func _run() -> void:
 		if NavigationServer3D.map_get_iteration_id(region.get_navigation_map()) > 0:
 			break
 	assert(NavigationServer3D.map_get_iteration_id(region.get_navigation_map()) > 0, "Navigation map is ready")
+	_verify_depot_details()
 
 	var camera := root.get_camera_3d()
 	var tank := current_scene.get_node("Units/Unit3") as Node3D
@@ -82,6 +83,27 @@ func _run() -> void:
 
 	print("Battlefield HUD smoke checks passed.")
 	quit()
+
+
+func _verify_depot_details() -> void:
+	var cargo := current_scene.get_node("Roadblock/CargoHandling") as MeshInstance3D
+	var collision := current_scene.get_node("Roadblock/Collision") as CollisionShape3D
+	var box := collision.shape as BoxShape3D
+	assert((collision.transform * AABB(-box.size * 0.5, box.size)).encloses(cargo.transform * cargo.get_aabb()),
+		"Cargo equipment fits inside the existing sight and movement blocker")
+	var scenery := current_scene.get_node("Roadblock/Mesh") as MeshInstance3D
+	var gates := current_scene.get_node("PerimeterGates") as MeshInstance3D
+	assert(cargo.material_override == scenery.material_override and gates.material_override == scenery.material_override,
+		"The depot details use the terrain visibility material")
+	var bounds := collision.global_transform * AABB(-box.size * 0.5, box.size)
+	var material := scenery.material_override as ShaderMaterial
+	assert(material.get_shader_parameter("freight_yard") == Vector4(bounds.position.x, bounds.position.z, bounds.end.x, bounds.end.z),
+		"The scenery shader uses the existing yard footprint to sample visible ground around it")
+	var vertices: PackedVector3Array = gates.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	assert(not vertices.is_empty(), "Perimeter details have geometry")
+	for vertex in vertices:
+		var x := absf((gates.global_transform * vertex).x)
+		assert(x > 59.0 and x < 64.0, "The gates and booths stay beyond the navigable edge")
 
 
 func _click(point: Vector2, button: MouseButton, shift_pressed := false) -> void:

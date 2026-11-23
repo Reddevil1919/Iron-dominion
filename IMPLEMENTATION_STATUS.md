@@ -643,6 +643,24 @@ pavement types and checks tread expiry. The cover and save scenarios check
 footstep dust and trail reset. The Linux desktop capture uses Mesa
 llvmpipe. Graphical performance on Windows remains unmeasured.
 
+## Contemporary depot details
+
+The freight yard contains a forklift, strapped pallets, a marked aisle
+and container doors with lock bars. Weathering adds streaks and settled
+dust to the painted scenery. The barracks have shuttered maintenance bays,
+protective bollards and rooftop ventilation. The western relay roof adds
+photovoltaic panels beside the mast. Glazed guard booths frame the two
+perimeter gates. Cargo equipment fits inside the existing roadblock and
+the gate details stand outside the navigable edge. The scenery shader
+uses the visible ground around the freight yard to light its interior.
+
+The Release build passed with zero warnings and errors. All 151 xUnit
+tests and all 13 Godot headless scenarios passed. The battlefield HUD
+scenario checks the equipment footprint, the scenery material and the
+perimeter boundary. The depot was captured from the playable scene on
+Linux with Mesa llvmpipe. Graphical performance on Windows remains
+unmeasured.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

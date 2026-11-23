@@ -134,6 +134,10 @@ checks that loading clears the old trail.
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.
 
+The battlefield HUD scenario also checks that cargo equipment fits
+inside the roadblock collider, gate details stay outside the navigation
+edge, and both use the existing scenery visibility material.
+
 ## CI gates
 GitHub Actions runs `dotnet restore`, `dotnet build --configuration Release` and `dotnet test --configuration Release`. The solution includes the golden match and replay suite.
 A second job imports the project and launches the main scene headlessly with the pinned Godot .NET editor. The Windows x64 workflow exports the distributable ZIP and verifies the packaged game on a native Windows runner. Asset licenses are reviewed with the PR. See [Development setup](08-SETUP.md) for the Windows package.
