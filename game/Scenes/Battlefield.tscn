@@ -19,6 +19,9 @@ size = Vector3(128, 0.5, 128)
 
 [sub_resource type="ShaderMaterial" id="Material_ground"]
 shader = ExtResource("4_depot_ground")
+shader_parameter/roads = PackedVector4Array(32, 0, 3.13, 31.7, 0, 24, 33.2, 3.13, 0, 0, 63, 3.95)
+shader_parameter/mirrored_slabs = PackedVector4Array(32, 24, 8.15, 7.15, 0, 0, 7.5, 9.2)
+shader_parameter/local_slabs = PackedVector4Array(-30, -6, 5.10, 4.45, 15, 22, 6.30, 5.50, 30, 6.6, 4.0, 4.05)
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 material = SubResource("Material_ground")

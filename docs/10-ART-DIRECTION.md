@@ -58,9 +58,22 @@ passes between the muzzle and the target. The heavier impact adds sparks
 and debris that fall and fade near the hit. Effects follow the existing
 shot event. Damage resolves on the simulation tick.
 
-Rifle bursts, cannon bursts, shells and track dust use four bounded
+Rifle flashes, cannon flashes, shells, impacts and track dust use bounded
 mesh batches. They respect fog of war and can finish a lethal impact
 at a target's last visible position. Loading a match clears the batches.
+
+## Surface impacts
+
+Hits near infantry strike the ground in front of the squad. Dirt and
+gravel kick up warm dust, grit and a dark mark. Concrete walls and
+slabs give off pale dust and angular chips. Asphalt throws darker
+aggregate. Tank hulls give a brief fan of sparks and retain a soot mark
+on the struck panel as the tank moves.
+
+The ground shader and the impact system use the same paved areas authored
+in the main scene. Gravel parcels take precedence over the pavement under
+them. Rifle bursts use smaller impacts than cannon fire. Marks fade over a
+few seconds. Visible impacts follow the existing combat events.
 
 ## Tank destruction and infantry casualties
 

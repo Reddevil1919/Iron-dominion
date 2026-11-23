@@ -36,10 +36,21 @@ void fragment() {
         mask = 1.0 - smoothstep(0.70, 0.95, body);
         float glint = (1.0 - smoothstep(0.04, 0.69, length(p - vec2(0.28, -0.37))));
         shade = mix(COLOR.rgb * 0.68, vec3(0.85, 0.84, 0.78), glint);
-    } else {
+    } else if (shape < 5.5) {
         float swirl = sin(p.x * 11.0 + p.y * 7.0) * sin(p.y * 9.0 - p.x * 4.0);
         float rim = 1.0 - smoothstep(0.02, 0.30, abs(r + swirl * 0.13 - 0.64));
         mask = rim * (0.56 + swirl * 0.31);
+    } else if (shape < 6.5) {
+        vec2 cut = abs(vec2(p.x + p.y * 0.27, p.y - p.x * 0.21));
+        mask = 1.0 - smoothstep(0.65, 0.94, dot(cut, vec2(0.74, 1.0)));
+        shade *= 0.72 + 0.28 * smoothstep(-0.25, 0.4, p.x - p.y);
+    } else {
+        float grit = sin(p.x * 26.0 + p.y * 8.0) * sin(p.y * 19.0 - p.x * 11.0);
+        float broken_edge = sin(p.x * 7.0 - p.y * 13.0) * sin(p.y * 9.0 + p.x * 10.0);
+        float chipped = r + broken_edge * 0.14 + grit * 0.044;
+        float outer = 1.0 - smoothstep(0.37, 0.86, chipped);
+        mask = outer * (0.73 + grit * 0.15);
+        shade *= 0.68 + 0.35 * smoothstep(0.19, 0.51, chipped) + grit * 0.12;
     }
 
     ALBEDO = shade;

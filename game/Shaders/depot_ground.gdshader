@@ -2,6 +2,14 @@ shader_type spatial;
 render_mode specular_disabled;
 
 varying vec3 world_position;
+uniform vec4 roads[3];
+uniform vec4 mirrored_slabs[2];
+uniform vec4 local_slabs[3];
+
+float edge(vec2 p, vec4 rectangle) {
+    vec2 offset = abs(p - rectangle.xy) - rectangle.zw;
+    return max(offset.x, offset.y);
+}
 
 float hash_cell(vec2 cell) {
     vec3 p = fract(vec3(cell.xyx) * 0.1031);
@@ -32,15 +40,12 @@ void fragment() {
     float soil_mottle = noise_at(p * 0.29);
     float surface_detail = (grit - 0.5) * 0.05 + (fine - 0.5) * 0.022;
 
-    float vertical_road = max(abs(a.x - 32.0) - 3.13, a.y - 31.7);
-    float cross_road = max(abs(a.y - 24.0) - 3.13, a.x - 33.2);
-    float main_road = max(a.y - 3.95, a.x - 63.0);
-    float road = min(min(vertical_road, cross_road), main_road);
-    float forecourt = max(abs(a.x - 32.0) - 8.15, abs(a.y - 24.0) - 7.15);
-    float central_apron = max(a.x - 7.5, a.y - 9.2);
-    float relay_apron = max(abs(p.x + 30.0) - 5.10, abs(p.y + 6.0) - 4.45);
-    float service_apron = max(abs(p.x - 15.0) - 6.30, abs(p.y - 22.0) - 5.50);
-    float check_apron = max(abs(p.x - 30.0) - 4.0, abs(p.y - 6.6) - 4.05);
+    float road = min(min(edge(a, roads[0]), edge(a, roads[1])), edge(a, roads[2]));
+    float forecourt = edge(a, mirrored_slabs[0]);
+    float central_apron = edge(a, mirrored_slabs[1]);
+    float relay_apron = edge(p, local_slabs[0]);
+    float service_apron = edge(p, local_slabs[1]);
+    float check_apron = edge(p, local_slabs[2]);
     float concrete = min(min(forecourt, central_apron), min(relay_apron, min(service_apron, check_apron)));
 
     vec3 scrub = mix(vec3(0.29, 0.33, 0.22), vec3(0.48, 0.48, 0.34),

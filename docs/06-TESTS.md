@@ -99,7 +99,8 @@ through the HUD and input shortcuts.
 The combat smoke follows an eliminated tank fragment from launch through
 landing and its three-second hold. It also checks the infantry skeleton's
 ground pose, three-second body hold and paint lifetime through the
-thirteen-second disappearance.
+thirteen-second disappearance. The combat and match lifecycle checks
+distinguish impacts on dirt, armor and a concrete headquarters wall.
 
 ## Save and load scenario
 

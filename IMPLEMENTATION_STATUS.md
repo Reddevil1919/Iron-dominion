@@ -581,6 +581,16 @@ The combat smoke checks these timelines during normal attacks, including
 the moving debris and the infantry rig's final pose. The Linux desktop
 capture shows real gameplay effects with Mesa software rendering.
 
+## Surface-dependent impacts
+
+The depot uses its authored pavement bounds to choose impact effects on
+dirt, gravel, concrete and asphalt. Hits on tank armor produce sparks and
+leave a temporary soot mark that moves with the hull. Rifle impacts use
+smaller particles and marks than cannon impacts.
+
+The combat smoke checks the dirt and armor effects during a real engagement.
+The match lifecycle smoke checks concrete impacts on the orange headquarters.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield
