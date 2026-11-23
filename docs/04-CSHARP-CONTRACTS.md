@@ -157,8 +157,9 @@ bars use the current sector's capture ticks. The selection panel sums
 the current and maximum hit points of living selected units and reports
 cover from `IReadOnlyWorld.HasCover`.
 
-The Godot scene turns `ShotFired` events into brief traces and uses
-`CommandProcessed` rejection codes to explain failed local orders.
+The Godot scene turns `ShotFired` events into muzzle flashes, short moving
+tracers and local impacts. It uses `CommandProcessed` rejection codes to
+explain failed local orders.
 Blocked clicks receive feedback at the input boundary. These effects
 read simulation state and leave gameplay rules in the simulation.
 
@@ -219,8 +220,8 @@ The same adapter applies to both sides. All current weapon ranges fit
 inside the sight radius.
 
 At each simulation tick, Godot hides hostile actors without a contact,
-including their health bars, shot traces and picking shapes. Hidden buildings
-keep their solid collision for navigation and line of sight. Ranges and damage
+including their health bars, firing effects and picking shapes. Hidden
+buildings keep their solid collision for navigation and line of sight. Ranges and damage
 are resolved by the existing combat rules. The local map retains explored
 terrain and draws fog from samples on a 48 × 48 ground grid. The map mask
 refreshes up to five times per second. Actor visibility uses the contact

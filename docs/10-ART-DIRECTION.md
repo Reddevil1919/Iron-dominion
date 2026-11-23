@@ -48,11 +48,16 @@ steering drive the phases. The sprung armor above the belts responds to
 acceleration and braking. The paint finish and faction marks stay on the
 same panels while the suspension moves.
 
-A visible shot adds a short muzzle flash and a fading impact burst. Tank
-movement leaves a low dust wake. The tracer keeps the line between shooter
-and target readable from the tactical camera. Combat and dust use two
-bounded batches of camera-facing quads. The existing visibility gates
-hide these effects when a contact is lost. Loading a match clears effects.
+A visible shot starts with a brief, directional flash and drifting smoke
+at the muzzle. Tank rounds and occasional infantry rounds show a short
+moving tracer. A local flash and expanding dust puff mark arrival, with
+short-lived sparks on tank impacts. The flight time belongs to the effect
+and damage still resolves on the simulation tick.
+
+Tank movement leaves a low dust wake. Bursts, tracers and track dust use
+three bounded batches of camera-facing quads. The effects respect fog of
+war, with a final impact allowed at a position where a destroyed actor was
+visible. Loading a match clears the effect batches.
 
 ## Depot landmarks and wayfinding
 

@@ -31,7 +31,8 @@ func _run() -> void:
 	var health_bar := selection.find_child("SelectionHealthBar", true, false) as ProgressBar
 	var details := selection.find_child("Composition", true, false) as Label
 	var message := notice.find_child("OrderMessage", true, false) as Label
-	var trails := current_scene.get_node("CombatTrails") as MeshInstance3D
+	var tracers := current_scene.get_node("CombatTracers") as MeshInstance3D
+	assert(not current_scene.has_node("CombatTrails"), "Combat no longer draws a source-to-target line")
 	assert(not selection.visible and not notice.visible, "Context panels start hidden")
 	await _click(camera.unproject_position(tank.global_position + Vector3.UP), MOUSE_BUTTON_LEFT)
 	assert(selection.visible and title.text == "Tank", "Tank selection shows its details")
@@ -61,22 +62,22 @@ func _run() -> void:
 	assert(notice.visible and message.text == "No route to that position.", "The HUD explains a rejected simulation order")
 
 	await _click(camera.unproject_position(Vector3(17, 0, -3)), MOUSE_BUTTON_RIGHT)
-	var saw_trail := false
+	var saw_tracer := false
 	for tick in range(470):
 		await physics_frame
-		if trails.visible:
-			saw_trail = true
-		if health_bar.value < 1.0 and saw_trail:
+		if tracers.visible:
+			saw_tracer = true
+		if health_bar.value < 1.0 and saw_tracer:
 			break
-	assert(saw_trail, "Firing creates a visible trace")
+	assert(saw_tracer, "Cannon fire creates a brief airborne tracer")
 	assert(health_bar.value < 1.0 and health.text != "600 / 600 HP", "The selection panel follows combat damage")
-	var trail_cleared := false
+	var tracer_cleared := false
 	for tick in range(6):
 		await physics_frame
-		if not trails.visible:
-			trail_cleared = true
+		if not tracers.visible:
+			tracer_cleared = true
 			break
-	assert(trail_cleared, "Shot traces expire")
+	assert(tracer_cleared, "Airborne tracers clear between shots")
 
 	print("Battlefield HUD smoke checks passed.")
 	quit()

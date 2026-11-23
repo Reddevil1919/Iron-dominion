@@ -5,30 +5,14 @@ namespace IronDominion.Game;
 
 internal sealed class BattlefieldFeedback
 {
-    private const int TrailTicks = 4;
     private const int NoticeTicks = 50;
-    private readonly ImmediateMesh _mesh = new();
-    private readonly StandardMaterial3D _material = new()
-    {
-        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-        AlbedoColor = new Color("fff0bc")
-    };
-    private readonly MeshInstance3D _trailsView;
-    private readonly List<Trail> _trails = new();
     private readonly BattlefieldEffects _effects;
     private readonly PanelContainer _notice = HudStyle.Panel("OrderNotice");
     private readonly Label _message = HudStyle.Label("OrderMessage", 15, HudStyle.Amber);
     private long _noticeUntil;
-    private bool _trailsChanged;
 
     public BattlefieldFeedback(Node3D battlefield, Node canvas)
     {
-        _trailsView = new MeshInstance3D
-        {
-            Name = "CombatTrails", Mesh = _mesh, Visible = false,
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-        };
-        battlefield.AddChild(_trailsView);
         _effects = new BattlefieldEffects(battlefield);
 
         _notice.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight);
@@ -42,23 +26,16 @@ internal sealed class BattlefieldFeedback
         canvas.AddChild(_notice);
     }
 
-    public void Trace(ShotFired shot, Vector3 origin, Vector3 target, float targetRadius, bool heavy)
-    {
-        _trails.Add(new Trail(shot.Attacker, shot.Target, origin, target, shot.Tick + TrailTicks));
-        _trailsChanged = true;
-        _effects.Fire(shot, origin, target, targetRadius, heavy);
-    }
+    public void Fire(ShotFired shot, Vector3 muzzle, Vector3 target, float targetRadius, bool heavy,
+        bool sourceDestroyed, bool targetDestroyed) =>
+        _effects.Fire(shot, muzzle, target, targetRadius, heavy, sourceDestroyed, targetDestroyed);
 
     public void TrackDust(EntityId tank, long tick, Vector3 position) => _effects.TrackDust(tank, tick, position);
 
     public void Reset()
     {
-        _trails.Clear();
-        _mesh.ClearSurfaces();
-        _trailsView.Hide();
         _notice.Hide();
         _effects.Reset();
-        _trailsChanged = false;
     }
 
     public void Reject(string? reason, long tick)
@@ -81,29 +58,10 @@ internal sealed class BattlefieldFeedback
 
     public void Update(long tick, IReadOnlySet<EntityId> visibleActors)
     {
-        _effects.Update(tick, visibleActors);
+        _effects.Advance(tick, visibleActors);
         if (_notice.Visible && tick >= _noticeUntil)
             _notice.Hide();
-
-        var expired = _trails.RemoveAll(trail => trail.Until <= tick
-            || !visibleActors.Contains(trail.Attacker) || !visibleActors.Contains(trail.TargetId));
-        if (!_trailsChanged && expired == 0)
-            return;
-
-        _trailsChanged = false;
-        _mesh.ClearSurfaces();
-        _trailsView.Visible = _trails.Count > 0;
-        if (_trails.Count == 0)
-            return;
-
-        _mesh.SurfaceBegin(Mesh.PrimitiveType.Lines, _material);
-        foreach (var trail in _trails)
-        {
-            _mesh.SurfaceAddVertex(trail.Origin);
-            _mesh.SurfaceAddVertex(trail.Target);
-        }
-        _mesh.SurfaceEnd();
     }
 
-    private readonly record struct Trail(EntityId Attacker, EntityId TargetId, Vector3 Origin, Vector3 Target, long Until);
+    public void Render(double tickFraction) => _effects.Render(tickFraction);
 }

@@ -80,7 +80,7 @@ the exact damage per hit. The focused checks launch a passive opponent
 with `-- --passive-opponent` in the Debug game. The enemy AI smoke runs
 the default scene and observes the orange side train a tank, capture
 a sector and advance on the blue HQ. The HUD check verifies selection
-health, compact window layout, rejected orders and temporary shot traces.
+health, compact window layout, rejected orders and the tracer lifetime.
 The tactical-order check uses the keyboard and HUD to engage along an
 attack-move route and cancel a route with hold position.
 The fog check scouts around the roadblock, reveals a unit and a building
@@ -148,9 +148,9 @@ visible enemies within range.
 Right-click an orange unit or building to focus fire. An accepted attack order
 stops the selected units. Move them within weapon range for the shot to
 fire. Units also fire automatically at visible enemies in range.
-The roadblock and buildings block line of sight. Brief shot traces show
-where units are firing. Health bars shrink and change from green to amber
-at 60% health, then red at 25%. The bottom-right panel shows exact hit
+The roadblock and buildings block line of sight. Watch for muzzle flashes,
+short moving tracers and dust at the point of impact. Health bars shrink
+and change from green to amber at 60% health, then red at 25%. The bottom-right panel shows exact hit
 points, group composition and cover for the current selection. Rejected
 orders briefly display a reason at the top right. Destroyed units leave
 the battlefield and destroyed buildings leave solid ruins.
