@@ -24,6 +24,7 @@ public partial class Battlefield : Node3D
     private readonly Dictionary<StaticBody3D, EntityId> _enemyBuildings = new();
     private readonly Dictionary<PlayerId, StandardMaterial3D> _teamMaterials = new();
     private readonly Dictionary<PlayerId, UnitArt> _unitArt = new();
+    private readonly HashSet<EntityId> _visibleLosses = new();
     private ProductionPanel? _productionPanel;
     private SectorBoard? _sectorBoard;
     private SelectionPanel? _selectionPanel;
@@ -44,12 +45,12 @@ public partial class Battlefield : Node3D
             Engine.PhysicsTicksPerSecond = configuration.TickRate;
             var benchmark = BenchmarkOptions.Parse(OS.GetCmdlineUserArgs());
             SetUpUnits(configuration, benchmark);
-            SetProcess(benchmark is not null);
         }
         catch (InvalidDataException exception)
         {
             GD.PushError(exception.Message);
             SetPhysicsProcess(false);
+            SetProcess(false);
             GetTree().Quit(1);
         }
     }
@@ -203,6 +204,11 @@ public partial class Battlefield : Node3D
             commander.Plan(session.Observe(Opponent), commands);
         }
 
+        _visibleLosses.Clear();
+        foreach (var gameEvent in events)
+            if (gameEvent is EntityDestroyed loss && fog.VisibleActors.Contains(loss.Entity))
+                _visibleLosses.Add(loss.Entity);
+
         fog.Update(session.Observe(LocalPlayer));
         var visibleActors = fog.VisibleActors;
         var destroyed = false;
@@ -210,7 +216,9 @@ public partial class Battlefield : Node3D
         {
             if (gameEvent is CommandProcessed order && order.Command.Player == LocalPlayer && !order.Result.Accepted)
                 _feedback?.Reject(order.Result.RejectionCode, order.Tick);
-            if (gameEvent is ShotFired shot && visibleActors.Contains(shot.Attacker) && visibleActors.Contains(shot.Target)
+            if (gameEvent is ShotFired shot
+                && (visibleActors.Contains(shot.Attacker) || _visibleLosses.Contains(shot.Attacker))
+                && (visibleActors.Contains(shot.Target) || _visibleLosses.Contains(shot.Target))
                 && FindActorPosition(shot.Attacker, session.World) is { } origin
                 && FindActorPosition(shot.Target, session.World) is { } target)
             {
@@ -223,7 +231,8 @@ public partial class Battlefield : Node3D
                     UnitKind.InfantrySquad => 0.76f,
                     _ => 3.4f
                 };
-                _feedback?.Trace(shot, attacker?.ShotOrigin ?? origin, target, impactRadius, attacker?.Kind == UnitKind.Tank);
+                _feedback?.Fire(shot, attacker?.ShotOrigin ?? origin, target, impactRadius,
+                    attacker?.Kind == UnitKind.Tank, _visibleLosses.Contains(shot.Attacker), _visibleLosses.Contains(shot.Target));
             }
             if (gameEvent is EntityDamaged damage && _healthBars.TryGetValue(damage.Entity, out var bar))
                 bar.SetHitPoints(damage.RemainingHitPoints);
@@ -251,6 +260,7 @@ public partial class Battlefield : Node3D
 
     public override void _Process(double delta)
     {
+        _feedback?.Render(Engine.GetPhysicsInterpolationFraction());
         if (_benchmark is null || _navigation is null)
             return;
 

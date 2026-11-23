@@ -228,7 +228,7 @@ capture progress, including contested states. The bottom-right panel
 shows selected units, exact hit points and cover. World health bars
 change color at 60% and 25% health.
 
-Firing draws short-lived traces. Failed local orders display a brief
+Firing displays temporary combat effects. Failed local orders display a brief
 reason. The HUD reads the existing snapshot and command events.
 
 ### Verification on 21 November 2026
@@ -367,7 +367,7 @@ and the 60 FPS target on Windows hardware remain unmeasured.
 Battlefield vision comes from living units within 42 m and respects the
 roadblock and buildings. Both sides use the same query for hostile contacts
 and attack order validation. The local view hides enemy actors, health bars
-and traces when a contact is lost. Hidden buildings remain solid obstacles.
+and firing effects when a contact is lost. Hidden buildings remain solid obstacles.
 The map distinguishes visible, explored and unexplored terrain. Sector
 ownership is public and capture progress requires visibility of the sector.
 
@@ -516,7 +516,23 @@ same.
 | Godot headless | All 13 scenarios passed. The sector scenario checks outline dimensions, ground labels and close-zoom scaling. The cover scenario checks paint inside both parcels and below the fog plane. |
 | Linux desktop | Rendered the playable depot at overview and tactical zoom on Mesa softpipe. Graphical frame rates on Windows hardware remain unmeasured. |
 
+## Local firing and impact effects
+
+Infantry and tanks fire with a directional muzzle flash, drifting smoke
+and a local impact. A brief tracer moves toward the target on tank shots
+and some infantry shots. Tank impacts add sparks. These effects use the
+existing combat events and do not change damage timing or line of sight.
+A lethal shot can finish its effect at the last visible position of its
+target. The fog mask shader bindings release their temporary texture
+reference during setup so Godot can free the mask when closing the scene.
+
+| Check | Observed result |
+| --- | --- |
+| Release build and xUnit | Zero build warnings and errors. All 145 tests passed. |
+| Godot headless | All 13 scenarios passed. Combat checks a moving tracer and localized bursts. The HUD check verifies tracer expiry and the absence of the old beam node. |
+| Linux desktop | Captured a tank shot from muzzle flash to impact in the playable depot. The cloud rendered with Mesa softpipe. Graphical frame rates on Windows hardware remain unmeasured. |
+
 ## Next
 
-Assess a tactical minimap using the existing sectors and depot landmarks.
-RTS-020 remains in the backlog.
+Continue refining the existing units' close-up motion and battlefield
+effects. RTS-020 remains in the backlog.

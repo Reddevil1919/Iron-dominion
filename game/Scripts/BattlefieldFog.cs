@@ -29,13 +29,14 @@ internal sealed class BattlefieldFog : IDisposable
         _cellSize = _size / Resolution;
         using var image = CreateImage();
         _texture = ImageTexture.CreateFromImage(image);
+        using var mask = Variant.From(_texture);
         var center = floor.GetCenter();
         _overlay = new ShaderMaterial
         {
             Shader = GD.Load<Shader>("res://Shaders/battlefield_fog.gdshader"),
             RenderPriority = -1
         };
-        _overlay.SetShaderParameter("visibility_mask", _texture);
+        _overlay.SetShaderParameter("visibility_mask", mask);
         battlefield.AddChild(new MeshInstance3D
         {
             Name = "FogOfWar",
@@ -45,7 +46,7 @@ internal sealed class BattlefieldFog : IDisposable
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         });
         SceneryMaterial = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/depot_scenery.gdshader") };
-        SceneryMaterial.SetShaderParameter("visibility_mask", _texture);
+        SceneryMaterial.SetShaderParameter("visibility_mask", mask);
         SceneryMaterial.SetShaderParameter("floor_origin", _origin);
         SceneryMaterial.SetShaderParameter("floor_size", _size);
     }
