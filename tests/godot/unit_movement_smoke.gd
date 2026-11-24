@@ -43,14 +43,22 @@ func _run() -> void:
 	var goal := Vector3(17.0, 0.0, 7.0)
 	await _click(camera.unproject_position(goal), MOUSE_BUTTON_RIGHT)
 	var previous := tank.global_position
+	var previous_heading: float = model.rotation.y
 	var steering_seen := false
 	var suspension_seen := false
+	var left_load := false
+	var right_load := false
 	var dust_seen := false
 	var pair_seen := false
 	for tick in range(440):
 		await physics_frame
 		var current := tank.global_position
 		var travel: Vector2 = belt_material.get_shader_parameter("travel")
+		var heading: float = model.rotation.y
+		var yaw := angle_difference(previous_heading, heading)
+		left_load = left_load or (yaw < -0.012 and suspension.rotation.z > 0.012)
+		right_load = right_load or (yaw > 0.012 and suspension.rotation.z < -0.012)
+		previous_heading = heading
 		steering_seen = steering_seen or abs(travel.x - travel.y) > 0.06
 		suspension_seen = suspension_seen or abs(suspension.rotation.x) > 0.006
 		dust_seen = dust_seen or dust.visible
@@ -65,13 +73,19 @@ func _run() -> void:
 	assert(enemy.global_position.is_equal_approx(enemy_initial), "The enemy tank never moves")
 	assert(steering_seen, "The two belts advance by different amounts on a turn")
 	assert(suspension_seen, "The hull reacts to acceleration")
+	assert(left_load and right_load, "The hull leans outward in both directions around the roadblock")
+	assert(belts.rotation.is_zero_approx(), "The belts stay on the ground while the sprung hull rolls")
 	assert(dust_seen, "Travel creates dust")
 	assert(pair_seen, "Both belts leave marks")
+	var nose_dip := false
 	for tick in range(25):
 		await physics_frame
+		nose_dip = nose_dip or suspension.rotation.x < -0.010
+	assert(nose_dip, "The nose dips after braking")
 	assert(not dust.visible, "Track dust clears after stopping")
 	assert(marks.visible_instance_count > 0, "The tread marks outlast the dust")
 	assert(abs(suspension.rotation.x) < 0.008, "The hull settles after braking")
+	assert(abs(suspension.rotation.z) < 0.008, "The hull settles level over the tracks")
 
 	var beyond_enemy := Vector3(17, 0, -15)
 	await _click(camera.unproject_position(beyond_enemy), MOUSE_BUTTON_RIGHT)

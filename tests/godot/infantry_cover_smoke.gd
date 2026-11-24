@@ -141,8 +141,7 @@ func _verify_cover_stance(squad: Node3D, rig: Skeleton3D, marker: Label3D, parce
 	assert(not step_dust.visible, "Footstep dust clears once the squad settles")
 
 	var exit := center + Vector3(0.0, 0.0, 8.0)
-	await _click(camera.unproject_position(exit), MOUSE_BUTTON_RIGHT)
-	assert(rig.get_bone_global_pose(front_pelvis).origin.y > frontal + 0.045, "The lead soldier rises into the first steps")
+	assert(await _verify_weight_transfer(rig, front_pelvis, front_boot, exit), "The kneeling soldier pushes off a planted foot")
 	for tick in range(70):
 		await physics_frame
 		if squad.global_position.distance_to(exit) < 0.08:
@@ -154,7 +153,35 @@ func _verify_cover_stance(squad: Node3D, rig: Skeleton3D, marker: Label3D, parce
 	return true
 
 
-func _click(point: Vector2, button: MouseButton) -> void:
+func _verify_weight_transfer(rig: Skeleton3D, pelvis: int, boot: int, exit: Vector3) -> bool:
+	var frame := rig.get_global_transform_interpolated()
+	var plant := frame * rig.get_bone_global_pose(boot).origin
+	var start := frame * rig.get_bone_global_pose(pelvis).origin
+	var loaded := false
+	var pushed := false
+	var released := false
+	var camera := root.get_camera_3d()
+	await _click(camera.unproject_position(exit), MOUSE_BUTTON_RIGHT, 0)
+	for sample in range(41):
+		# Compare the pose and its interpolated root after UnitView has updated both.
+		await create_timer(0.0).timeout
+		frame = rig.get_global_transform_interpolated()
+		var ankle := frame * rig.get_bone_global_pose(boot).origin
+		var hip := frame * rig.get_bone_global_pose(pelvis).origin
+		var height := hip.y - start.y
+		var closer := Vector2(plant.x - hip.x, plant.z - hip.z).length() \
+			< Vector2(plant.x - start.x, plant.z - start.z).length() - 0.14
+		if closer and absf(height) < 0.035:
+			assert(ankle.distance_to(plant) < 0.035, "The support boot stays planted as weight moves over it")
+			loaded = true
+		if loaded and height > 0.065 and ankle.distance_to(plant) < 0.035:
+			pushed = true
+		released = released or (pushed and ankle.y > plant.y + 0.043 and ankle.distance_to(plant) > 0.06)
+	assert(loaded and pushed and released, "The lead soldier loads the boot at knee height, pushes up, then lifts the boot")
+	return true
+
+
+func _click(point: Vector2, button: MouseButton, wait_ticks: int = 4) -> void:
 	var motion := InputEventMouseMotion.new()
 	motion.position = point
 	motion.global_position = point
@@ -162,7 +189,7 @@ func _click(point: Vector2, button: MouseButton) -> void:
 	_mouse_button(point, button, true)
 	await process_frame
 	_mouse_button(point, button, false)
-	for tick in range(4):
+	for tick in range(wait_ticks):
 		await physics_frame
 
 

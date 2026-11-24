@@ -713,6 +713,25 @@ boot lifts and settling after a hold order. The before-and-after comparison
 was captured in the playable depot using Linux Mesa llvmpipe. Graphical
 frame rates on Windows hardware remain unmeasured.
 
+## Infantry weight transfer and tank suspension
+
+The lead soldiers leave a settled kneel by loading the forward boot at
+knee height, pushing off it and entering the gait. An anchor in world
+space keeps that boot on the ground during the weight transfer. The pair
+lead with opposite feet and start a fraction of a second apart.
+
+The tank hull loads the outside track in a turn. Speed and heading rate
+drive the sideways tilt, and damping brings the hull back to level as the
+turn ends. The track belts stay on the ground as the hull pitches under
+braking and rolls over them. Both effects use the existing visual rig.
+
+The Release build passed with zero warnings and errors. All 151 xUnit
+tests and all 14 Godot headless scenarios passed. The cover test measures
+the planted boot in world space. The movement test checks the outside
+load in both turn directions, the dip at braking and a level stop.
+The before-and-after footage comes from the playable depot under Linux
+Mesa llvmpipe. Graphical frame rates on Windows hardware remain unmeasured.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

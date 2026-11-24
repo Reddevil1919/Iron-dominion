@@ -82,9 +82,11 @@ internal sealed partial class InfantryMotion
         var targetTurn = Mathf.Abs(turnRate) < 0.025f ? 0f : Mathf.Clamp(turnRate / MaxTurnRate, -1f, 1f);
         var targetSuppression = suppressed ? 1f : 0f;
         var targetCover = covered ? 1f : 0f;
-        var targetStationaryCover = covered && velocity.IsZeroApprox() ? 1f : 0f;
+        var moving = !velocity.IsZeroApprox();
+        var targetStationaryCover = covered && !moving ? 1f : 0f;
         var targetAim = aiming ? 1f : 0f;
-        if (velocity.IsZeroApprox() && targetTurn == 0f && _turn == 0f && !HasActiveSteps()
+        var rising = AdvanceRise(delta, moving);
+        if (!moving && !rising && targetTurn == 0f && _turn == 0f && !HasActiveSteps()
             && targetSuppression == _suppression
             && targetCover == _cover && targetStationaryCover == _stationaryCover && targetAim == 0f && _aim == 0f)
             return;
@@ -139,6 +141,7 @@ internal sealed partial class InfantryMotion
     private void PoseSquad(float? shotAge, int footfall = -1)
     {
         var crouch = Crouch;
+        var worldToRig = IsRising ? _skeleton.GetGlobalTransformInterpolated().AffineInverse() : Transform3D.Identity;
         for (var soldier = 0; soldier < Formation.Length; soldier++)
         {
             var step = _steps[soldier];
@@ -158,12 +161,16 @@ internal sealed partial class InfantryMotion
             var pelvis = new Transform3D(new Basis(Vector3.Back, _turn * 0.09f) * new Basis(Vector3.Right, pelvisPitch), offset
                 + new Vector3(shift + kneeSide * settled * 0.034f,
                     0.902f - 0.105f * step.Pace - 0.17f * crouch - hipDrop + bob, 0.09f * crouch));
+            RisePose? rise = front && IsRising ? SampleRise(soldier, worldToRig) : null;
+            if (rise is { } transfer)
+                pelvis = transfer.MovePelvis(pelvis);
             _pose[Pelvis] = pelvis;
 
             var watch = front ? 0f : (soldier == 2 ? -0.19f : 0.23f) * settled;
             var twist = (Mathf.Sin(cycle) * 0.16f * step.Pace + watch + _turn * 0.19f) * (1f - 0.72f * aim);
             var chestPitch = 0.045f + 0.17f * step.Pace + 0.24f * crouch
-                - settled * (front ? 0.12f : 0.015f) + 0.12f * _cover * _suppression - 0.047f * recoil;
+                - settled * (front ? 0.12f : 0.015f) + 0.12f * _cover * _suppression - 0.047f * recoil
+                - (rise?.ForwardLean ?? 0f);
             var chest = new Transform3D(new Basis(Vector3.Right, chestPitch) * new Basis(Vector3.Up, twist),
                 pelvis * (ChestPosition - Joints[Pelvis].BindPosition));
             _pose[Chest] = chest;
@@ -177,9 +184,9 @@ internal sealed partial class InfantryMotion
             _pose[Equipment] = gear;
             _muzzles[soldier] = gear * new Vector3(0f, 0.005f, -0.40f);
 
-            PoseLeg(LeftHip, -1, phase, step, offset, pelvis, crouch, settled, kneeSide);
-            PoseLeg(RightHip, 1, Mathf.PosMod(phase + 0.5f, 1f), step, offset, pelvis, crouch, settled, kneeSide);
-            if (soldier == 0 && footfall >= 0)
+            PoseLeg(LeftHip, -1, phase, step, offset, pelvis, crouch, settled, kneeSide, rise);
+            PoseLeg(RightHip, 1, Mathf.PosMod(phase + 0.5f, 1f), step, offset, pelvis, crouch, settled, kneeSide, rise);
+            if (soldier == 0 && footfall >= 0 && rise is null)
                 _footfall = _skeleton.ToGlobal(_pose[footfall].Origin);
             PoseArm(LeftShoulder, -1, chest, gear, new Vector3(-0.022f, -0.036f, -0.20f));
             PoseArm(RightShoulder, 1, chest, gear, new Vector3(0.01f, -0.062f, 0.027f));
@@ -188,6 +195,8 @@ internal sealed partial class InfantryMotion
             for (var bone = 0; bone < Joints.Length; bone++)
                 _skeleton.SetBonePose(boneOffset + bone, LocalPose(bone));
         }
+        if (!IsRising && _stationaryCover >= KneelingThreshold)
+            _kneelingFrame = _skeleton.GetGlobalTransformInterpolated();
     }
 
     private Transform3D LocalPose(int bone)
@@ -208,7 +217,7 @@ internal sealed partial class InfantryMotion
     }
 
     private void PoseLeg(int bone, int side, float phase, Step step, Vector3 offset, Transform3D pelvis,
-        float crouch, float settled, int kneeSide)
+        float crouch, float settled, int kneeSide, RisePose? rise)
     {
         var swing = Mathf.Clamp((phase - StanceFraction) / (1f - StanceFraction), 0f, 1f);
         // A planted foot travels against its soldier's movement, including the lateral part of a turn.
@@ -231,8 +240,14 @@ internal sealed partial class InfantryMotion
             - (rearKnee ? 0.82f * settled : 0f);
         var foot = new Basis(Vector3.Right, footPitch)
             * new Basis(Vector3.Up, -side * 0.07f - step.Direction.X * 0.30f * strideBlend);
+        var target = new Transform3D(foot, ankle);
+        if (rise is { } transfer)
+        {
+            target = transfer.MoveBoot(target, rearKnee);
+            settled = Mathf.Max(settled, 1f - transfer.RearSwing);
+        }
         var knee = rearKnee ? Vector3.Forward.Lerp(new Vector3(0f, -1f, -0.15f), settled) : Vector3.Forward;
-        PoseChain(bone, hip, ankle, knee, Thigh, Shin, foot);
+        PoseChain(bone, hip, target.Origin, knee, Thigh, Shin, target.Basis);
     }
 
     private void PoseArm(int bone, int side, Transform3D chest, Transform3D gear, Vector3 grip)
