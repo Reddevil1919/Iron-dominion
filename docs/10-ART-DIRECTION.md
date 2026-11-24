@@ -10,7 +10,7 @@ panels and existing tactical overlays distinguish the forces at overview zoom.
 | Subject | Visual language | Motion |
 | --- | --- | --- |
 | Infantry | Four helmeted soldiers with vests, packs and small identification panels. Cool olive-pattern fabric and a deeper pack for Blue. Warm clay tones and a flatter pack for Orange. | Weighted joints with staggered steps, lateral steps through turns and foot lift. The squad lowers in cover, takes staggered positions at the halt and recovers into a stride when leaving. |
-| Tracked armor | Low hull, exposed track wheels, weathered armor panels, rear grille and contrasting identification marks. | Each belt follows travel and steering. The armor pitches at launch and braking. The turret turns separately and the gun recoils and recovers. |
+| Tracked armor | Low hull, exposed track wheels, weathered armor panels, rear grille and contrasting identification marks. | Each belt follows travel and steering. The armor pitches at launch and braking, rolls outward in a turn and settles over the tracks. The turret turns separately and the gun recoils and recovers. |
 | Buildings | Concrete command posts with roof equipment. Barracks use low ribbed metal roofs and repeated doors. | Building damage and destruction retain the tactical feedback used in the original battlefield. |
 | Ground | Service roads, slab yards and scrub transition through gravel verges. Directional cover uses a compacted gravel surface and a dark protective edge with ochre diagonal markings. | Surface wear and markings remain fixed in world space at every camera zoom. |
 
@@ -37,9 +37,12 @@ On marked gravel, movement uses a shorter, lower stride. At a halt the
 front pair settle onto opposite knees while the rear pair crouch and scan
 outward. Their boots reposition in short lifts with staggered timing.
 The front pair can shoulder and fire their rifles from the low stance.
-Suppression adds a deeper tuck. A renewed move brings the squad back into
-a stride. A loaded match restores the resting pose from the cover and
-suppression state.
+Suppression adds a deeper tuck. On a renewed move from a settled kneel,
+each lead soldier keeps the forward boot planted in world space and shifts
+the hips over it at knee height. The planted leg pushes the pelvis up,
+then the foot lifts into the moving gait. The soldiers lead with opposite
+feet and start slightly apart. A loaded match restores the resting pose
+from the cover and suppression state.
 
 The uniform shader uses bind-space coordinates so the camouflage moves with
 the fabric. Pouches, webbing and boots use muted rough surfaces. Metal
@@ -84,8 +87,10 @@ assets and generates mesh tangents, LODs and texture mipmaps.
 Each belt follows a closed mesh around the running gear. A shared shader
 draws tread links with separate phases for left and right. Travel and
 steering drive the phases. The sprung armor above the belts responds to
-acceleration and braking. The paint finish and faction marks stay on the
-same panels while the suspension moves.
+acceleration and braking. Turn rate and speed drive a damped roll toward
+the outside of a turn while the belts remain on the ground. The armor
+returns level as the turn and braking finish. The paint finish and faction
+marks stay on the same panels while the suspension moves.
 
 Infantry fire poses the front pair's rifles and staggers three brief
 recoil pulses across them. Flashes stay at the rifle muzzles. Small

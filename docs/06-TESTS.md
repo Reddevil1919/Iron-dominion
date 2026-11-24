@@ -82,7 +82,9 @@ input to distinguish a ground move from a targeted attack, reveal an
 opposing squad and HQ, show the targeting cursor, approach and fire on
 the squad with one attack click from outside weapon range, and conceal
 the contacts again by withdrawing. The movement smoke follows a live
-detour around a stationary tank and checks hull clearance.
+detour around a stationary tank and checks hull clearance. The roadblock
+detour checks outside-track loading in both turn directions. The stop checks
+the nose dip and that the chassis settles level over grounded tracks.
 The xUnit AI visibility test covers scouting for a hidden enemy HQ.
 
 ## Tactical order scenarios
@@ -119,9 +121,11 @@ same-tick shots from different sides, the 24 reduced movement steps,
 refresh and recovery. Integration checks restore active suppression
 and read a format 1 save. The Godot cover scenario checks the map's
 marked edge, a low walk and staggered halt in quiet cover, grounded
-foot and knee positions, the rise into a move, and a low firing pose
-while under suppression. It checks the infantry and selection status
-during combat.
+foot and knee positions, and a low firing pose while under suppression.
+On the next move it samples the boot in world space after animation and
+interpolation. The test checks that the hips move over the planted boot
+at knee height, rise over the same boot and then release it into a step.
+It checks the infantry and selection status during combat.
 
 ## Terrain trails
 

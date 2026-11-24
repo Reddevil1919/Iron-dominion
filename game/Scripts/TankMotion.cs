@@ -17,8 +17,8 @@ internal sealed class TankMotion : IDisposable
     private Vector2 _travel;
     private float _filteredSpeed;
     private float _travelSinceMark;
-    private float _pitch;
-    private float _pitchVelocity;
+    private Vector2 _tilt;
+    private Vector2 _tiltVelocity;
     private DamageStage _damageStage;
 
     public TankMotion(Node3D model, TankArt art, int startingHitPoints)
@@ -103,13 +103,16 @@ internal sealed class TankMotion : IDisposable
             _trackMaterial.SetShaderParameter("travel", _travel);
         }
 
-        // Two smoothed responses give the hull a brief rise at launch and a dip on braking.
+        // Longitudinal acceleration pitches the hull. Lateral acceleration loads the outside track.
         var poseDelta = Mathf.Min(delta, 0.05f);
         _filteredSpeed = Mathf.Lerp(_filteredSpeed, speed, 1f - Mathf.Exp(-poseDelta * 4.8f));
-        var pitchTarget = Mathf.Clamp((speed - _filteredSpeed) * 0.022f, -0.042f, 0.042f);
-        _pitchVelocity = Mathf.Lerp(_pitchVelocity, (pitchTarget - _pitch) * 13f, 1f - Mathf.Exp(-poseDelta * 15f));
-        _pitch += _pitchVelocity * poseDelta;
-        _chassis.Rotation = new Vector3(_pitch, 0f, 0f);
+        var lateralAcceleration = delta > 0f ? speed * turn / delta : 0f;
+        var targetTilt = new Vector2(
+            Mathf.Clamp((speed - _filteredSpeed) * 0.022f, -0.042f, 0.042f),
+            Mathf.Clamp(-lateralAcceleration * 0.018f, -0.095f, 0.095f));
+        _tiltVelocity = _tiltVelocity.Lerp((targetTilt - _tilt) * 13f, 1f - Mathf.Exp(-poseDelta * 15f));
+        _tilt += _tiltVelocity * poseDelta;
+        _chassis.Rotation = new Vector3(_tilt.X, 0f, _tilt.Y);
 
         var targetAngle = aimHeading is { } angle ? angle - heading : 0f;
         var traverse = 1f - Mathf.Exp(-delta * 8f);
