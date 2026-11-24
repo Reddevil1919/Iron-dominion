@@ -142,12 +142,19 @@ public partial class UnitView : StaticBody3D
         var desiredHeading = _tank is null && aiming ? _aimHeading : _movementHeading;
         var previousHeading = _model.Rotation.Y;
         var turn = 1f - Mathf.Exp(-seconds * 11f);
-        var heading = Mathf.LerpAngle(previousHeading, desiredHeading, turn);
+        var rotation = Mathf.AngleDifference(previousHeading, desiredHeading) * turn;
+        if (_infantry is not null)
+            rotation = Mathf.Clamp(rotation, -InfantryMotion.MaxTurnRate * seconds, InfantryMotion.MaxTurnRate * seconds);
+        var heading = previousHeading + rotation;
         _model.Rotation = new Vector3(0f, heading, 0f);
         if (_tank is { } tank)
             tank.Update(seconds, _speed, previousHeading, heading, aiming ? _aimHeading : null, recoil);
-        else
-            _infantry?.Update(seconds, _speed, aiming ? ShotAimDuration - _shotTime : null, _covered, _suppressed);
+        else if (_infantry is { } infantry && seconds > 0f)
+        {
+            var localVelocity = Vector3.Forward.Rotated(Vector3.Up, _movementHeading - heading) * _speed;
+            infantry.Update(seconds, localVelocity, rotation / seconds,
+                aiming ? ShotAimDuration - _shotTime : null, _covered, _suppressed);
+        }
         _shotTime = Mathf.Max(0f, _shotTime - seconds);
     }
 

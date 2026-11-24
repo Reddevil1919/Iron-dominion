@@ -131,6 +131,13 @@ concrete run stays clean after the marks expire. The cover smoke checks
 that dust appears on footfalls and clears at a halt. The save smoke
 checks that loading clears the old trail.
 
+## Infantry turns
+
+The movement test selects a live squad and issues a right-angle move. It
+then reverses direction and uses the hold-position key before reaching the
+next destination. It checks the gradual facing change, lateral steps,
+asymmetric foot lifts, and the return to a grounded stance after the halt.
+
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.
 
