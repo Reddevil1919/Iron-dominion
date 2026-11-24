@@ -26,6 +26,7 @@ internal sealed class TankMotion : IDisposable
         _art = art;
         _startingHitPoints = startingHitPoints;
         _trackMaterial = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/tank_tracks.gdshader") };
+        TankArt.BindAtlas(_trackMaterial);
         model.AddChild(new MeshInstance3D
         {
             Name = "TrackBelts", Mesh = art.Tracks, MaterialOverride = _trackMaterial
@@ -35,12 +36,15 @@ internal sealed class TankMotion : IDisposable
         {
             Name = "ArmoredHull", Mesh = art.Hull, Position = Vector3.Down * 0.80f
         };
+        Hull.SetSurfaceOverrideMaterial(0, art.Intact);
         _chassis.AddChild(Hull);
         _turret = new MeshInstance3D
         {
             Name = "Turret", Mesh = art.Turret, Position = Vector3.Up * 0.63f
         };
+        _turret.SetSurfaceOverrideMaterial(0, art.Intact);
         _gun = new MeshInstance3D { Name = "Gun", Mesh = art.Gun, Position = new Vector3(0f, 0.38f, RestGunZ) };
+        _gun.SetSurfaceOverrideMaterial(0, art.Intact);
         _turret.AddChild(_gun);
         _chassis.AddChild(_turret);
         model.AddChild(_chassis);

@@ -661,6 +661,23 @@ perimeter boundary. The depot was captured from the playable scene on
 Linux with Mesa llvmpipe. Graphical performance on Windows remains
 unmeasured.
 
+## Reference tank and PBR atlas
+
+The original Blender model adds sloped armor, bevels, separate optics,
+wheel hubs, cooling ribs and stowage. It mounts to the existing turret,
+barrel and suspension pivots. Olive and ochre faction finishes share the
+meshes and a 2K albedo, normal, occlusion, roughness and metallic atlas.
+The damage stages keep the faction markings readable. The combat smoke
+checks the authored atlas tiles, shared surfaces and muzzle alignment
+alongside the normal combat and casualty timeline.
+
+The Release build passed with zero warnings and errors. All 151 xUnit
+tests and all 13 Godot headless scenarios passed. Godot's desktop renderer
+captured the old and new model from matching tactical and close cameras,
+as well as movement, recoil and the two damage stages in combat. The
+capture used Mesa llvmpipe on Linux. Windows graphical throughput
+remains unmeasured.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

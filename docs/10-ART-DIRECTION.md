@@ -48,6 +48,32 @@ transitions for turns and going prone. Check replacement models
 at tactical zoom and overview. Preserve silhouette, faction identification
 and the frame budget at 50 and 100 units.
 
+## Reference tank
+
+The tank model was authored in Blender around the existing turret, barrel
+and suspension pivots. A sloped glacis and beveled skirt panels define
+the hull. Hatches, blue-gray optics, stowage, wheel hubs and cooling ribs
+are modeled at RTS scale. The hull, turret and gun total 10,240 exported
+triangles. Godot reads one indexed surface per part. The tread loops use
+the same atlas while traveling independently in the existing rig.
+
+One 2048 × 2048 atlas layout supplies albedo, tangent-space normals and
+packed occlusion, roughness and metallic maps. Shared geometry and
+textures support olive-blue and ochre-orange paint schemes. Separate
+atlas regions keep identification paint distinct as the armor chips and
+scorches. The smoke starts over the rear grille.
+
+Regenerate the original models and texture maps with Blender 4.3:
+
+```bash
+blender --background --factory-startup --python-exit-code 1 \
+  --python scripts/author-reference-tank.py -- --output game/Assets/ReferenceTank
+```
+
+Pass `--blend path/to/reference-tank.blend` to save the assembled source
+preview with its editable parts. Godot imports the text OBJ and SVG
+assets and generates mesh tangents, LODs and texture mipmaps.
+
 ## Tracked armor and combat feedback
 
 Each belt follows a closed mesh around the running gear. A shared shader
