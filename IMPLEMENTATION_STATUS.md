@@ -698,6 +698,21 @@ The [performance report](docs/09-PERFORMANCE.md) records the test conditions
 and the Windows test commands. The 60 FPS target remains unmeasured on
 Windows with a dedicated GPU.
 
+## Infantry turn animation
+
+Movement orders turn the squad progressively. Each soldier's step pace and
+direction account for their place in the formation. The boots take shorter
+lateral steps to follow the turn. The hips lean and the heads look into
+the new direction. After a hold order, soldiers can finish the turn with
+short steps at the halt. The visual rig reads the existing movement data.
+
+The Release build passed with zero warnings and errors. All 151 xUnit
+tests and all 14 Godot headless scenarios passed. The new scenario issues
+a right-angle move and a reversal, then checks lateral support, staggered
+boot lifts and settling after a hold order. The before-and-after comparison
+was captured in the playable depot using Linux Mesa llvmpipe. Graphical
+frame rates on Windows hardware remain unmeasured.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield
