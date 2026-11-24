@@ -77,6 +77,7 @@ public partial class Battlefield
         UpdateUnitViews(session.World);
         foreach (var view in _views)
             view.ResetPhysicsInterpolation();
+        _contactShadows?.Render(_views);
         _productionPanel?.Update(session.World);
         _sectorBoard?.Update(session.World, fog.CanSeeGround);
         _selectionPanel?.Update(session.World, _views);

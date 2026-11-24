@@ -102,6 +102,14 @@ GitHub Actions workflow. Open the artifact and extract all of
 directory alongside the executable. The package includes the .NET runtime.
 `BUILD.txt` identifies the source commit.
 
+The default launch uses Compatibility. To preview the Forward+ lighting
+on a Windows system with a Vulkan-capable GPU and driver, run this from
+the extracted package directory:
+
+```powershell
+.\IronDominion.exe --rendering-method forward_plus --rendering-driver vulkan
+```
+
 To create the same package from Linux, set up the pinned editor and SDK above
 and run `scripts/export-windows.sh`. The script installs the matching Windows
 export templates with a checksum check if needed, imports the Godot project,

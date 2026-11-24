@@ -28,6 +28,7 @@ public partial class UnitView : StaticBody3D
     public Vector3 ShotOrigin(int rifle = 0) => _tank?.Muzzle ?? _infantry!.Muzzle(rifle);
     public Mesh? TurretMesh => _tank?.TurretMesh;
     internal MeshInstance3D? ArmorMesh => _tank?.Hull;
+    internal Transform3D ContactPose => _model.GetGlobalTransformInterpolated();
     internal Vector3? EngineSmokeOrigin => _tank?.EngineSmokeOrigin;
     internal Vector3 TrackForward => -_model.GlobalBasis.Z;
     internal Vector3 RearTrack(int side) => _model.ToGlobal(new Vector3(side * TankArt.TrackGauge, 0f, 2.08f));

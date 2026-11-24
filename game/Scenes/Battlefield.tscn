@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" uid="uid://dv02nqkqukcxa" path="res://Scripts/Battlefield.cs" id="1_battlefield"]
 [ext_resource type="Script" uid="uid://2vc3lmq0l1g8" path="res://Scripts/RtsCamera.cs" id="2_camera"]
@@ -7,12 +7,30 @@
 [ext_resource type="Shader" path="res://Shaders/depot_ground.gdshader" id="4_depot_ground"]
 [ext_resource type="Shader" path="res://Shaders/depot_cover.gdshader" id="5_depot_cover"]
 
+[sub_resource type="ProceduralSkyMaterial" id="SkyMaterial_depot"]
+sky_top_color = Color(0.33, 0.45, 0.62, 1)
+sky_horizon_color = Color(0.71, 0.75, 0.78, 1)
+ground_horizon_color = Color(0.62, 0.58, 0.49, 1)
+ground_bottom_color = Color(0.25, 0.27, 0.22, 1)
+sun_angle_max = 14.0
+
+[sub_resource type="Sky" id="Sky_depot"]
+sky_material = SubResource("SkyMaterial_depot")
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributes_depot"]
+exposure_multiplier = 1.0
+auto_exposure_enabled = false
+
 [sub_resource type="Environment" id="Environment_battlefield"]
+resource_local_to_scene = true
 background_mode = 1
-background_color = Color(0.072, 0.088, 0.094, 1)
-ambient_light_source = 3
-ambient_light_color = Color(0.79, 0.85, 0.92, 1)
-ambient_light_energy = 0.64
+background_color = Color(0.061, 0.078, 0.098, 1)
+sky = SubResource("Sky_depot")
+ambient_light_source = 2
+ambient_light_color = Color(0.79, 0.87, 0.99, 1)
+ambient_light_energy = 0.54
+ambient_light_sky_contribution = 0.0
+reflected_light_source = 2
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
 size = Vector3(128, 0.5, 128)
@@ -56,13 +74,15 @@ _navigationRegion = NodePath("NavigationRegion")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_battlefield")
+camera_attributes = SubResource("CameraAttributes_depot")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-rotation = Vector3(-0.93, -0.56, 0)
-light_color = Color(1, 0.92, 0.81, 1)
-light_energy = 0.84
+rotation = Vector3(-0.64, -0.78, 0)
+light_color = Color(1, 0.89, 0.76, 1)
+light_energy = 0.96
 shadow_enabled = true
-directional_shadow_max_distance = 180.0
+directional_shadow_blend_splits = true
+directional_shadow_max_distance = 245.0
 
 [node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("_view", "_terrain")]
 physics_interpolation_mode = 2
@@ -82,6 +102,7 @@ position = Vector3(0, -0.25, 0)
 
 [node name="GroundMesh" type="MeshInstance3D" parent="Terrain"]
 mesh = SubResource("BoxMesh_ground")
+cast_shadow = 0
 
 [node name="GroundCollision" type="CollisionShape3D" parent="Terrain"]
 shape = SubResource("BoxShape3D_ground")
