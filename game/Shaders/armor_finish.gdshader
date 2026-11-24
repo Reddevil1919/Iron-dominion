@@ -1,6 +1,12 @@
 shader_type spatial;
 
+uniform sampler2D armor_albedo : source_color, filter_linear_mipmap, repeat_disable;
+uniform sampler2D armor_normal : hint_normal, filter_linear_mipmap, repeat_disable;
+uniform sampler2D armor_orm : filter_linear_mipmap, repeat_disable;
+uniform vec4 paint_tint : source_color;
+uniform vec4 team_tint : source_color;
 uniform float damage_stage = 0.0;
+
 varying vec3 panel_position;
 
 void vertex() {
@@ -8,34 +14,42 @@ void vertex() {
 }
 
 void fragment() {
+    float finish = floor(UV.x * 4.0) + floor(UV.y * 2.0) * 4.0;
+    vec3 base = texture(armor_albedo, UV).rgb;
+    vec3 orm = texture(armor_orm, UV).rgb;
+    NORMAL_MAP = texture(armor_normal, UV).rgb;
+    NORMAL_MAP_DEPTH = 0.46;
+
     vec3 p = panel_position;
-    float grain = sin(p.x * 39.0 + p.z * 27.0 + sin(p.y * 79.0));
-    float patch = sin(p.x * 2.3 + sin(p.z * 3.6) + p.y * 1.7) * sin(p.z * 1.9 - p.x * 2.1);
-    float streak = smoothstep(0.76, 0.97, sin(p.x * 18.0 + p.z * 5.2 + sin(p.z * 6.8)));
-    float paint = max(COLOR.r, max(COLOR.g, COLOR.b)) - min(COLOR.r, min(COLOR.g, COLOR.b));
-    float wear = (patch * 0.11 + grain * 0.018 - streak * 0.047) * (1.0 - smoothstep(0.20, 0.60, paint));
-    ALBEDO = COLOR.rgb * (1.0 + wear);
-    ROUGHNESS = 0.82 + patch * 0.06;
-    METALLIC = 0.12;
+    float patch = sin(p.x * 3.1 + sin(p.z * 4.2) + p.y * 2.2) * sin(p.z * 2.9 - p.x * 2.3);
+    float wear = sin(p.x * 15.0 - p.z * 10.2 + sin(p.y * 51.0)) * sin(p.z * 25.0 + p.y * 9.0);
 
-    if (damage_stage > 0.5) {
-        float unmarked = 1.0 - smoothstep(0.20, 0.56, paint);
-        float abrasion = sin(p.x * 5.2 + p.z * 3.9 + p.y * 6.7)
-            * sin(p.z * 4.9 - p.x * 3.5 + p.y * 3.8);
-        float scuff = smoothstep(0.10, 0.74, abrasion + patch * 0.29);
-        float grooves = sin(p.x * 23.0 + p.z * 4.8 + p.y * 15.0 + grain * 0.65);
-        float exposed = scuff * smoothstep(0.33, 0.92, grooves);
-        ALBEDO *= 1.0 - 0.32 * scuff * unmarked;
-        ALBEDO = mix(ALBEDO, vec3(0.54, 0.53, 0.47), exposed * unmarked * 0.81);
-        METALLIC += exposed * unmarked * 0.21;
+    if (finish < 0.5) {
+        base *= paint_tint.rgb * 1.30;
+        base *= 1.0 + patch * 0.09;
+        float dust = 1.0 - smoothstep(0.35, 1.28, p.y + patch * 0.16);
+        base = mix(base, vec3(0.43, 0.36, 0.27), dust * 0.20);
+        orm.g = mix(orm.g, 0.8, dust * 0.45);
+    } else if (abs(finish - 5.0) < 0.5) {
+        base *= team_tint.rgb * 1.16;
+    }
 
+    if (damage_stage > 0.5 && finish < 1.5) {
+        float chipped = smoothstep(0.13, 0.78, patch + wear * 0.33);
+        float scratches = chipped * smoothstep(0.02, 0.93, sin(p.x * 51.0 + p.z * 7.5 + p.y * 31.0 + wear * 1.08));
+        base *= 1.0 - chipped * 0.21;
+        base = mix(base, vec3(0.48, 0.47, 0.42), scratches * 0.80);
+        orm.b += scratches * 0.27;
         if (damage_stage > 1.5) {
-            float rear = 1.0 - smoothstep(0.34, 1.75, length((p.xz - vec2(0.40, 1.88)) * vec2(0.80, 0.95)));
-            float scorch = max(rear, smoothstep(-0.29, 0.50, patch + abrasion * 0.25));
-            ALBEDO = mix(ALBEDO, vec3(0.23, 0.17, 0.12), scorch * unmarked * 0.56);
-            float char = smoothstep(0.43, 0.94, scorch + abrasion * 0.15 + grain * 0.10);
-            ALBEDO = mix(ALBEDO, vec3(0.09, 0.085, 0.075), char * unmarked * 0.92);
-            ROUGHNESS = mix(ROUGHNESS, 1.0, char * unmarked);
+            float rear = 1.0 - smoothstep(0.24, 1.52, length(p.xz - vec2(0.44, 1.92)));
+            float soot = max(rear, smoothstep(-0.27, 0.77, patch + wear * 0.17));
+            base = mix(base, vec3(0.103, 0.089, 0.069), soot * 0.89);
+            orm.g = mix(orm.g, 0.95, soot);
         }
     }
+
+    ALBEDO = base;
+    AO = orm.r;
+    ROUGHNESS = orm.g;
+    METALLIC = orm.b;
 }

@@ -27,6 +27,7 @@ func _run() -> void:
 	assert(orange.get_node("HealthBar") is Sprite3D, "The target has a health bar")
 	assert(_armor_stage(blue) == 0.0 and not current_scene.has_node("DamagedTankSmoke"),
 		"A fresh tank has clean armor and no engine smoke")
+	_verify_reference_model(blue, orange_tank)
 	var hull := blue.get_node("Model") as Node3D
 	var turret := hull.get_node("Suspension/Turret") as Node3D
 	var gun := turret.get_node("Gun") as Node3D
@@ -90,6 +91,38 @@ func _run() -> void:
 	assert(await _verify_casualties(blue, worn_armor, engine_smoke), "The damage and casualty effects complete their full timeline")
 	print("Unit combat smoke checks passed.")
 	quit()
+
+func _verify_reference_model(blue: Node3D, orange: Node3D) -> void:
+	var mount := "Model/Suspension/"
+	for part in ["ArmoredHull", "Turret", "Turret/Gun"]:
+		var local := blue.get_node(mount + part) as MeshInstance3D
+		var rival := orange.get_node(mount + part) as MeshInstance3D
+		assert(local.mesh == rival.mesh and local.mesh.get_surface_count() == 1,
+			"Both factions share the imported mesh and draw one surface per part")
+		var format: int = local.mesh.surface_get_format(0)
+		assert((format & Mesh.ARRAY_FORMAT_TEX_UV) != 0 and (format & Mesh.ARRAY_FORMAT_TANGENT) != 0,
+			"The model has atlas coordinates and tangent space for its normal map")
+		var arrays: Array = local.mesh.surface_get_arrays(0)
+		var coordinates: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+		var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+		assert(not indices.is_empty(), "The imported asset uses indexed triangles")
+		for index in range(0, indices.size(), 3):
+			var tile := _armor_tile(coordinates[indices[index]])
+			assert(tile == _armor_tile(coordinates[indices[index + 1]])
+				and tile == _armor_tile(coordinates[indices[index + 2]]), "Each face stays in one atlas tile")
+		var blue_paint := local.get_surface_override_material(0) as ShaderMaterial
+		var orange_paint := rival.get_surface_override_material(0) as ShaderMaterial
+		assert(blue_paint.get_shader_parameter("team_tint") != orange_paint.get_shader_parameter("team_tint"),
+			"Faction identification comes from the material")
+		for channel in ["armor_albedo", "armor_normal", "armor_orm"]:
+			var texture := blue_paint.get_shader_parameter(channel) as Texture2D
+			assert(texture.get_size() == Vector2(2048, 2048) and texture == orange_paint.get_shader_parameter(channel),
+				"The two paints share the 2K PBR textures")
+	var gun := blue.get_node(mount + "Turret/Gun") as MeshInstance3D
+	assert(absf(gun.get_aabb().position.z + 2.70) < 0.02, "The new barrel meets the existing muzzle effect anchor")
+
+func _armor_tile(uv: Vector2) -> Vector2i:
+	return Vector2i((uv * Vector2(4.0, 2.0)).floor())
 
 func _impact_visible(path: NodePath) -> bool:
 	var effect := current_scene.get_node_or_null(path) as MeshInstance3D
