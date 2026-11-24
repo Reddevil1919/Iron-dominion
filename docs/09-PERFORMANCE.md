@@ -82,3 +82,36 @@ loaded the Release battlefield and returned exit code 0. Its 50-unit headless
 load check processed 160 ticks and 100 path requests over eight seconds with
 zero rejected moves and 50 shots. This verifies the distributed runtime and
 scene on Windows. Graphical performance was measured separately on Linux.
+
+## Depot lighting at 1080p
+
+The desktop probe ran the playable depot in Godot 4.6.3 Debug on Debian 13
+with three CPU threads and Mesa 25.0.7 llvmpipe. Both profiles drew 50 active
+units into a verified 1920 × 1080 render target inside a 1180 × 812 window.
+Each profile warmed up for five seconds and recorded approximately eight
+seconds. The OpenGL driver could not disable VSync.
+
+| Renderer | API | Frames | Avg. FPS | Frame p95 (ms) | Ticks |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Compatibility | OpenGL | 19 | 2.37 | 632.8 | 145 |
+| Forward+ | Vulkan (Lavapipe) | 8 | 0.99 | 1239.5 | 64 |
+
+Forward+ reached 64 ticks over the sampling window. The orders and shots
+counters stayed at zero after warmup, so the two samples cover different
+amounts of combat. These figures describe software rendering on this host.
+Validate the 60 FPS target using a Windows PC with a GPU and a 1080p display.
+From the extracted Release package, run each profile in PowerShell and wait
+for it to finish before starting the next. Check `viewport`, `renderer` and
+`driver` in each JSON and verify that the window was granted 1920 × 1080.
+
+```powershell
+Start-Process -FilePath .\IronDominion.exe -Wait -ArgumentList @(
+    '--rendering-method', 'gl_compatibility', '--resolution', '1920x1080',
+    '--disable-vsync', '--', '--benchmark', '50', '30', 'compat-50.json'
+)
+Start-Process -FilePath .\IronDominion.exe -Wait -ArgumentList @(
+    '--rendering-method', 'forward_plus', '--rendering-driver', 'vulkan',
+    '--resolution', '1920x1080', '--disable-vsync', '--', '--benchmark',
+    '50', '30', 'forward-50.json'
+)
+```

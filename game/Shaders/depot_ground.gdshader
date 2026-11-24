@@ -1,4 +1,5 @@
 shader_type spatial;
+#include "res://Shaders/depot_palette.gdshaderinc"
 render_mode specular_disabled;
 
 varying vec3 world_position;
@@ -73,6 +74,7 @@ void fragment() {
     float paint_mask = clamp(max(main_dash, apron_stripe) * (0.63 + grit * 0.48), 0.0, 0.9);
     ground = mix(ground, vec3(0.70, 0.64, 0.43), paint_mask);
 
-    ALBEDO = ground + vec3(surface_detail);
+    vec3 pigment = ground + vec3(surface_detail);
+    ALBEDO = OUTPUT_IS_SRGB ? pigment : depot_palette(pigment);
     ROUGHNESS = 0.93;
 }

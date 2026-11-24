@@ -30,6 +30,7 @@ public partial class Battlefield : Node3D
     private SectorBoard? _sectorBoard;
     private SelectionPanel? _selectionPanel;
     private BattlefieldFeedback? _feedback;
+    private BattlefieldContactShadows? _contactShadows;
     private BattlefieldFog? _fog;
     private BattlefieldCasualties? _casualties;
     private MatchMenu? _matchMenu;
@@ -103,6 +104,8 @@ public partial class Battlefield : Node3D
         var fog = new BattlefieldFog(this, BattlefieldNavigation.BoxBounds(groundCollision), sight);
         _fog = fog;
         BattlefieldArt.Decorate(this, fog.SceneryMaterial);
+        DepotLighting.Configure(this, GetNode<WorldEnvironment>("WorldEnvironment"));
+        _contactShadows = new BattlefieldContactShadows(this, BattlefieldNavigation.BoxBounds(groundCollision).End.Y);
         var session = new GameSession(world, configuration, navigation, sight);
         _session = session;
         var menuLayer = new CanvasLayer { Name = "MatchMenuLayer", Layer = 2, ProcessMode = ProcessModeEnum.Always };
@@ -259,6 +262,7 @@ public partial class Battlefield : Node3D
 
     public override void _Process(double delta)
     {
+        _contactShadows?.Render(_views);
         var tickFraction = Engine.GetPhysicsInterpolationFraction();
         _feedback?.Render(tickFraction);
         _casualties?.Render(tickFraction);

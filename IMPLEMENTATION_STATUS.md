@@ -678,6 +678,26 @@ as well as movement, recoil and the two damage stages in combat. The
 capture used Mesa llvmpipe on Linux. Windows graphical throughput
 remains unmeasured.
 
+## Depot lighting and atmosphere
+
+The playable depot uses a warm, low lateral sun, cool ambient light and
+fixed exposure. Soft ground shadows keep tank tracks, boots and pallets
+anchored to the terrain. Unit shadows follow the animated model and
+match its tactical visibility. Compatibility remains the default renderer.
+The optional Forward+ profile adds ambient occlusion around surfaces and
+low mist at the north apron and west treeline. The fog-of-war overlay and
+its visibility rules remain independent of the atmosphere.
+
+The Release build passed with zero warnings and errors. All 151 xUnit
+tests and all 13 Godot headless scenarios passed. The HUD smoke checks
+fixed exposure, shadows under visible units and pallets, and renderer-specific
+effects. Desktop captures compare the previous version, Compatibility and
+Forward+ with matching cameras in the playable depot. Both new modes drew
+50 active units at an internal 1920 × 1080 on Linux software rendering.
+The [performance report](docs/09-PERFORMANCE.md) records the test conditions
+and the Windows test commands. The 60 FPS target remains unmeasured on
+Windows with a dedicated GPU.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

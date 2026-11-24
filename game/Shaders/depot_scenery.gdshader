@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode specular_disabled;
+#include "res://Shaders/depot_palette.gdshaderinc"
 
 uniform sampler2D visibility_mask : filter_linear, repeat_disable;
 uniform vec2 floor_origin;
@@ -39,6 +40,7 @@ void fragment() {
         paint *= 1.0 + wear * (0.17 * panel - 0.20 * runoff);
         paint = mix(paint, vec3(0.46, 0.39, 0.29), dust * wear * 0.34);
     }
-    ALBEDO = mix(vec3(0.033, 0.041, 0.051), paint, mix(0.24, 1.0, visibility));
+    vec3 pigment = mix(vec3(0.033, 0.041, 0.051), paint, mix(0.24, 1.0, visibility));
+    ALBEDO = OUTPUT_IS_SRGB ? pigment : depot_palette(pigment);
     ROUGHNESS = 0.87;
 }

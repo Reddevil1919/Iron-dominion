@@ -135,6 +135,8 @@ internal sealed class BattlefieldBenchmark(BenchmarkOptions options, IReadOnlyLi
             warmupSeconds = WarmupSeconds,
             wallSeconds,
             display,
+            renderer = RenderingServer.GetCurrentRenderingMethod(),
+            driver = RenderingServer.GetCurrentRenderingDriverName(),
             adapter = RenderingServer.GetVideoAdapterName(),
             viewport = DisplayServer.WindowGetSize().ToString(),
             os = RuntimeInformation.OSDescription,

@@ -173,3 +173,17 @@ to leave space for units, health bars and orders.
 Gravel indicates directional cover. Ochre stripes on the dark edge mark
 the protected side. Dashes mark the opposite boundary. The annotations
 follow the authored parcel bounds and sit below the fog plane.
+
+## Depot lighting
+
+A warm lateral sun and cool ambient fill give the depot a clear
+late-afternoon look. Exposure is fixed. The procedural sky supplies
+reflections for materials such as the tank's bare metal and optics.
+Soft contact marks sit beneath the track runs, infantry footprints and
+loaded pallets alongside the directional shadows. Unit contact marks
+follow rendered positions and are emitted only for visible actors.
+
+Forward+ uses the same lighting and adds screen-space ambient occlusion
+and localized volumetric haze around the apron and treeline. The haze is
+an atmospheric effect. Actor and terrain visibility still come from the
+existing fog-of-war mask. Compatibility is the default Windows renderer.

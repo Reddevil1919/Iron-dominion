@@ -4,6 +4,11 @@ namespace IronDominion.Game;
 
 internal static class DepotDetails
 {
+    private const float Deck = -1.04f;
+    public static readonly Vector3[] PalletPositions =
+    [
+        new(-0.27f, Deck, 2.16f), new(2.26f, Deck, -4.75f), new(4.05f, Deck, -4.97f)
+    ];
     private static readonly Basis WheelAxis = new(Vector3.Back, Mathf.Pi / 2f);
     private static readonly Color Rubber = new("343933");
     private static readonly Color Iron = new("51564e");
@@ -13,15 +18,14 @@ internal static class DepotDetails
 
     public static Mesh CargoHandling()
     {
-        const float deck = -1.04f;
         var mesh = new ArtMesh();
-        Forklift(mesh, new Vector3(-0.09f, deck, 4.55f));
-        Pallet(mesh, new Vector3(-0.27f, deck, 2.16f), Weathered("8b8065"));
-        Pallet(mesh, new Vector3(2.26f, deck, -4.75f), Weathered("949b81"));
-        Pallet(mesh, new Vector3(4.05f, deck, -4.97f), Weathered("777a6a"));
+        Forklift(mesh, new Vector3(-0.09f, Deck, 4.55f));
+        Pallet(mesh, PalletPositions[0], Weathered("8b8065"));
+        Pallet(mesh, PalletPositions[1], Weathered("949b81"));
+        Pallet(mesh, PalletPositions[2], Weathered("777a6a"));
         for (var side = -1; side <= 1; side += 2)
         for (var stripe = 0; stripe < 5; stripe++)
-            mesh.Box(new(side * 1.02f, deck + 0.012f, 1.68f + stripe * 0.93f),
+            mesh.Box(new(side * 1.02f, Deck + 0.012f, 1.68f + stripe * 0.93f),
                 new(0.093f, 0.013f, 0.62f), Weathered("b29961"));
         return mesh.Build();
     }

@@ -76,6 +76,10 @@ Extract the entire archive, then open IronDominion.exe. Keep the PCK and
 data_IronDominion.Game_windows_x86_64 folder together with the executable.
 The archive includes the .NET runtime.
 
+To preview Forward+ on a Vulkan-capable Windows GPU, run this command
+from the extracted directory:
+IronDominion.exe --rendering-method forward_plus --rendering-driver vulkan
+
 Left-click or drag to select. Right-click the ground to move, or a visible
 enemy to attack. Arrow keys or WASD pan the map, and the mouse wheel zooms.
 Escape opens the pause menu. Destroy the orange headquarters to win.

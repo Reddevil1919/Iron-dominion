@@ -75,10 +75,12 @@ internal static class BattlefieldArt
         surface.SetShaderParameter("freight_yard", new Vector4(bounds.Position.X, bounds.Position.Z, bounds.End.X, bounds.End.Z));
         roadblock.Mesh = Depot();
         roadblock.MaterialOverride = surface;
-        roadblock.GetParent().AddChild(new MeshInstance3D
+        var yard = (Node3D)roadblock.GetParent();
+        yard.AddChild(new MeshInstance3D
         {
             Name = "CargoHandling", Mesh = DepotDetails.CargoHandling(), MaterialOverride = surface
         });
+        BattlefieldContactShadows.AddCargo(yard, DepotDetails.PalletPositions);
         var gates = new ArtMesh();
         AddPerimeterGate(gates, -61.8f);
         AddPerimeterGate(gates, 61.8f);

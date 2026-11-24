@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode specular_disabled;
+#include "res://Shaders/depot_palette.gdshaderinc"
 
 varying vec3 parcel;
 
@@ -20,6 +21,6 @@ void fragment() {
     float wear = sin(p.x * 2.7 + sin(p.y * 1.6)) * 0.022 + (coarse - 0.5) * 0.042;
     float rut = 1.0 - smoothstep(0.14, 0.42, abs(abs(p.y) - 0.95));
     vec3 gravel = vec3(0.41, 0.38, 0.31) + vec3(wear + (fine - 0.5) * 0.044 - rut * 0.048);
-    ALBEDO = gravel;
+    ALBEDO = OUTPUT_IS_SRGB ? gravel : depot_palette(gravel);
     ROUGHNESS = 0.96;
 }

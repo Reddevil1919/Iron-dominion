@@ -19,6 +19,9 @@ func _run() -> void:
 			break
 	assert(NavigationServer3D.map_get_iteration_id(region.get_navigation_map()) > 0, "Navigation map is ready")
 	_verify_depot_details()
+	await process_frame
+	await process_frame
+	_verify_lighting()
 
 	var camera := root.get_camera_3d()
 	var tank := current_scene.get_node("Units/Unit3") as Node3D
@@ -83,6 +86,33 @@ func _run() -> void:
 
 	print("Battlefield HUD smoke checks passed.")
 	quit()
+
+
+func _verify_lighting() -> void:
+	var lighting := current_scene.get_node("WorldEnvironment") as WorldEnvironment
+	var sun := current_scene.get_node("Sun") as DirectionalLight3D
+	assert(not lighting.camera_attributes.auto_exposure_enabled, "The exposure is fixed")
+	assert(lighting.environment.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR and sun.shadow_enabled,
+		"The light uses a cool ambient fill and directional shadows")
+	var forward_plus := RenderingServer.get_current_rendering_method() == "forward_plus"
+	assert(lighting.environment.ssao_enabled == forward_plus and lighting.environment.volumetric_fog_enabled == forward_plus,
+		"SSAO and atmospheric fog are scoped to Forward+")
+	assert(current_scene.has_node("ApronHaze") == forward_plus and current_scene.has_node("TreelineHaze") == forward_plus,
+		"Only Forward+ creates the decorative fog volumes")
+	var tanks := (current_scene.get_node("TrackContactShadows") as MultiMeshInstance3D).multimesh
+	var infantry := (current_scene.get_node("InfantryContactShadows") as MultiMeshInstance3D).multimesh
+	var cargo := (current_scene.get_node("Roadblock/CargoContactShadows") as MultiMeshInstance3D).multimesh
+	var visible_tanks := 0
+	var visible_squads := 0
+	for view in current_scene.get_node("Units").get_children():
+		if view.is_visible_in_tree():
+			if view.has_node("Model/TrackBelts"):
+				visible_tanks += 1
+			else:
+				visible_squads += 1
+	assert(tanks.visible_instance_count == visible_tanks and infantry.visible_instance_count == visible_squads * 4,
+		"Only visible actors project contact shadows")
+	assert(cargo.visible_instance_count == 3, "Each loaded pallet has a contact shadow")
 
 
 func _verify_depot_details() -> void:
