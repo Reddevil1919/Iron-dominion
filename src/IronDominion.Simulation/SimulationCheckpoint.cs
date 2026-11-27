@@ -10,7 +10,7 @@ public sealed record SimulationCheckpoint(long Tick, MatchResult Result,
 
 public readonly record struct UnitCheckpoint(EntityId Id, PlayerId Owner, UnitKind Kind,
     SimVector SpawnPosition, int StartingHitPoints, int HitPoints, SimVector? Position, RouteCheckpoint? Route,
-    EntityId? FocusedTarget, long? NextShot, long? SuppressedThrough = null)
+    EntityId? FocusedTarget, long? NextShot, long? SuppressedThrough = null, EntityId? RepairTarget = null)
 {
     public Unit CreateUnit() => new(Id, Owner, SpawnPosition, Kind, StartingHitPoints);
 }
@@ -20,7 +20,7 @@ public readonly record struct BuildingCheckpoint(EntityId Id, int HitPoints, Imm
 public readonly record struct PlayerCheckpoint(PlayerId Id, int Credits, long IncomeRemainder);
 public readonly record struct CommandSequence(PlayerId Player, long Sequence);
 
-public enum SavedOrderKind { Move, AttackMove, HoldPosition, Attack, Train }
+public enum SavedOrderKind { Move, AttackMove, HoldPosition, Attack, Train, Repair }
 
 public readonly record struct CommandCheckpoint(PlayerId Player, long Tick, long Sequence, SavedOrderKind Kind,
     ImmutableArray<EntityId> Units, SimVector Destination, EntityId Target, UnitKind TrainingKind)
@@ -39,6 +39,7 @@ public readonly record struct CommandCheckpoint(PlayerId Player, long Tick, long
             },
             HoldPositionCommand hold => order with { Kind = SavedOrderKind.HoldPosition, Units = hold.Units },
             AttackCommand attack => order with { Kind = SavedOrderKind.Attack, Units = attack.Units, Target = attack.Target },
+            RepairCommand repair => order with { Kind = SavedOrderKind.Repair, Units = repair.Units, Target = repair.Target },
             TrainUnitCommand train => order with
             {
                 Kind = SavedOrderKind.Train, Target = train.Producer, TrainingKind = train.Kind
@@ -53,6 +54,7 @@ public readonly record struct CommandCheckpoint(PlayerId Player, long Tick, long
             Destination, attackMove: Kind == SavedOrderKind.AttackMove),
         SavedOrderKind.HoldPosition => new HoldPositionCommand(Player, Tick, Sequence, Units),
         SavedOrderKind.Attack => new AttackCommand(Player, Tick, Sequence, Units, Target),
+        SavedOrderKind.Repair => new RepairCommand(Player, Tick, Sequence, Units, Target),
         SavedOrderKind.Train => new TrainUnitCommand(Player, Tick, Sequence, Target, TrainingKind),
         _ => throw new InvalidDataException("Unknown saved order type.")
     };

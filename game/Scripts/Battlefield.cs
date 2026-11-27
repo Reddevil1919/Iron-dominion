@@ -148,6 +148,7 @@ public partial class Battlefield : Node3D
                 _ => null
             },
             (selected, target) => _session!.Commands.ScheduleAttack(LocalPlayer, selected, target),
+            (selected, target) => _session!.Commands.ScheduleRepair(LocalPlayer, selected, target),
             reason => feedback.Reject(reason, _session!.World.Tick));
         _productionPanel = new ProductionPanel(canvas, LocalPlayer, configuration,
             [blueBarracks, blueHq], (producer, kind) => _session!.Commands.ScheduleTraining(LocalPlayer, producer, kind));
@@ -163,7 +164,7 @@ public partial class Battlefield : Node3D
         _unitRoot.AddChild(view);
         view.ResetPhysicsInterpolation();
         _views.Add(view);
-        _healthBars.Add(unit.Id, new HealthBar(view, unit.HitPoints, 4.2f, 0.10f));
+        _healthBars.Add(unit.Id, new HealthBar(view, unit.HitPoints, 3.35f, 0.085f));
     }
 
     private Building AddBuilding(EntityId id, PlayerId owner, BuildingDefinition definition, string path)
@@ -176,7 +177,7 @@ public partial class Battlefield : Node3D
             body.GetMeta("relay_roof", false).AsBool());
         if (owner == Opponent)
             _enemyBuildings.Add(body, id);
-        _healthBars.Add(id, new HealthBar(body, definition.MaxHp, 7.3f, 0.14f));
+        _healthBars.Add(id, new HealthBar(body, definition.MaxHp, 7.3f, 0.115f));
         return new Building(id, owner, new SimVector(body.GlobalPosition.X, body.GlobalPosition.Z),
             definition.Kind, definition.MaxHp, new SimVector(exit.X, exit.Z));
     }
@@ -237,6 +238,15 @@ public partial class Battlefield : Node3D
             }
             if (gameEvent is EntityDamaged damage && _healthBars.TryGetValue(damage.Entity, out var bar))
                 bar.SetHitPoints(damage.RemainingHitPoints);
+            if (gameEvent is TankRepaired repair)
+            {
+                if (_healthBars.TryGetValue(repair.Tank, out var restoredBar))
+                    restoredBar.SetHitPoints(repair.RemainingHitPoints);
+                if (visibleActors.Contains(repair.Engineer) && visibleActors.Contains(repair.Tank)
+                    && _views.Find(view => view.Id == repair.Engineer) is { } engineer
+                    && _views.Find(view => view.Id == repair.Tank)?.ArmorMesh is { } armor)
+                    _feedback?.Weld(repair, engineer.WeldContact(armor, repair.Tick));
+            }
             if (gameEvent is UnitSpawned spawn)
                 AddUnitView(spawn.Unit);
             if (gameEvent is EntityDestroyed death)
@@ -337,8 +347,11 @@ public partial class Battlefield : Node3D
                 continue;
 
             var travelled = view.ApplyPosition(new Vector3(position.X, 0f, position.Z), Engine.PhysicsTicksPerSecond);
-            if (view.Kind == UnitKind.InfantrySquad)
+            if (view.Kind.UsesCover())
             {
+                if (view.Kind == UnitKind.EngineerSquad)
+                    view.ShowRepair(world.RepairingTank(view.Id) is { } tank
+                        ? _views.Find(candidate => candidate.Id == tank)?.ArmorMesh : null, world.Tick);
                 view.ShowInfantryStatus(world.HasCover(view.Id), world.IsSuppressed(view.Id), snapPose: !emitEffects);
                 if (view.TakeFootfall() is { } footfall && emitEffects && view.Visible)
                     _feedback?.FootstepDust(view.Id, world.Tick, footfall);

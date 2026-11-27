@@ -125,7 +125,8 @@ foot and knee positions, and a low firing pose while under suppression.
 On the next move it samples the boot in world space after animation and
 interpolation. The test checks that the hips move over the planted boot
 at knee height, rise over the same boot and then release it into a step.
-It checks the infantry and selection status during combat.
+It checks that cover stays visible during combat while suppression is
+communicated through movement and posture.
 
 ## Terrain trails
 
@@ -141,6 +142,16 @@ The movement test selects a live squad and issues a right-angle move. It
 then reverses direction and uses the hold-position key before reaching the
 next destination. It checks the gradual facing change, lateral steps,
 asymmetric foot lifts, and the return to a grounded stance after the halt.
+
+## Engineer production and repair
+
+The engineer smoke uses the barracks button, selects the trained squad,
+checks the wrench over a living friendly tank and sends the normal repair
+order. It verifies the thinner overhead bar, the approach, the arc at the
+hull, healing, interruption by hold and the return to full tank health.
+The simulation tests check shared queue ordering, invalid roles and targets,
+and deterministic repair pulses. The integration tests read older saves
+and round-trip both queued and active repairs through save format 3.
 
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.

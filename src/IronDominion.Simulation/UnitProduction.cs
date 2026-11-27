@@ -30,10 +30,10 @@ internal sealed class UnitProduction(
     public CommandResult Enqueue(TrainUnitCommand command)
     {
         var producer = (Building)world.Find(command.Producer)!;
-        if (!producer.ProductionExit.HasValue || producer.TrainedUnitKind != command.Kind)
+        if (!producer.ProductionExit.HasValue || !producer.CanTrain(command.Kind)
+            || !_definitions.TryGetValue(command.Kind, out var definition))
             return new(false, "invalid_production_type");
 
-        var definition = _definitions[command.Kind];
         if (!economy.TrySpend(command.Player, definition.Cost))
             return new(false, "insufficient_credits");
 

@@ -20,6 +20,8 @@ public partial class UnitView : StaticBody3D
     private float _shotTime;
     private bool _covered;
     private bool _suppressed;
+    private MeshInstance3D? _repairArmor;
+    private long _repairTick;
 
     public EntityId Id { get; private set; }
     public UnitKind Kind { get; private set; }
@@ -100,6 +102,20 @@ public partial class UnitView : StaticBody3D
 
     internal void ShowTankDamage(int hitPoints) => _tank?.ShowDamage(hitPoints);
 
+    internal void ShowRepair(MeshInstance3D? armor, long tick)
+    {
+        _repairArmor = armor;
+        _repairTick = tick;
+    }
+
+    internal SurfaceImpact WeldContact(MeshInstance3D armor, double tick)
+    {
+        var direction = armor.GlobalPosition - GlobalPosition;
+        var lead = InfantryRig.Formation[0].Rotated(Vector3.Up, Heading(direction));
+        var seam = Mathf.Sin((float)(tick % 160) * Mathf.Tau / 40f) * 0.22f;
+        return DepotImpactSurfaces.WeldOnArmor(armor, GlobalPosition + lead, seam);
+    }
+
     internal InfantryMotion? DetachInfantry(Node3D parent)
     {
         if (_infantry is not { } infantry)
@@ -139,7 +155,10 @@ public partial class UnitView : StaticBody3D
         var seconds = (float)delta;
         var aiming = _shotTime > 0f;
         var recoil = Mathf.Clamp((_shotTime - 0.27f) / 0.21f, 0f, 1f);
-        var desiredHeading = _tank is null && aiming ? _aimHeading : _movementHeading;
+        var weld = GodotObject.IsInstanceValid(_repairArmor) && _repairArmor is { } armor
+            ? WeldContact(armor, _repairTick + Engine.GetPhysicsInterpolationFraction()).Point : (Vector3?)null;
+        var desiredHeading = weld is { } contact ? Heading(contact - GlobalPosition)
+            : _tank is null && aiming ? _aimHeading : _movementHeading;
         var previousHeading = _model.Rotation.Y;
         var turn = 1f - Mathf.Exp(-seconds * 11f);
         var rotation = Mathf.AngleDifference(previousHeading, desiredHeading) * turn;
@@ -153,7 +172,7 @@ public partial class UnitView : StaticBody3D
         {
             var localVelocity = Vector3.Forward.Rotated(Vector3.Up, _movementHeading - heading) * _speed;
             infantry.Update(seconds, localVelocity, rotation / seconds,
-                aiming ? ShotAimDuration - _shotTime : null, _covered, _suppressed);
+                aiming ? ShotAimDuration - _shotTime : null, _covered, _suppressed, weld);
         }
         _shotTime = Mathf.Max(0f, _shotTime - seconds);
     }
@@ -169,19 +188,7 @@ public partial class UnitView : StaticBody3D
         if (_coverIndicator is not { } indicator)
             return;
 
-        indicator.Visible = covered || suppressed;
-        if (!indicator.Visible)
-            return;
-
-        var status = (covered, suppressed) switch
-        {
-            (true, true) => "COVER · SUPPRESSED",
-            (true, false) => "COVER",
-            _ => "SUPPRESSED"
-        };
-        if (indicator.Text != status)
-            indicator.Text = status;
-        indicator.Modulate = suppressed ? HudStyle.Red : HudStyle.Amber;
+        indicator.Visible = covered;
     }
 
     public override void _ExitTree() => _tank?.Dispose();
@@ -201,6 +208,7 @@ public partial class UnitView : StaticBody3D
             Visible = false
         };
         AddChild(_coverIndicator);
-        _infantry = new InfantryMotion(_model, art.Infantry);
+        var engineer = Kind == UnitKind.EngineerSquad;
+        _infantry = new InfantryMotion(_model, engineer ? art.Engineers : art.Infantry, engineer);
     }
 }

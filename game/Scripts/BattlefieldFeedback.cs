@@ -39,6 +39,8 @@ internal sealed class BattlefieldFeedback
 
     public void ExplodeTank(long tick, Vector3 position) => _effects.ExplodeTank(tick, position);
 
+    public void Weld(TankRepaired repair, SurfaceImpact contact) => _effects.Weld(repair, contact);
+
     public void Reset()
     {
         _notice.Hide();
@@ -55,6 +57,10 @@ internal sealed class BattlefieldFeedback
             "target_not_visible" => "Your units cannot see that target.",
             "no_firing_position" => "No reachable firing position found.",
             "invalid_target" => "That target is no longer available.",
+            "invalid_repair_target" => "Choose a living friendly tank.",
+            "tank_already_repaired" => "That tank is already at full health.",
+            "no_repair_position" => "No reachable position to repair that tank.",
+            "unit_cannot_attack" => "Engineers repair friendly tanks.",
             "actor_destroyed" => "That unit or building was destroyed.",
             "insufficient_credits" => "Not enough credits for that unit.",
             _ => "That order is unavailable."

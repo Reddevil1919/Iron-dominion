@@ -4,7 +4,7 @@ namespace IronDominion.Integration.Tests;
 
 internal sealed record ReplayRecording(int ConfigurationVersion, int Seed, RecordedOrder[] Orders);
 
-internal enum OrderKind { Move, Attack, Train, AttackMove, HoldPosition }
+internal enum OrderKind { Move, Attack, Train, AttackMove, HoldPosition, Repair }
 
 internal sealed record RecordedOrder(long Tick, int Player, long Sequence, OrderKind Kind,
     int[] Units, int Target, float X, float Z, UnitKind TrainingKind)
@@ -18,6 +18,8 @@ internal sealed record RecordedOrder(long Tick, int Player, long Sequence, Order
             hold.Units.Select(unit => unit.Value).ToArray(), 0, 0, 0, default),
         AttackCommand attack => new(attack.ExecuteAtTick, attack.Player.Value, attack.Sequence, OrderKind.Attack,
             attack.Units.Select(unit => unit.Value).ToArray(), attack.Target.Value, 0, 0, default),
+        RepairCommand repair => new(repair.ExecuteAtTick, repair.Player.Value, repair.Sequence, OrderKind.Repair,
+            repair.Units.Select(unit => unit.Value).ToArray(), repair.Target.Value, 0, 0, default),
         TrainUnitCommand train => new(train.ExecuteAtTick, train.Player.Value, train.Sequence, OrderKind.Train,
             [], train.Producer.Value, 0, 0, train.Kind),
         _ => throw new ArgumentException($"Unsupported replay order {command.GetType().Name}.", nameof(command))
@@ -32,6 +34,7 @@ internal sealed record RecordedOrder(long Tick, int Player, long Sequence, Order
                 new SimVector(X, Z), attackMove: Kind == OrderKind.AttackMove),
             OrderKind.HoldPosition => new HoldPositionCommand(player, Tick, Sequence, RestoreUnits()),
             OrderKind.Attack => new AttackCommand(player, Tick, Sequence, RestoreUnits(), new EntityId(Target)),
+            OrderKind.Repair => new RepairCommand(player, Tick, Sequence, RestoreUnits(), new EntityId(Target)),
             OrderKind.Train => new TrainUnitCommand(player, Tick, Sequence, new EntityId(Target), TrainingKind),
             _ => throw new InvalidDataException($"Unknown replay order {Kind}.")
         };

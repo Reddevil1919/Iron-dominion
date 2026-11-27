@@ -19,4 +19,7 @@ public sealed class Building : WorldEntity
     public int HitPoints { get; }
     public SimVector? ProductionExit { get; }
     public UnitKind TrainedUnitKind => Kind == BuildingKind.Headquarters ? UnitKind.Tank : UnitKind.InfantrySquad;
+
+    public bool CanTrain(UnitKind kind) => kind == TrainedUnitKind
+        || (Kind == BuildingKind.Barracks && kind == UnitKind.EngineerSquad);
 }
