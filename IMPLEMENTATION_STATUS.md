@@ -749,7 +749,12 @@ zones and obstacles. The Godot depot continues to use its preplaced
 structures at this stage. The placement menu and dynamic navigation
 are the next Godot work.
 
+The Release build and all 164 xUnit tests passed. The construction tests
+exercise rejected orders without a debit, same-tick reservation, training
+from a completed factory, the reserve headquarters victory rule and a
+disk round-trip across pending, active and completed construction.
+
 ## Next
 
-Continue refining the existing units' close-up motion and battlefield
-effects. RTS-020 remains in the backlog.
+Connect the construction simulation to the depot placement menu. RTS-020
+remains in the backlog.
