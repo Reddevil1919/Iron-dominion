@@ -47,6 +47,10 @@ public sealed class CommandScheduler
         return Schedule(player, executeAtTick, (tick, sequence) => new TrainUnitCommand(player, tick, sequence, producer, kind));
     }
 
+    public BuildCommand ScheduleBuild(PlayerId player, EntityId headquarters, BuildingKind kind, SimVector position,
+        int quarterTurns = 0, long? executeAtTick = null) =>
+        Schedule(player, executeAtTick, (tick, sequence) =>
+            new BuildCommand(player, tick, sequence, headquarters, kind, position, quarterTurns));
     public RepairCommand ScheduleRepair(PlayerId player, IReadOnlyList<EntityId> engineers, EntityId target,
         long? executeAtTick = null) =>
         Schedule(player, executeAtTick, (tick, sequence) => new RepairCommand(player, tick, sequence, engineers, target));

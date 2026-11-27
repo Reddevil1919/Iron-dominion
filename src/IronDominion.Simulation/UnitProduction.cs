@@ -15,8 +15,6 @@ internal sealed class UnitProduction(
     private const float SpawnSeparationSquared = 9.5f * 9.5f;
     private static readonly CommandResult Accepted = new(true, null);
 
-    private readonly Building[] _producers = world.Buildings.Where(building => building.ProductionExit.HasValue)
-        .OrderBy(building => building.Id.Value).ToArray();
     private readonly Dictionary<UnitKind, UnitDefinition> _definitions =
         configuration.Units.ToDictionary(unit => unit.Kind);
 
@@ -44,10 +42,10 @@ internal sealed class UnitProduction(
 
     public void Advance(long tick, List<IGameEvent> events)
     {
-        foreach (var producer in _producers)
+        foreach (var id in Queues.Keys.OrderBy(id => id.Value).ToArray())
         {
-            if (!Queues.TryGetValue(producer.Id, out var queue))
-                continue;
+            var producer = (Building)world.Find(id)!;
+            var queue = Queues[id];
 
             if (combat.Health[producer.Id] == 0)
             {

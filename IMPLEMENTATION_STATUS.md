@@ -732,6 +732,27 @@ load in both turn directions, the dip at braking and a level stop.
 The before-and-after footage comes from the playable depot under Linux
 Mesa llvmpipe. Graphical frame rates on Windows hardware remain unmeasured.
 
+## Building construction simulation
+
+A living friendly headquarters can reserve credits and a footprint for
+construction in a map-defined player zone. Five types share the rules
+and the starting balance table in [Business Rules](docs/02-BUSINESS-RULES.md).
+Completed structures become normal simulation actors. The barracks and
+tank factory can train units. One live or pending reserve headquarters
+per player supports the last-headquarters victory rule and single base
+income rate.
+
+Save format 4 carries pending build orders, site progress and completed
+placements. Readers accept matching format 1 and 2 saves. Format 3 is
+reserved for the engineering branch. The test map supplies construction
+zones and obstacles. The Godot depot continues to use its preplaced
+structures at this stage. The placement menu and dynamic navigation
+are the next Godot work.
+
+The Release build and all 164 xUnit tests passed. The construction tests
+exercise rejected orders without a debit, same-tick reservation, training
+from a completed factory, the reserve headquarters victory rule and a
+disk round-trip across pending, active and completed construction.
 ## Engineers and compact health bars
 
 The barracks trains a four-person engineer squad in its shared production
@@ -754,5 +775,5 @@ Graphical frame rates on Windows hardware remain unmeasured.
 
 ## Next
 
-Continue refining the existing units' close-up motion and battlefield
-effects. RTS-020 remains in the backlog.
+Connect the construction simulation to the depot placement menu. RTS-020
+remains in the backlog.

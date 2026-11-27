@@ -35,3 +35,27 @@ Events are immutable records published after system processing in tick order: Un
 
 ## Edge cases
 Unreachable target, target dies during move, blocked spawn, two players attack HQ on same tick, units at map edge, capture contested on completion tick, paused game with pending commands, queue cancellation (post-MVP). Tick order and tests define resolution.
+## Construction
+
+A live friendly headquarters submits the order. The map supplies bounds,
+one build zone per participating player, and static exclusion rectangles.
+The entire rotated footprint must fit inside the map and the player's zone.
+Buildings, pending sites, exits and units can block placement. Edge contact
+between footprints is allowed. The simulation charges accepted orders once,
+in tick, player and sequence order. The acceptance tick counts toward the
+duration, and completion assigns an entity ID from the shared allocator.
+
+| Building | Credits | Time at 20 Hz | HP | Footprint (m) |
+|---|---:|---:|---:|---:|
+| Headquarters | 650 | 25 s | 1,500 | 11 × 9 |
+| Barracks | 250 | 12 s | 700 | 11 × 9 |
+| Tank factory | 450 | 20 s | 1,000 | 14 × 10 |
+| Airport | 500 | 22 s | 900 | 16 × 14 |
+| Research center | 350 | 18 s | 750 | 10 × 8 |
+
+A player can have one living or pending reserve headquarters at a time.
+The slot opens again when a completed reserve is destroyed. Base income is
+paid once per player with any living headquarters. Defeat is evaluated after
+combat, before a site due on that tick can complete. Living completed
+buildings take damage. The barracks and tank factory have production exits.
+Airport production and research use their own later milestones.

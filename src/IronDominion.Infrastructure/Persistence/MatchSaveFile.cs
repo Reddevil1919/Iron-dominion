@@ -7,7 +7,7 @@ namespace IronDominion.Infrastructure.Persistence;
 
 public sealed class MatchSaveFile(string path, string battlefield, GameConfiguration configuration)
 {
-    private const int CurrentSchemaVersion = 3;
+    private const int CurrentSchemaVersion = 4;
     private const int MaximumBytes = 8 * 1024 * 1024;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -23,6 +23,17 @@ public sealed class MatchSaveFile(string path, string battlefield, GameConfigura
     {
         // Both earlier formats predate engineers. Format 1 also predates suppression.
         var document = JsonSerializer.SerializeToNode(configuration, Json)!.AsObject();
+        if (version == 1)
+            document.Remove("suppression");
+        var buildings = document["buildings"]!.AsArray();
+        for (var index = buildings.Count - 1; index >= 0; index--)
+        {
+            var building = buildings[index]!.AsObject();
+            if (building["kind"]!.GetValue<int>() is (int)BuildingKind.Headquarters or (int)BuildingKind.Barracks)
+                building.Remove("construction");
+            else
+                buildings.RemoveAt(index);
+        }
         var units = document["units"]!.AsArray();
         for (var index = units.Count - 1; index >= 0; index--)
             if (units[index]!["kind"]!.GetValue<int>() == (int)UnitKind.EngineerSquad)
@@ -75,12 +86,12 @@ public sealed class MatchSaveFile(string path, string battlefield, GameConfigura
             if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("schemaVersion", out var version)
                 || version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number))
                 throw new InvalidDataException("The save file has no valid format version.");
-            if (number is < 1 or > CurrentSchemaVersion)
+            if (number is not (1 or 2 or CurrentSchemaVersion))
                 throw new InvalidDataException($"Save format {number} is unsupported.");
 
             var saved = root.Deserialize<Document<T>>(Json)
                 ?? throw new InvalidDataException("The save file is empty.");
-            var expectedHash = number < CurrentSchemaVersion ? LegacyConfigurationHash(configuration, number) : _configurationHash;
+            var expectedHash = number == CurrentSchemaVersion ? _configurationHash : LegacyConfigurationHash(configuration, number);
             if (saved.Battlefield != battlefield || saved.ConfigurationVersion != configuration.SchemaVersion
                 || saved.ConfigurationHash != expectedHash)
                 throw new InvalidDataException("This save requires a different battlefield or game configuration.");

@@ -6,7 +6,7 @@ namespace IronDominion.Simulation;
 internal sealed class PlayerEconomy
 {
     private readonly GameConfiguration _configuration;
-    private readonly Building[] _headquarters;
+    private readonly WorldEntities _world;
     private readonly PlayerId[] _players;
     private readonly Dictionary<PlayerId, long> _remainders = new();
 
@@ -14,7 +14,7 @@ internal sealed class PlayerEconomy
         IReadOnlyDictionary<EntityId, int> health, ImmutableArray<SectorState> sectors)
     {
         _configuration = configuration;
-        _headquarters = world.Buildings.Where(building => building.Kind == BuildingKind.Headquarters).ToArray();
+        _world = world;
         _players = world.Units.Cast<WorldEntity>().Concat(world.Buildings).Concat(world.Sectors)
             .Select(entity => entity.Owner).OfType<PlayerId>().Distinct().OrderBy(player => player.Value).ToArray();
         Credits = _players.ToImmutableDictionary(player => player, _ => configuration.StartingCredits);
@@ -76,9 +76,10 @@ internal sealed class PlayerEconomy
     private long CalculateIncome(PlayerId player, IReadOnlyDictionary<EntityId, int> health,
         ImmutableArray<SectorState> sectors)
     {
-        var headquarters = _headquarters.Count(building => building.Owner == player && health[building.Id] > 0);
+        var hasHeadquarters = _world.Buildings.Any(building => building.Kind == BuildingKind.Headquarters
+            && building.Owner == player && health[building.Id] > 0);
         var ownedSectors = sectors.Count(sector => sector.Owner == player);
-        return (long)headquarters * _configuration.HeadquartersIncomePerSecond
+        return (hasHeadquarters ? (long)_configuration.HeadquartersIncomePerSecond : 0L)
             + (long)ownedSectors * _configuration.SectorIncomePerSecond;
     }
 }

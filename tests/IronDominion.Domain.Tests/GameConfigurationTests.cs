@@ -28,8 +28,11 @@ public sealed class GameConfigurationTests
             unit => Assert.Equal(new UnitDefinition(UnitKind.Tank, 600, 500, 400, 3, 16, 45, 40), unit),
             unit => Assert.Equal(new UnitDefinition(UnitKind.EngineerSquad, 300, 150, 200, 4, 0, 0, 0), unit));
         Assert.Collection(configuration.Buildings,
-            building => Assert.Equal(new BuildingDefinition(BuildingKind.Headquarters, 1500), building),
-            building => Assert.Equal(new BuildingDefinition(BuildingKind.Barracks, 700), building));
+            building => Assert.Equal(new BuildingDefinition(BuildingKind.Headquarters, 1500, new(650, 500, 11, 9)), building),
+            building => Assert.Equal(new BuildingDefinition(BuildingKind.Barracks, 700, new(250, 240, 11, 9)), building),
+            building => Assert.Equal(new BuildingDefinition(BuildingKind.TankFactory, 1000, new(450, 400, 14, 10)), building),
+            building => Assert.Equal(new BuildingDefinition(BuildingKind.Airport, 900, new(500, 440, 16, 14)), building),
+            building => Assert.Equal(new BuildingDefinition(BuildingKind.ResearchCenter, 750, new(350, 360, 10, 8)), building));
     }
 
     [Theory]
