@@ -151,7 +151,7 @@ order. It verifies the thinner overhead bar, the approach, the arc at the
 hull, healing, interruption by hold and the return to full tank health.
 The simulation tests check shared queue ordering, invalid roles and targets,
 and deterministic repair pulses. The integration tests read older saves
-and round-trip both queued and active repairs through save format 3.
+and resume both queued and active repairs from formats 3 and 4.
 
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.

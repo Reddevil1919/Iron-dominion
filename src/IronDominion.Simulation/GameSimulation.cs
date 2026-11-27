@@ -56,11 +56,6 @@ public sealed partial class GameSimulation : IGameSimulation
         _hasHeadquartersVictory = _entities.Buildings.Any(building => IsHeadquarters(building, new PlayerId(1)))
             && _entities.Buildings.Any(building => IsHeadquarters(building, new PlayerId(2)));
         _repairs = new UnitRepairs(_entities, _movement!, _combat, sight);
-        var headquarters = _entities.Buildings.Where(building => building.Kind == BuildingKind.Headquarters).ToArray();
-        _playerOneHeadquarters = headquarters.Where(building => building.Owner == new PlayerId(1))
-            .Select(building => building.Id).ToArray();
-        _playerTwoHeadquarters = headquarters.Where(building => building.Owner == new PlayerId(2))
-            .Select(building => building.Id).ToArray();
         _sectorControl = new SectorControl(_initialSectors, _entities, configuration);
         _economy = new PlayerEconomy(_entities, configuration, _combat.Health, _initialSectors);
         _production = new UnitProduction(_entities, configuration, navigation, _movement!, _combat, _economy);

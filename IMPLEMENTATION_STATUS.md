@@ -743,8 +743,8 @@ per player supports the last-headquarters victory rule and single base
 income rate.
 
 Save format 4 carries pending build orders, site progress and completed
-placements. Readers accept matching format 1 and 2 saves. Format 3 is
-reserved for the engineering branch. The test map supplies construction
+placements. The reader supports matching format 1 through 3 saves,
+including queued repairs from the engineer update. The test map supplies construction
 zones and obstacles. The Godot depot continues to use its preplaced
 structures at this stage. The placement menu and dynamic navigation
 are the next Godot work.
@@ -753,6 +753,7 @@ The Release build and all 164 xUnit tests passed. The construction tests
 exercise rejected orders without a debit, same-tick reservation, training
 from a completed factory, the reserve headquarters victory rule and a
 disk round-trip across pending, active and completed construction.
+
 ## Engineers and compact health bars
 
 The barracks trains a four-person engineer squad in its shared production
@@ -772,6 +773,13 @@ The Release build passed with zero warnings and errors. All 156 xUnit
 tests and 15 Godot headless scenarios passed. The depot capture confirmed
 the wrench cursor and the weld with OpenGL Compatibility on Linux Mesa llvmpipe.
 Graphical frame rates on Windows hardware remain unmeasured.
+
+## Construction and engineer merge validation
+
+The combined Release build passed with zero warnings and errors, and all
+169 xUnit tests passed. The save regression cases cover formats 1 and 2,
+queued and active format 3 repairs, and format 4 repairs and construction.
+The format 3 reader maps the historical repair ID on load.
 
 ## Next
 

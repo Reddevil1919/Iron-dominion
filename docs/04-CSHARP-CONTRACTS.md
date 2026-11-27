@@ -304,6 +304,9 @@ as it moves and emits `TankRepaired` for each resulting health increase.
 `IReadOnlyWorld.RepairingTank` projects the in-range work state. Movement
 and hold orders cancel repair; a full or destroyed tank ends the order.
 
-Save format 3 records pending and active repair targets and supports
-engineer production in a barracks queue. Formats 1 and 2 remain readable
-with their corresponding configuration fingerprints.
+Save format 3 introduced pending and active repair targets and engineer
+production in a barracks queue. Format 4 adds construction data. The loader
+uses a format-specific command mapping, so a legacy format 3 repair keeps
+its meaning and existing format 4 construction and repair IDs stay valid.
+Formats 1 through 3 remain readable with their corresponding configuration
+fingerprints.

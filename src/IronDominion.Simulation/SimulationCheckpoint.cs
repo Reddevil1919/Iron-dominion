@@ -22,7 +22,16 @@ public readonly record struct BuildingCheckpoint(EntityId Id, int HitPoints, Imm
 public readonly record struct PlayerCheckpoint(PlayerId Id, int Credits, long IncomeRemainder);
 public readonly record struct CommandSequence(PlayerId Player, long Sequence);
 
-public enum SavedOrderKind { Move, AttackMove, HoldPosition, Attack, Train, Build, Repair }
+public enum SavedOrderKind
+{
+    Move = 0,
+    AttackMove = 1,
+    HoldPosition = 2,
+    Attack = 3,
+    Train = 4,
+    Build = 5,
+    Repair = 6
+}
 
 public readonly record struct CommandCheckpoint(PlayerId Player, long Tick, long Sequence, SavedOrderKind Kind,
     ImmutableArray<EntityId> Units, SimVector Destination, EntityId Target, UnitKind TrainingKind,

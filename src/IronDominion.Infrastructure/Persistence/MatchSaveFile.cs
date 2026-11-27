@@ -15,13 +15,17 @@ public sealed class MatchSaveFile(string path, string battlefield, GameConfigura
         RespectNullableAnnotations = true,
         Converters = { new EntityIdConverter(), new PlayerIdConverter(), new SimVectorConverter() }
     };
+    private static readonly JsonSerializerOptions Format3Json = new(Json)
+    {
+        Converters = { new Format3OrderKindConverter() }
+    };
     private readonly string _path = Path.GetFullPath(path);
     private readonly string _configurationHash = Convert.ToHexString(
         SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(configuration, Json)));
 
     private static string LegacyConfigurationHash(GameConfiguration configuration, int version)
     {
-        // Both earlier formats predate engineers. Format 1 also predates suppression.
+        // Formats 1–3 predate construction. Formats 1 and 2 also predate engineers.
         var document = JsonSerializer.SerializeToNode(configuration, Json)!.AsObject();
         if (version == 1)
             document.Remove("suppression");
@@ -34,12 +38,13 @@ public sealed class MatchSaveFile(string path, string battlefield, GameConfigura
             else
                 buildings.RemoveAt(index);
         }
-        var units = document["units"]!.AsArray();
-        for (var index = units.Count - 1; index >= 0; index--)
-            if (units[index]!["kind"]!.GetValue<int>() == (int)UnitKind.EngineerSquad)
-                units.RemoveAt(index);
-        if (version == 1)
-            document.Remove("suppression");
+        if (version < 3)
+        {
+            var units = document["units"]!.AsArray();
+            for (var index = units.Count - 1; index >= 0; index--)
+                if (units[index]!["kind"]!.GetValue<int>() == (int)UnitKind.EngineerSquad)
+                    units.RemoveAt(index);
+        }
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(document, Json)));
     }
 
@@ -86,10 +91,10 @@ public sealed class MatchSaveFile(string path, string battlefield, GameConfigura
             if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("schemaVersion", out var version)
                 || version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number))
                 throw new InvalidDataException("The save file has no valid format version.");
-            if (number is not (1 or 2 or CurrentSchemaVersion))
+            if (number is < 1 or > CurrentSchemaVersion)
                 throw new InvalidDataException($"Save format {number} is unsupported.");
 
-            var saved = root.Deserialize<Document<T>>(Json)
+            var saved = root.Deserialize<Document<T>>(number == 3 ? Format3Json : Json)
                 ?? throw new InvalidDataException("The save file is empty.");
             var expectedHash = number == CurrentSchemaVersion ? _configurationHash : LegacyConfigurationHash(configuration, number);
             if (saved.Battlefield != battlefield || saved.ConfigurationVersion != configuration.SchemaVersion
