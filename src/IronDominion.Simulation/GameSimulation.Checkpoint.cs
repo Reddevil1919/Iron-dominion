@@ -125,7 +125,6 @@ public sealed partial class GameSimulation
 
         var world = new WorldEntities(saved.Units.OrderBy(unit => unit.Id.Value)
             .Select(unit => (WorldEntity)unit.CreateUnit()).Concat(staticActors).Concat(built), map.CoverZones, map.Construction);
-            
         var unitStates = saved.Units.ToDictionary(unit => unit.Id);
         foreach (var unit in saved.Units)
         {
