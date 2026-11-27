@@ -25,7 +25,8 @@ public sealed class GameConfigurationTests
         Assert.Equal(new SuppressionRules(24, 0.65m), configuration.Suppression);
         Assert.Collection(configuration.Units,
             unit => Assert.Equal(new UnitDefinition(UnitKind.InfantrySquad, 400, 100, 160, 4, 12, 10, 20), unit),
-            unit => Assert.Equal(new UnitDefinition(UnitKind.Tank, 600, 500, 400, 3, 16, 45, 40), unit));
+            unit => Assert.Equal(new UnitDefinition(UnitKind.Tank, 600, 500, 400, 3, 16, 45, 40), unit),
+            unit => Assert.Equal(new UnitDefinition(UnitKind.EngineerSquad, 300, 150, 200, 4, 0, 0, 0), unit));
         Assert.Collection(configuration.Buildings,
             building => Assert.Equal(new BuildingDefinition(BuildingKind.Headquarters, 1500), building),
             building => Assert.Equal(new BuildingDefinition(BuildingKind.Barracks, 700), building));

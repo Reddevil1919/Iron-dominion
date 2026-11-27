@@ -4,8 +4,8 @@ namespace IronDominion.Game;
 
 internal sealed class HealthBar
 {
-    private const int Width = 64;
-    private const int Height = 8;
+    private const int Width = 48;
+    private const int Height = 5;
     private static readonly Color TrackColor = new("172331");
 
     private readonly int _maxHp;
@@ -42,7 +42,7 @@ internal sealed class HealthBar
         var remaining = Math.Clamp((double)hitPoints / _maxHp, 0, 1);
         var fill = (int)Math.Ceiling((Width - 4) * remaining);
         if (fill > 0)
-            _image.FillRect(new Rect2I(2, 2, fill, Height - 4), HudStyle.HealthColor(remaining));
+            _image.FillRect(new Rect2I(2, 1, fill, Height - 2), HudStyle.HealthColor(remaining));
 
         _texture.Update(_image);
     }

@@ -68,7 +68,7 @@ public partial class Battlefield
 
             body.GetNode<MeshInstance3D>("Base").MaterialOverride = null;
             var maxHp = ((Building)map.Find(building.Id)!).HitPoints;
-            var bar = new HealthBar(body, maxHp, 7.3f, 0.14f);
+            var bar = new HealthBar(body, maxHp, 7.3f, 0.115f);
             _healthBars.Add(building.Id, bar);
             bar.SetHitPoints(building.HitPoints);
         }

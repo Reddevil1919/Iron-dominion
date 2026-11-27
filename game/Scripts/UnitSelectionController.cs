@@ -18,22 +18,25 @@ public partial class UnitSelectionController : Control
     private Action<IReadOnlyList<EntityId>> _hold = null!;
     private Func<GodotObject, EntityId?> _hostile = null!;
     private Action<IReadOnlyList<EntityId>, EntityId> _attack = null!;
+    private Action<IReadOnlyList<EntityId>, EntityId> _repair = null!;
     private Action<string> _reject = null!;
     private Vector2? _start;
     private Vector2 _pointer;
     private bool _dragging;
     private bool _mouseInWindow = true;
     private bool _windowFocused = true;
-    private bool _targetCursor;
+    private Input.CursorShape _cursor = Input.CursorShape.Arrow;
 
     public bool AttackMoveArmed { get; private set; }
 
-    public bool HasAttackCursor() => _targetCursor;
+    public bool HasAttackCursor() => _cursor == Input.CursorShape.Cross;
+    public bool HasRepairCursor() => _cursor == Input.CursorShape.Help;
 
     public void Initialize(UnitSelection selection, IReadOnlyList<UnitView> units,
         StaticBody3D ground, Action<IReadOnlyList<EntityId>, SimVector, bool> move,
         Action<IReadOnlyList<EntityId>> hold,
-        Func<GodotObject, EntityId?> hostile, Action<IReadOnlyList<EntityId>, EntityId> attack, Action<string> reject)
+        Func<GodotObject, EntityId?> hostile, Action<IReadOnlyList<EntityId>, EntityId> attack,
+        Action<IReadOnlyList<EntityId>, EntityId> repair, Action<string> reject)
     {
         _selection = selection;
         _units = units;
@@ -42,12 +45,15 @@ public partial class UnitSelectionController : Control
         _hold = hold;
         _hostile = hostile;
         _attack = attack;
+        _repair = repair;
         _reject = reject;
     }
 
     public override void _Ready()
     {
         var window = GetWindow();
+        using var wrench = GD.Load<Texture2D>("res://Assets/repair_cursor.svg");
+        Input.SetCustomMouseCursor(wrench, Input.CursorShape.Help, new Vector2(18, 17));
         window.FocusExited += OnFocusExited;
         window.FocusEntered += OnFocusEntered;
         window.MouseExited += OnMouseExited;
@@ -61,7 +67,8 @@ public partial class UnitSelectionController : Control
         window.FocusEntered -= OnFocusEntered;
         window.MouseExited -= OnMouseExited;
         window.MouseEntered -= OnMouseEntered;
-        SetTargetCursor(false);
+        SetCursor(Input.CursorShape.Arrow);
+        Input.SetCustomMouseCursor(null, Input.CursorShape.Help);
     }
 
     public override void _Notification(int what)
@@ -168,20 +175,25 @@ public partial class UnitSelectionController : Control
         if (!_mouseInWindow || !_windowFocused || _start.HasValue || AttackMoveArmed
             || viewport.GuiGetHoveredControl() is not null)
         {
-            SetTargetCursor(false);
+            SetCursor(Input.CursorShape.Arrow);
             return;
         }
 
         using var hit = RaycastOrderTarget(viewport.GetMousePosition());
-        SetTargetCursor(HitActor(hit) is { } actor && _hostile(actor).HasValue);
+        var actor = HitActor(hit);
+        var repair = FriendlyTank(actor, selection) is not null
+            && _units.Any(view => view.Kind == UnitKind.EngineerSquad && selection.Selected.Contains(view.Id));
+        var attack = actor is not null && _hostile(actor).HasValue
+            && (selection.Selected.IsEmpty || HasCombatSelection(selection));
+        SetCursor(repair ? Input.CursorShape.Help : attack ? Input.CursorShape.Cross : Input.CursorShape.Arrow);
     }
 
-    private void SetTargetCursor(bool targeting)
+    private void SetCursor(Input.CursorShape cursor)
     {
-        if (_targetCursor == targeting)
+        if (_cursor == cursor)
             return;
-        _targetCursor = targeting;
-        Input.SetDefaultCursorShape(targeting ? Input.CursorShape.Cross : Input.CursorShape.Arrow);
+        _cursor = cursor;
+        Input.SetDefaultCursorShape(cursor);
     }
 
     private void OnFocusExited()
@@ -195,14 +207,14 @@ public partial class UnitSelectionController : Control
     private void OnMouseExited()
     {
         _mouseInWindow = false;
-        SetTargetCursor(false);
+        SetCursor(Input.CursorShape.Arrow);
     }
 
     private void OnMouseEntered() => _mouseInWindow = true;
 
     public void ArmAttackMove()
     {
-        if (_selection is not { Selected.IsEmpty: false })
+        if (_selection is not { Selected.IsEmpty: false } selection || !HasCombatSelection(selection))
             return;
 
         CancelGesture();
@@ -276,7 +288,23 @@ public partial class UnitSelectionController : Control
         }
 
         if (!attackMove && _hostile(actor) is { } targetId)
-            _attack(selection.Selected, targetId);
+        {
+            var combat = _units.Where(view => view.Kind.CanAttack() && selection.Selected.Contains(view.Id))
+                .Select(view => view.Id).ToArray();
+            if (combat.Length == 0)
+                _reject("unit_cannot_attack");
+            else
+                _attack(combat, targetId);
+        }
+        else if (!attackMove && FriendlyTank(actor, selection) is { } tank)
+        {
+            var engineers = _units.Where(view => view.Kind == UnitKind.EngineerSquad && selection.Selected.Contains(view.Id))
+                .Select(view => view.Id).ToArray();
+            if (engineers.Length == 0)
+                _reject("blocked_ground");
+            else
+                _repair(engineers, tank.Id);
+        }
         else if (actor == _ground)
         {
             var target = hit["position"].AsVector3();
@@ -325,8 +353,14 @@ public partial class UnitSelectionController : Control
     {
         AttackMoveArmed = false;
         CancelGesture();
-        SetTargetCursor(false);
+        SetCursor(Input.CursorShape.Arrow);
     }
+
+    private bool HasCombatSelection(UnitSelection selection) =>
+        _units.Any(view => view.Kind.CanAttack() && selection.Selected.Contains(view.Id));
+
+    private static UnitView? FriendlyTank(GodotObject? actor, UnitSelection selection) =>
+        actor is UnitView { Kind: UnitKind.Tank } tank && selection.CanSelect(tank.Id) ? tank : null;
 
     private void CancelGesture()
     {

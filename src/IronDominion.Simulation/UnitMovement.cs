@@ -17,6 +17,12 @@ internal sealed class UnitMovement(
     private const int DetourIntervalTicks = 8;
     private static readonly CommandResult Accepted = new(true, null);
     private static readonly float[] DetourExitFractions = [0.6f, 1f];
+    private static readonly Vector2[] ApproachDirections =
+    [
+        Vector2.UnitX, -Vector2.UnitX, Vector2.UnitY, -Vector2.UnitY,
+        Vector2.Normalize(new Vector2(1, 1)), Vector2.Normalize(new Vector2(1, -1)),
+        Vector2.Normalize(new Vector2(-1, 1)), Vector2.Normalize(new Vector2(-1, -1))
+    ];
 
     private readonly Dictionary<UnitKind, float> _stepSizes = configuration.Units.ToDictionary(
         unit => unit.Kind, unit => unit.SpeedMetersPerSecond / configuration.TickRate);
@@ -56,6 +62,23 @@ internal sealed class UnitMovement(
     {
         var path = navigation.FindPath(origin, destination, GroundMask);
         return path.Count > 0 && path[^1] == destination ? path : null;
+    }
+
+    public IReadOnlyList<SimVector>? FindApproach(SimVector origin, SimVector target, float radius,
+        Func<SimVector, bool> canWorkAt)
+    {
+        var offset = new Vector2(origin.X - target.X, origin.Z - target.Z);
+        var nearSide = offset == Vector2.Zero ? Vector2.UnitX : Vector2.Normalize(offset);
+        var directions = ApproachDirections.OrderByDescending(direction => Vector2.Dot(direction, nearSide))
+            .Prepend(nearSide);
+        foreach (var direction in directions.Distinct())
+        {
+            var destination = new SimVector(target.X + direction.X * radius, target.Z + direction.Y * radius);
+            if (canWorkAt(destination) && FindRoute(origin, destination) is { } path)
+                return path;
+        }
+
+        return null;
     }
 
     public SimVector? RouteDestination(EntityId id) => _routes.TryGetValue(id, out var route)

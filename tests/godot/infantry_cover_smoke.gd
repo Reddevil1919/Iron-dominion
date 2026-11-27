@@ -37,6 +37,7 @@ func _run() -> void:
 	var edge := patch.get_node("ProtectedEdge") as MeshInstance3D
 	var hud := current_scene.get_node("SelectionLayer/SelectionPanel")
 	var status := hud.find_child("SelectionCover", true, false) as Label
+	var health := hud.find_child("SelectionHealth", true, false) as Label
 	assert(edge.position.x < 0 and patch.get_meta("cover_facing") == "West", "The marked edge matches the protected side")
 	for side in ["East", "West"]:
 		var parcel := current_scene.get_node("CoverZones/" + side) as MeshInstance3D
@@ -68,11 +69,12 @@ func _run() -> void:
 	assert(lifted_left and lifted_right, "Both boots alternate between ground contact and swing")
 	assert(marker.visible and marker.text.begins_with("COVER"), "The indicator shows the squad is in cover")
 	for tick in range(44):
-		if marker.text.contains("SUPPRESSED"):
+		if health.text != "400 / 400 HP":
 			break
 		await physics_frame
-	assert(marker.text == "COVER · SUPPRESSED", "Incoming hits suppress infantry in cover")
-	assert(status.visible and status.text.contains("Suppressed"), "The selection HUD reports suppression")
+	assert(health.text != "400 / 400 HP", "The squad takes fire in cover")
+	assert(marker.text == "COVER" and status.visible and status.text == "In cover",
+		"Damage and suppression keep the ordinary cover label")
 
 	for tick in range(8):
 		await physics_frame

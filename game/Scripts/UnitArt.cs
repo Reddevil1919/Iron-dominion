@@ -2,14 +2,11 @@ using Godot;
 
 namespace IronDominion.Game;
 
-internal sealed class UnitArt
+internal sealed class UnitArt(Color identification, bool local)
 {
-    public InfantryArt Infantry { get; }
-    public TankArt Tank { get; }
+    private InfantryArt? _engineers;
 
-    public UnitArt(Color identification, bool local)
-    {
-        Infantry = new InfantryArt(identification, local);
-        Tank = new TankArt(identification, local);
-    }
+    public InfantryArt Infantry { get; } = new(identification, local);
+    public TankArt Tank { get; } = new(identification, local);
+    public InfantryArt Engineers => _engineers ??= new InfantryArt(identification, local, engineer: true);
 }

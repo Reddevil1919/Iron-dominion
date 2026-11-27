@@ -25,6 +25,7 @@ All values are configurable and versioned. Rules run only inside the simulation 
 | BR-019 | AI uses same command validation and visible-world query as human. | AI cheating test |
 | BR-020 | Match ends atomically; later commands are ignored. | Post-game command test |
 | BR-021 | A damaging hit suppresses surviving infantry and refreshes the movement penalty. | Speed is 65% for the next 24 ticks |
+| BR-022 | Engineers repair living friendly tanks after combat on fixed ticks. A repair pulse restores up to six HP every four ticks in range and line of sight. An accepted move or hold replaces the repair order. | Repair approaches, cancels and caps at maximum HP |
 
 ## State machines
 Unit: Idle → Moving → Attacking → Idle; any live state → Dead. AttackMove is a movement mode. Production: Queued → Active → ReadyToSpawn → Completed; invalid enqueue rejected. Sector: Neutral / Owned(P1) / Owned(P2), plus capturing team/progress.

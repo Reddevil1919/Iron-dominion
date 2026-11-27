@@ -12,12 +12,14 @@ internal sealed class InfantryArt
     private readonly Color _trim;
     private readonly Color _boot;
     private readonly Color _identification;
+    private readonly bool _engineer;
 
     public ArrayMesh Mesh { get; }
     public Skin Skin { get; }
 
-    public InfantryArt(Color identification, bool local)
+    public InfantryArt(Color identification, bool local, bool engineer = false)
     {
+        _engineer = engineer;
         _fabric = Finish(local ? "647264" : "887054", 0.20f);
         _gear = Finish(local ? "535a48" : "705e45", 0.48f);
         _trim = Finish(local ? "353c35" : "504638", 0.48f);
@@ -73,7 +75,13 @@ internal sealed class InfantryArt
         mesh.Ellipsoid(new(0f, 1.285f, 0.157f), new(0.29f, 0.325f, packDepth * 2f), _gear);
         mesh.Box(new(0f, 1.325f, 0.151f + packDepth), new(0.17f, 0.072f, 0.017f), _identification);
         mesh.Box(new(-0.143f, 1.297f, 0.193f), new(0.058f, 0.155f, 0.056f), _trim);
-        if (soldier % 2 == 0)
+        if (_engineer)
+        {
+            mesh.Box(new(0f, 1.315f, 0.252f), new(0.32f, 0.30f, 0.14f), Finish("946b37", 0.48f));
+            mesh.Box(new(0f, 1.365f, 0.332f), new(0.21f, 0.060f, 0.020f), _identification);
+            mesh.Box(new(0f, 1.274f, 0.332f), new(0.22f, 0.030f, 0.024f), Finish("d5aa51", 0.48f));
+        }
+        else if (soldier % 2 == 0)
             mesh.Cylinder(new(0.115f, 1.297f, 0.269f), new(0.076f, 0.116f, 0.080f), _gear);
 
         mesh.BindTo(Head);
@@ -84,6 +92,11 @@ internal sealed class InfantryArt
         mesh.Ellipsoid(new(0f, 1.737f, 0.002f), new(0.212f, 0.171f, 0.238f), _gear);
         mesh.Ellipsoid(new(0f, 1.704f, -0.022f), new(0.219f, 0.078f, 0.229f), _trim);
         mesh.Ellipsoid(new(0f, 1.684f, -0.099f), new(0.158f, 0.034f, 0.090f), Finish("343b39", 0.77f));
+        if (_engineer)
+        {
+            mesh.Box(new(0f, 1.642f, -0.111f), new(0.174f, 0.105f, 0.046f), Finish("343e42", 0.48f));
+            mesh.Box(new(0f, 1.660f, -0.140f), new(0.122f, 0.039f, 0.014f), Finish("406a6c", 0.77f));
+        }
     }
 
     private void AddSleeve(ArtMesh mesh, int shoulder)
@@ -131,6 +144,14 @@ internal sealed class InfantryArt
         mesh.BindTo(Equipment);
         var origin = EquipmentPosition;
         var metal = Finish("343a37", 0.77f);
+        if (_engineer)
+        {
+            mesh.Box(origin + new Vector3(0f, 0f, -0.085f), new(0.074f, 0.083f, 0.26f), Finish("b57f3c", 0.48f));
+            mesh.Box(origin + new Vector3(0f, -0.047f, 0.023f), new(0.075f, 0.123f, 0.099f), _trim);
+            mesh.Cylinder(origin + new Vector3(0f, 0.005f, -0.279f), new(0.049f, 0.139f, 0.049f), metal, AlongZ);
+            mesh.Cylinder(origin + new Vector3(0f, 0.005f, -0.366f), new(0.023f, 0.068f, 0.023f), Finish("bb985f", 0.77f), AlongZ);
+            return;
+        }
         mesh.Box(origin + new Vector3(0f, 0f, -0.105f), new(0.058f, 0.087f, 0.333f), metal);
         mesh.Box(origin + new Vector3(0f, -0.016f, 0.169f), new(0.060f, 0.075f, 0.236f), _trim);
         mesh.Ellipsoid(origin + new Vector3(0f, -0.059f, -0.015f), new(0.056f, 0.127f, 0.080f), _trim);

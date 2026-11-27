@@ -47,6 +47,10 @@ public sealed class CommandScheduler
         return Schedule(player, executeAtTick, (tick, sequence) => new TrainUnitCommand(player, tick, sequence, producer, kind));
     }
 
+    public RepairCommand ScheduleRepair(PlayerId player, IReadOnlyList<EntityId> engineers, EntityId target,
+        long? executeAtTick = null) =>
+        Schedule(player, executeAtTick, (tick, sequence) => new RepairCommand(player, tick, sequence, engineers, target));
+
     internal ImmutableArray<CommandSequence> Capture() => _lastSequences.OrderBy(item => item.Key.Value)
         .Select(item => new CommandSequence(item.Key, item.Value)).ToImmutableArray();
 

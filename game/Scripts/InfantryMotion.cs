@@ -20,6 +20,8 @@ internal sealed partial class InfantryMotion
     private float _cover;
     private float _stationaryCover;
     private float _aim;
+    private float _weld;
+    private Vector3 _weldSite;
     private Vector3? _footfall;
 
     private struct Step
@@ -30,14 +32,15 @@ internal sealed partial class InfantryMotion
         public Vector3 Direction;
     }
 
-    public InfantryMotion(Node3D model, InfantryArt art)
+    public InfantryMotion(Node3D model, InfantryArt art, bool engineer)
     {
         _skeleton = new Skeleton3D { Name = "InfantryRig" };
         AddBones(_skeleton);
         _skinView = new MeshInstance3D
         {
             Name = "InfantrySkin", Mesh = art.Mesh, Skin = art.Skin, Skeleton = new NodePath(".."),
-            CustomAabb = new Aabb(new Vector3(-2.6f, -0.1f, -2.8f), new Vector3(5.2f, 2.3f, 5.6f))
+            CustomAabb = engineer ? new Aabb(new Vector3(-5f, -0.1f, -5f), new Vector3(10f, 2.4f, 10f))
+                : new Aabb(new Vector3(-2.6f, -0.1f, -2.8f), new Vector3(5.2f, 2.3f, 5.6f))
         };
         // Apply the scale before skinning by placing the whole skeleton and its mesh in the same space.
         _skeleton.Scale = Vector3.One * DisplayScale;
@@ -76,17 +79,18 @@ internal sealed partial class InfantryMotion
         PoseSquad(null);
     }
 
-    public void Update(float delta, Vector3 velocity, float turnRate, float? shotAge, bool covered, bool suppressed)
+    public void Update(float delta, Vector3 velocity, float turnRate, float? shotAge, bool covered, bool suppressed,
+        Vector3? weld)
     {
         var aiming = shotAge.HasValue;
         var targetTurn = Mathf.Abs(turnRate) < 0.025f ? 0f : Mathf.Clamp(turnRate / MaxTurnRate, -1f, 1f);
         var targetSuppression = suppressed ? 1f : 0f;
         var targetCover = covered ? 1f : 0f;
         var moving = !velocity.IsZeroApprox();
-        var targetStationaryCover = covered && !moving ? 1f : 0f;
+        var targetStationaryCover = covered && !moving && !weld.HasValue ? 1f : 0f;
         var targetAim = aiming ? 1f : 0f;
         var rising = AdvanceRise(delta, moving);
-        if (!moving && !rising && targetTurn == 0f && _turn == 0f && !HasActiveSteps()
+        if (!moving && !rising && !weld.HasValue && _weld == 0f && targetTurn == 0f && _turn == 0f && !HasActiveSteps()
             && targetSuppression == _suppression
             && targetCover == _cover && targetStationaryCover == _stationaryCover && targetAim == 0f && _aim == 0f)
             return;
@@ -96,6 +100,9 @@ internal sealed partial class InfantryMotion
         _cover = Approach(_cover, targetCover, delta, covered ? 7f : 5f);
         _stationaryCover = Approach(_stationaryCover, targetStationaryCover, delta, targetStationaryCover > 0f ? 4.6f : 10f);
         _aim = Approach(_aim, targetAim, delta, aiming ? 14f : 7f);
+        if (weld is { } site)
+            _weldSite = site;
+        _weld = Approach(_weld, weld.HasValue ? 1f : 0f, delta, 11f);
         var crouch = Crouch;
         var steer = 1f - Mathf.Exp(-delta * 15f);
         var footfall = -1;
@@ -141,7 +148,8 @@ internal sealed partial class InfantryMotion
     private void PoseSquad(float? shotAge, int footfall = -1)
     {
         var crouch = Crouch;
-        var worldToRig = IsRising ? _skeleton.GetGlobalTransformInterpolated().AffineInverse() : Transform3D.Identity;
+        var worldToRig = IsRising || _weld > 0f ? _skeleton.GetGlobalTransformInterpolated().AffineInverse() : Transform3D.Identity;
+        var weld = worldToRig * _weldSite;
         for (var soldier = 0; soldier < Formation.Length; soldier++)
         {
             var step = _steps[soldier];
@@ -156,11 +164,15 @@ internal sealed partial class InfantryMotion
             var shift = Mathf.Sin(cycle) * 0.024f * step.Pace;
             var bob = Mathf.Cos(cycle * 2f) * 0.020f * step.Pace;
             var offset = Offset(soldier);
+            var welding = soldier == 0 ? _weld : 0f;
+            var workingDirection = (weld - offset).Slide(Vector3.Up);
+            if (welding > 0f)
+                offset += workingDirection.Normalized() * (Mathf.Clamp(workingDirection.Length() - 0.58f, 0f, 2.4f) * welding);
             var pelvisPitch = 0.06f * step.Pace + 0.13f * crouch;
             var hipDrop = settled * (front ? 0.26f : 0.105f);
             var pelvis = new Transform3D(new Basis(Vector3.Back, _turn * 0.09f) * new Basis(Vector3.Right, pelvisPitch), offset
                 + new Vector3(shift + kneeSide * settled * 0.034f,
-                    0.902f - 0.105f * step.Pace - 0.17f * crouch - hipDrop + bob, 0.09f * crouch));
+                    0.902f - 0.105f * step.Pace - 0.17f * crouch - hipDrop + bob - 0.15f * welding, 0.09f * crouch));
             RisePose? rise = front && IsRising ? SampleRise(soldier, worldToRig) : null;
             if (rise is { } transfer)
                 pelvis = transfer.MovePelvis(pelvis);
@@ -170,7 +182,7 @@ internal sealed partial class InfantryMotion
             var twist = (Mathf.Sin(cycle) * 0.16f * step.Pace + watch + _turn * 0.19f) * (1f - 0.72f * aim);
             var chestPitch = 0.045f + 0.17f * step.Pace + 0.24f * crouch
                 - settled * (front ? 0.12f : 0.015f) + 0.12f * _cover * _suppression - 0.047f * recoil
-                - (rise?.ForwardLean ?? 0f);
+                - (rise?.ForwardLean ?? 0f) - welding * 0.26f;
             var chest = new Transform3D(new Basis(Vector3.Right, chestPitch) * new Basis(Vector3.Up, twist),
                 pelvis * (ChestPosition - Joints[Pelvis].BindPosition));
             _pose[Chest] = chest;
@@ -181,6 +193,12 @@ internal sealed partial class InfantryMotion
             var gearPitch = -0.43f * (1f - aim) + 0.055f * recoil;
             var gearPosition = chest * new Vector3(0.112f, 0.095f + aim * 0.132f, -0.19f + recoil * 0.055f);
             var gear = new Transform3D(new Basis(Vector3.Right, gearPitch), gearPosition);
+            if (welding > 0f)
+            {
+                var torchDirection = (weld - (chest.Origin + new Vector3(0.02f, 0.03f, 0f))).Normalized();
+                var torch = new Transform3D(Basis.LookingAt(torchDirection), weld - torchDirection * 0.40f);
+                gear = gear.InterpolateWith(torch, welding);
+            }
             _pose[Equipment] = gear;
             _muzzles[soldier] = gear * new Vector3(0f, 0.005f, -0.40f);
 
@@ -188,7 +206,7 @@ internal sealed partial class InfantryMotion
             PoseLeg(RightHip, 1, Mathf.PosMod(phase + 0.5f, 1f), step, offset, pelvis, crouch, settled, kneeSide, rise);
             if (soldier == 0 && footfall >= 0 && rise is null)
                 _footfall = _skeleton.ToGlobal(_pose[footfall].Origin);
-            PoseArm(LeftShoulder, -1, chest, gear, new Vector3(-0.022f, -0.036f, -0.20f));
+            PoseArm(LeftShoulder, -1, chest, gear, new Vector3(-0.022f, -0.036f, Mathf.Lerp(-0.20f, -0.13f, welding)));
             PoseArm(RightShoulder, 1, chest, gear, new Vector3(0.01f, -0.062f, 0.027f));
 
             var boneOffset = soldier * BonesPerSoldier;
