@@ -732,6 +732,23 @@ load in both turn directions, the dip at braking and a level stop.
 The before-and-after footage comes from the playable depot under Linux
 Mesa llvmpipe. Graphical frame rates on Windows hardware remain unmeasured.
 
+## Building construction simulation
+
+A living friendly headquarters can reserve credits and a footprint for
+construction in a map-defined player zone. Five types share the rules
+and the starting balance table in [Business Rules](docs/02-BUSINESS-RULES.md).
+Completed structures become normal simulation actors. The barracks and
+tank factory can train units. One live or pending reserve headquarters
+per player supports the last-headquarters victory rule and single base
+income rate.
+
+Save format 4 carries pending build orders, site progress and completed
+placements. Readers accept matching format 1 and 2 saves. Format 3 is
+reserved for the engineering branch. The test map supplies construction
+zones and obstacles. The Godot depot continues to use its preplaced
+structures at this stage. The placement menu and dynamic navigation
+are the next Godot work.
+
 ## Next
 
 Continue refining the existing units' close-up motion and battlefield

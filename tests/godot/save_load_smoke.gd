@@ -51,7 +51,7 @@ func _run() -> void:
 	await _click(save.get_global_rect().get_center())
 	assert(status.text == "Match saved." and not load_saved.disabled, "Saving writes and enables the slot")
 	var document = JSON.parse_string(FileAccess.get_file_as_string(SAVE))
-	assert(document is Dictionary and document.get("schemaVersion") == 2, "The slot uses versioned JSON")
+	assert(document is Dictionary and document.get("schemaVersion") == 4, "The slot uses versioned JSON")
 	# Restore a tank at the critical threshold through the same save format.
 	for unit in document.state.session.simulation.units:
 		if unit.id == 3 or unit.id == 6:

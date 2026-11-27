@@ -55,6 +55,12 @@ internal sealed class UnitCombat(
         }
     }
 
+    public void Register(Building building)
+    {
+        _targets.Add(building);
+        Health = Health.Add(building.Id, building.HitPoints);
+    }
+
     public void Register(Unit unit)
     {
         // Spawn IDs are greater than the existing IDs, so appending preserves combat order.
@@ -169,7 +175,8 @@ internal sealed class UnitCombat(
             var kind = target switch
             {
                 Building { Kind: BuildingKind.Headquarters } => EnemyContactKind.Headquarters,
-                Building => EnemyContactKind.Barracks,
+                Building { Kind: BuildingKind.Barracks } => EnemyContactKind.Barracks,
+                Building => EnemyContactKind.Structure,
                 _ => EnemyContactKind.Unit
             };
             contacts.Add(new EnemyContact(target.Id, kind, PositionOf(target, positions), observers));

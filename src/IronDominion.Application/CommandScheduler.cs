@@ -47,6 +47,11 @@ public sealed class CommandScheduler
         return Schedule(player, executeAtTick, (tick, sequence) => new TrainUnitCommand(player, tick, sequence, producer, kind));
     }
 
+    public BuildCommand ScheduleBuild(PlayerId player, EntityId headquarters, BuildingKind kind, SimVector position,
+        int quarterTurns = 0, long? executeAtTick = null) =>
+        Schedule(player, executeAtTick, (tick, sequence) =>
+            new BuildCommand(player, tick, sequence, headquarters, kind, position, quarterTurns));
+
     internal ImmutableArray<CommandSequence> Capture() => _lastSequences.OrderBy(item => item.Key.Value)
         .Select(item => new CommandSequence(item.Key, item.Value)).ToImmutableArray();
 

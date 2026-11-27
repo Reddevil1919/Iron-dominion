@@ -14,11 +14,11 @@ public sealed partial class GameSimulation : IGameSimulation
     private readonly UnitMovement? _movement;
     private readonly UnitCombat? _combat;
     private readonly UnitProduction? _production;
+    private readonly BuildingConstruction? _construction;
     private readonly PlayerEconomy? _economy;
     private readonly SectorControl? _sectorControl;
     private readonly ImmutableArray<SectorState> _initialSectors;
-    private readonly EntityId[] _playerOneHeadquarters = [];
-    private readonly EntityId[] _playerTwoHeadquarters = [];
+    private readonly bool _hasHeadquartersVictory;
     private ImmutableDictionary<EntityId, Unit> _units;
     private readonly ImmutableDictionary<EntityId, int> _initialHealth;
     private readonly ImmutableDictionary<EntityId, SimVector> _initialPositions;
@@ -52,14 +52,12 @@ public sealed partial class GameSimulation : IGameSimulation
     {
         ArgumentNullException.ThrowIfNull(sight);
         _combat = new UnitCombat(_entities, configuration, sight);
-        var headquarters = _entities.Buildings.Where(building => building.Kind == BuildingKind.Headquarters).ToArray();
-        _playerOneHeadquarters = headquarters.Where(building => building.Owner == new PlayerId(1))
-            .Select(building => building.Id).ToArray();
-        _playerTwoHeadquarters = headquarters.Where(building => building.Owner == new PlayerId(2))
-            .Select(building => building.Id).ToArray();
+        _hasHeadquartersVictory = _entities.Buildings.Any(building => IsHeadquarters(building, new PlayerId(1)))
+            && _entities.Buildings.Any(building => IsHeadquarters(building, new PlayerId(2)));
         _sectorControl = new SectorControl(_initialSectors, _entities, configuration);
         _economy = new PlayerEconomy(_entities, configuration, _combat.Health, _initialSectors);
         _production = new UnitProduction(_entities, configuration, navigation, _movement!, _combat, _economy);
+        _construction = new BuildingConstruction(_entities, configuration, _movement!, _combat, _economy);
         World = Snapshot(0);
     }
 
@@ -116,7 +114,9 @@ public sealed partial class GameSimulation : IGameSimulation
         {
             _pending.Dequeue();
             events ??= new List<IGameEvent>();
-            var result = _validator.Validate(command, _combat?.Health ?? _initialHealth);
+            var result = command is BuildCommand build
+                ? _construction?.Order(build) ?? new(false, "construction_unavailable")
+                : _validator.Validate(command, _combat?.Health ?? _initialHealth);
             if (result.Accepted && _movement is not null)
             {
                 if (command is MoveCommand move)
@@ -151,6 +151,9 @@ public sealed partial class GameSimulation : IGameSimulation
             events ??= new List<IGameEvent>();
             _combat.Resolve(tick, _movement.Positions, events, _movement);
 
+            if (_construction is { Sites.IsEmpty: false } && ResolveMatchResult() == MatchResult.Running)
+                _construction.Advance(tick, events);
+
             if (_sectorControl is not null && _economy is not null && _production is not null)
             {
                 _sectorControl.Advance(tick, _movement.Positions, _combat.Health, events);
@@ -177,12 +180,12 @@ public sealed partial class GameSimulation : IGameSimulation
 
     private MatchResult ResolveMatchResult()
     {
-        if (_combat is null || _playerOneHeadquarters.Length == 0 || _playerTwoHeadquarters.Length == 0)
+        if (_combat is null || !_hasHeadquartersVictory)
             return MatchResult.Running;
 
         var health = _combat.Health;
-        var playerOneAlive = _playerOneHeadquarters.Any(id => health[id] > 0);
-        var playerTwoAlive = _playerTwoHeadquarters.Any(id => health[id] > 0);
+        var playerOneAlive = _entities.Buildings.Any(building => IsHeadquarters(building, new PlayerId(1)) && health[building.Id] > 0);
+        var playerTwoAlive = _entities.Buildings.Any(building => IsHeadquarters(building, new PlayerId(2)) && health[building.Id] > 0);
         return (playerOneAlive, playerTwoAlive) switch
         {
             (true, true) => MatchResult.Running,
@@ -192,12 +195,16 @@ public sealed partial class GameSimulation : IGameSimulation
         };
     }
 
+    private static bool IsHeadquarters(Building building, PlayerId player) =>
+        building.Kind == BuildingKind.Headquarters && building.Owner == player;
+
     private WorldSnapshot Snapshot(long tick, MatchResult result = MatchResult.Running) => new(
         tick, result, _movement?.Positions ?? _initialPositions, _combat?.Health ?? _initialHealth, _units, _entities.CoverZones,
         _combat?.Suppression ?? ImmutableDictionary<EntityId, long>.Empty,
         _economy?.Credits ?? ImmutableDictionary<PlayerId, int>.Empty,
         _economy?.Income ?? ImmutableDictionary<PlayerId, long>.Empty,
         _sectorControl?.Sectors ?? _initialSectors,
+        _construction?.Sites ?? [],
         _production?.Queues ?? ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>>.Empty);
 
     private sealed record WorldSnapshot(long Tick, MatchResult Result, ImmutableDictionary<EntityId, SimVector> Positions,
@@ -207,6 +214,7 @@ public sealed partial class GameSimulation : IGameSimulation
         ImmutableDictionary<PlayerId, int> Balances,
         ImmutableDictionary<PlayerId, long> IncomeRates,
         ImmutableArray<SectorState> Sectors,
+        ImmutableArray<ConstructionSite> ConstructionSites,
         ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>> Queues) : IReadOnlyWorld
     {
         public bool TryGetUnitPosition(EntityId id, out SimVector position) => Positions.TryGetValue(id, out position);

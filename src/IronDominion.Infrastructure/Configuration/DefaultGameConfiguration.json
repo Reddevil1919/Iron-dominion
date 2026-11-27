@@ -31,7 +31,10 @@
     }
   ],
   "buildings": [
-    { "kind": "headquarters", "maxHp": 1500 },
-    { "kind": "barracks", "maxHp": 700 }
+    { "kind": "headquarters", "maxHp": 1500, "construction": { "cost": 650, "buildTicks": 500, "width": 11, "depth": 9 } },
+    { "kind": "barracks", "maxHp": 700, "construction": { "cost": 250, "buildTicks": 240, "width": 11, "depth": 9 } },
+    { "kind": "tankFactory", "maxHp": 1000, "construction": { "cost": 450, "buildTicks": 400, "width": 14, "depth": 10 } },
+    { "kind": "airport", "maxHp": 900, "construction": { "cost": 500, "buildTicks": 440, "width": 16, "depth": 14 } },
+    { "kind": "researchCenter", "maxHp": 750, "construction": { "cost": 350, "buildTicks": 360, "width": 10, "depth": 8 } }
   ]
 }

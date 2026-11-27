@@ -17,13 +17,13 @@ public sealed partial class GameSimulation
             combat.IsSuppressed(unit.Id, World.Tick) ? combat.Suppression[unit.Id] : null)).ToImmutableArray();
         var buildings = _entities.Buildings.OrderBy(building => building.Id.Value).Select(building =>
             new BuildingCheckpoint(building.Id, combat.Health[building.Id],
-                World.TrainingQueue(building.Id).ToImmutableArray())).ToImmutableArray();
+                World.TrainingQueue(building.Id).ToImmutableArray(), building.Placement)).ToImmutableArray();
         var pending = _pending.UnorderedItems.OrderBy(item => item.Priority)
             .Select(item => CommandCheckpoint.Capture(item.Element)).ToImmutableArray();
         var used = _scheduledSequences.OrderBy(item => item.Player.Value).ThenBy(item => item.Sequence)
             .Select(item => new CommandSequence(item.Player, item.Sequence)).ToImmutableArray();
         return new SimulationCheckpoint(World.Tick, World.Result, units, buildings, World.Sectors.ToImmutableArray(),
-            economy.Capture(), pending, used);
+            economy.Capture(), pending, used, World.ConstructionSites);
     }
 
     public static GameSimulation Restore(WorldEntities map, GameConfiguration configuration,
@@ -33,11 +33,12 @@ public sealed partial class GameSimulation
         var players = map.Units.Cast<WorldEntity>().Concat(map.Buildings).Concat(map.Sectors)
             .Select(entity => entity.Owner).OfType<PlayerId>().ToHashSet();
         var world = RestoreEntities(map, players, configuration, saved);
-        ValidateMapState(map, players, configuration, saved);
+        ValidateMapState(world, players, configuration, saved);
 
         var simulation = new GameSimulation(world, configuration, navigation, sight);
         simulation._movement!.Restore(saved.Units);
         simulation._combat!.Restore(saved.Units, saved.Buildings);
+        simulation._construction!.Restore(saved.ConstructionSites ?? []);
         var sectors = saved.Sectors.OrderBy(sector => sector.Id.Value).ToImmutableArray();
         simulation._sectorControl!.Restore(sectors);
         simulation._economy!.Restore(saved.Players, simulation._combat.Health, sectors);
@@ -66,8 +67,22 @@ public sealed partial class GameSimulation
         var initialUnits = map.Units.ToDictionary(unit => unit.Id);
         var initialIdLimit = staticActors.Select(entity => entity.Id).Concat(initialUnits.Keys)
             .Select(id => id.Value).DefaultIfEmpty().Max();
-        var lastSpawnId = (long)initialIdLimit + saved.Units.Length - initialUnits.Count;
+        var additionalBuildings = saved.Buildings.Where(building => building.Placement is not null).ToArray();
+        var lastSpawnId = (long)initialIdLimit + saved.Units.Length - initialUnits.Count + additionalBuildings.Length;
         var ids = staticActors.Select(entity => entity.Id).ToHashSet();
+        var definitions = configuration.Buildings.ToDictionary(definition => definition.Kind);
+        var built = new List<Building>();
+        foreach (var building in additionalBuildings)
+        {
+            var placement = building.Placement!;
+            Require(building.Id.Value > initialIdLimit && building.Id.Value <= lastSpawnId && ids.Add(building.Id),
+                "Invalid or duplicate constructed building ID.");
+            var definition = definitions.GetValueOrDefault(placement.Kind);
+            Require(definition?.Construction is not null && players.Contains(placement.Owner),
+                "Invalid constructed building kind or owner.");
+            built.Add(new Building(building.Id, placement.Owner, placement.Position, placement.Kind, definition!.MaxHp,
+                BuildingConstruction.ProductionExit(placement, definition), placement));
+        }
         foreach (var unit in saved.Units)
         {
             Require(unit.Id.Value > 0 && ids.Add(unit.Id) && players.Contains(unit.Owner) && Enum.IsDefined(unit.Kind)
@@ -105,7 +120,7 @@ public sealed partial class GameSimulation
         Require(initialUnits.Count == 0, "A saved match is missing initial units.");
 
         var world = new WorldEntities(saved.Units.OrderBy(unit => unit.Id.Value)
-            .Select(unit => (WorldEntity)unit.CreateUnit()).Concat(staticActors), map.CoverZones);
+            .Select(unit => (WorldEntity)unit.CreateUnit()).Concat(staticActors).Concat(built), map.CoverZones, map.Construction);
         foreach (var unit in saved.Units)
         {
             if (unit.FocusedTarget is { } target)

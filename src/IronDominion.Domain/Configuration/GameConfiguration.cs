@@ -99,9 +99,17 @@ public sealed class GameConfiguration
                 throw new ArgumentException($"Unknown or duplicate building kind at buildings[{i}].kind: {building.Kind}.", nameof(buildings));
 
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(building.MaxHp, $"buildings[{i}].maxHp");
+            if (building.Construction is { } construction)
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(construction.Cost, $"buildings[{i}].construction.cost");
+                ArgumentOutOfRangeException.ThrowIfNegativeOrZero(construction.BuildTicks, $"buildings[{i}].construction.buildTicks");
+                if (!float.IsFinite(construction.Width) || !float.IsFinite(construction.Depth)
+                    || construction.Width <= 0 || construction.Depth <= 0)
+                    throw new ArgumentException($"Invalid construction footprint at buildings[{i}].", nameof(buildings));
+            }
         }
 
-        if (kinds.Count != Enum.GetValues<BuildingKind>().Length)
+        if (!kinds.Contains(BuildingKind.Headquarters) || !kinds.Contains(BuildingKind.Barracks))
             throw new ArgumentException("A definition is required for every building kind.", nameof(buildings));
     }
 
