@@ -29,7 +29,7 @@ public readonly record struct CoverZone
 
     public static bool Protects(ImmutableArray<CoverZone> zones, Unit unit, SimVector position, SimVector? incomingFrom = null)
     {
-        if (unit.Kind != UnitKind.InfantrySquad || zones.IsDefaultOrEmpty)
+        if (!unit.Kind.UsesCover() || zones.IsDefaultOrEmpty)
             return false;
 
         foreach (var zone in zones)

@@ -7,7 +7,7 @@ namespace IronDominion.Domain;
 public readonly record struct EntityId(int Value);
 public readonly record struct PlayerId(int Value);
 public readonly record struct SimVector(float X, float Z);
-public enum UnitKind { InfantrySquad, Tank }
+public enum UnitKind { InfantrySquad, Tank, EngineerSquad }
 public enum BuildingKind { Headquarters, Barracks }
 public enum MatchResult { Running, PlayerOneWon, PlayerTwoWon, Draw }
 public sealed record UnitDefinition(UnitKind Kind, int MaxHp, int Cost, int BuildTicks,
@@ -291,6 +291,19 @@ hit leaves that tick's completed movement intact. The route continues
 at ordinary speed when the timer expires. `IsSuppressed` reports the
 published state, including the tick on which the hit lands.
 
-Save format 2 records the active expiry tick. Format 1 saves with the
-matching previous configuration load with no active suppression.
+Save formats 2 and later record the active expiry tick. Format 1 saves
+with the matching previous configuration load with no active suppression.
 Once resumed, they use the current battlefield rules.
+
+## Engineer support
+
+`CommandScheduler.ScheduleRepair` queues a `RepairCommand` for one or more
+engineer squads. The command validates ownership and an eligible tank. The
+simulation chooses a reachable point near the tank, maintains the approach
+as it moves and emits `TankRepaired` for each resulting health increase.
+`IReadOnlyWorld.RepairingTank` projects the in-range work state. Movement
+and hold orders cancel repair; a full or destroyed tank ends the order.
+
+Save format 3 records pending and active repair targets and supports
+engineer production in a barracks queue. Formats 1 and 2 remain readable
+with their corresponding configuration fingerprints.

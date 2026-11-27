@@ -13,7 +13,8 @@ internal sealed class CommandValidator(WorldEntities entities)
             MoveCommand move => ValidateUnits(move.Player, move.Units, health),
             HoldPositionCommand hold => ValidateUnits(hold.Player, hold.Units, health),
             AttackCommand attack when attack.Target.Value <= 0 => new(false, "invalid_target"),
-            AttackCommand attack => ValidateUnits(attack.Player, attack.Units, health),
+            AttackCommand attack => ValidateUnits(attack.Player, attack.Units, health, order: UnitOrder.Attack),
+            RepairCommand repair => ValidateUnits(repair.Player, repair.Units, health, order: UnitOrder.Repair),
             TrainUnitCommand train when !Enum.IsDefined(train.Kind) => new(false, "invalid_unit_kind"),
             TrainUnitCommand train => ValidateProducer(train, health),
             _ => new(false, "unsupported_command")
@@ -21,7 +22,7 @@ internal sealed class CommandValidator(WorldEntities entities)
     }
 
     private CommandResult ValidateUnits(PlayerId player, IReadOnlyList<EntityId> units,
-        IReadOnlyDictionary<EntityId, int> health)
+        IReadOnlyDictionary<EntityId, int> health, UnitOrder order = UnitOrder.Move)
     {
         if (units.Count == 0)
             return new(false, "empty_selection");
@@ -34,6 +35,10 @@ internal sealed class CommandValidator(WorldEntities entities)
             var result = ValidateActor(player, unit.Owner, health[id]);
             if (!result.Accepted)
                 return result;
+            if (order == UnitOrder.Attack && !unit.Kind.CanAttack())
+                return new(false, "unit_cannot_attack");
+            if (order == UnitOrder.Repair && unit.Kind != UnitKind.EngineerSquad)
+                return new(false, "unit_cannot_repair");
         }
 
         return Accepted;
@@ -54,4 +59,6 @@ internal sealed class CommandValidator(WorldEntities entities)
 
         return hitPoints > 0 ? Accepted : new(false, "actor_destroyed");
     }
+
+    private enum UnitOrder { Move, Attack, Repair }
 }

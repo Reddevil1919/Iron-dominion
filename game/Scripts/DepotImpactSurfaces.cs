@@ -65,6 +65,9 @@ internal sealed class DepotImpactSurfaces
         return new GroundContact(new Vector3(point.X, _groundHeight, point.Z), material);
     }
 
+    public static SurfaceImpact WeldOnArmor(MeshInstance3D armor, Vector3 source, float seam) =>
+        FaceOf(armor, source, ImpactMaterial.Armor, seam);
+
     private static SurfaceImpact FaceOf(MeshInstance3D mesh, Vector3 source, ImpactMaterial material, float spread)
     {
         var bounds = mesh.GetAabb();

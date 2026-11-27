@@ -23,6 +23,7 @@ internal sealed partial class BattlefieldEffects
     private readonly TrackMarkBatch _trackMarks;
     private EffectBatch? _engineSmoke;
     private EffectBatch? _explosions;
+    private EffectBatch? _welding;
     private long _tick = -1;
 
     public BattlefieldEffects(Node3D battlefield, DepotImpactSurfaces surfaces)
@@ -144,6 +145,33 @@ internal sealed partial class BattlefieldEffects
             velocity, 1.36f + drift * 0.18f, EngineSoot, 0.93f, Shape.Cloud));
     }
 
+    public void Weld(TankRepaired repair, SurfaceImpact contact)
+    {
+        if (_welding is null)
+        {
+            using var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://Shaders/battlefield_effect.gdshader") };
+            _welding = new EffectBatch(_battlefield, "WeldingSparks", material, 128);
+        }
+
+        var visibility = new Visibility(repair.Engineer, repair.Tank);
+        var point = contact.Point + contact.Normal * 0.055f;
+        var local = contact.Anchor?.ToLocal(point) ?? point;
+        _welding.Emit(new Particle(visibility, repair.Tick, 2.15f, local, Vector3.Zero,
+            0.32f, new Color("8cdbff"), 0.94f, Shape.Flash, Anchor: contact.Anchor));
+        _welding.Emit(new Particle(visibility, repair.Tick, 1.4f, local, Vector3.Zero,
+            0.14f, new Color("fbffff"), 1f, Shape.Flash, Anchor: contact.Anchor));
+
+        var sideways = contact.Normal.Cross(Vector3.Up);
+        for (var spark = 0; spark < 7; spark++)
+        {
+            var scatter = Mathf.Sin(repair.Tick * 0.47f + spark * 2.4f);
+            var velocity = contact.Normal * (1.45f + spark * 0.18f) + sideways * scatter * 2.1f
+                + Vector3.Up * (0.55f + spark * 0.29f);
+            _welding.Emit(new Particle(visibility, repair.Tick + 0.10 * spark, 4.8f + spark * 0.34f,
+                point, velocity, 0.094f, new Color(spark < 2 ? "fff3c2" : "ffb155"), 1f, Shape.Spark));
+        }
+    }
+
     public void Advance(long tick, BattlefieldFog fog)
     {
         var visibleActors = fog.VisibleActors;
@@ -156,6 +184,7 @@ internal sealed partial class BattlefieldEffects
         _trackMarks.Advance(tick, fog);
         _engineSmoke?.Prune(tick, visibleActors);
         _explosions?.Prune(tick, visibleActors);
+        _welding?.Prune(tick, visibleActors);
         foreach (var batch in _impactBatches.Values)
             batch.Prune(tick, visibleActors);
     }
@@ -173,6 +202,7 @@ internal sealed partial class BattlefieldEffects
         _footstepDust.Render(time);
         _engineSmoke?.Render(time);
         _explosions?.Render(time);
+        _welding?.Render(time);
         foreach (var batch in _impactBatches.Values)
             batch.Render(time);
     }
@@ -188,6 +218,7 @@ internal sealed partial class BattlefieldEffects
         _trackMarks.Reset();
         _engineSmoke?.Reset();
         _explosions?.Reset();
+        _welding?.Reset();
         foreach (var batch in _impactBatches.Values)
             batch.Reset();
     }

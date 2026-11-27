@@ -14,7 +14,8 @@ public sealed partial class GameSimulation
             unit.Id, unit.Owner!.Value, unit.Kind, unit.Position, unit.HitPoints, combat.Health[unit.Id],
             movement.Positions.TryGetValue(unit.Id, out var position) ? position : null,
             movement.CaptureRoute(unit.Id), combat.FocusedTarget(unit.Id), combat.NextShot(unit.Id),
-            combat.IsSuppressed(unit.Id, World.Tick) ? combat.Suppression[unit.Id] : null)).ToImmutableArray();
+            combat.IsSuppressed(unit.Id, World.Tick) ? combat.Suppression[unit.Id] : null,
+            _repairs?.TargetOf(unit.Id))).ToImmutableArray();
         var buildings = _entities.Buildings.OrderBy(building => building.Id.Value).Select(building =>
             new BuildingCheckpoint(building.Id, combat.Health[building.Id],
                 World.TrainingQueue(building.Id).ToImmutableArray(), building.Placement)).ToImmutableArray();
@@ -39,6 +40,7 @@ public sealed partial class GameSimulation
         simulation._movement!.Restore(saved.Units);
         simulation._combat!.Restore(saved.Units, saved.Buildings);
         simulation._construction!.Restore(saved.ConstructionSites ?? []);
+        simulation._repairs!.Restore(saved.Units);
         var sectors = saved.Sectors.OrderBy(sector => sector.Id.Value).ToImmutableArray();
         simulation._sectorControl!.Restore(sectors);
         simulation._economy!.Restore(saved.Players, simulation._combat.Health, sectors);
@@ -83,9 +85,10 @@ public sealed partial class GameSimulation
             built.Add(new Building(building.Id, placement.Owner, placement.Position, placement.Kind, definition!.MaxHp,
                 BuildingConstruction.ProductionExit(placement, definition), placement));
         }
+        var kinds = configuration.Units.Select(definition => definition.Kind).ToHashSet();
         foreach (var unit in saved.Units)
         {
-            Require(unit.Id.Value > 0 && ids.Add(unit.Id) && players.Contains(unit.Owner) && Enum.IsDefined(unit.Kind)
+            Require(unit.Id.Value > 0 && ids.Add(unit.Id) && players.Contains(unit.Owner) && kinds.Contains(unit.Kind)
                 && IsFinite(unit.SpawnPosition) && unit.HitPoints >= 0 && unit.HitPoints <= unit.StartingHitPoints,
                 "Invalid or duplicate saved unit.");
             if (initialUnits.TryGetValue(unit.Id, out var initial))
@@ -103,11 +106,12 @@ public sealed partial class GameSimulation
             var alive = unit.HitPoints > 0;
             Require(unit.Position is { } position ? IsFinite(position) && (alive || unit.StartingHitPoints == 0) : !alive,
                 "Invalid saved unit position.");
-            Require(unit.NextShot is null || (alive && unit.NextShot >= 1 && unit.NextShot <= saved.Tick + int.MaxValue),
+            Require(unit.NextShot is null || (alive && unit.Kind.CanAttack()
+                && unit.NextShot >= 1 && unit.NextShot <= saved.Tick + int.MaxValue),
                 "Invalid saved weapon cooldown.");
             if (unit.SuppressedThrough is { } through)
             {
-                Require(alive && unit.Kind == UnitKind.InfantrySquad && configuration.Suppression is { } rules
+                Require(alive && unit.Kind.UsesCover() && configuration.Suppression is { } rules
                     && saved.Tick > 0 && through >= saved.Tick && through <= saved.Tick + rules.DurationTicks,
                     "Invalid saved suppression timer.");
             }
@@ -121,11 +125,19 @@ public sealed partial class GameSimulation
 
         var world = new WorldEntities(saved.Units.OrderBy(unit => unit.Id.Value)
             .Select(unit => (WorldEntity)unit.CreateUnit()).Concat(staticActors).Concat(built), map.CoverZones, map.Construction);
+            
+        var unitStates = saved.Units.ToDictionary(unit => unit.Id);
         foreach (var unit in saved.Units)
         {
             if (unit.FocusedTarget is { } target)
-                Require(unit.HitPoints > 0 && world.Find(target) is Unit or Building
+                Require(unit.HitPoints > 0 && unit.Kind.CanAttack() && world.Find(target) is Unit or Building
                     && world.Find(target)!.Owner != unit.Owner, "Invalid saved focused target.");
+            if (unit.RepairTarget is { } tank)
+                Require(unit.HitPoints > 0 && unit.Kind == UnitKind.EngineerSquad
+                    && unit.Route is not { AttackMove: true } && unitStates.TryGetValue(tank, out var targetState)
+                    && targetState.Kind == UnitKind.Tank && targetState.Owner == unit.Owner
+                    && targetState.HitPoints > 0 && targetState.HitPoints < targetState.StartingHitPoints,
+                    "Invalid saved repair target.");
         }
         return world;
     }
@@ -142,8 +154,9 @@ public sealed partial class GameSimulation
                 "Invalid saved building state.");
             var producer = (Building)map.Find(building.Id)!;
             Require(building.Queue.IsEmpty || (building.HitPoints > 0 && producer.ProductionExit.HasValue
-                && building.Queue.All(order => order is not null && order.Kind == producer.TrainedUnitKind
-                    && order.RemainingTicks >= 0 && order.RemainingTicks <= unitDefinitions[order.Kind].BuildTicks)),
+                && building.Queue.All(order => order is not null && producer.CanTrain(order.Kind)
+                    && unitDefinitions.TryGetValue(order.Kind, out var definition)
+                    && order.RemainingTicks >= 0 && order.RemainingTicks <= definition.BuildTicks)),
                 "Invalid saved production queue.");
         }
         Require(buildingIds.Count == 0, "A saved match is missing buildings.");

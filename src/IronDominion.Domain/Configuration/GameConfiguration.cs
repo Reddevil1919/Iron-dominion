@@ -82,8 +82,8 @@ public sealed class GameConfiguration
             RequireNonnegativeFinite(unit.AttackRangeMeters, $"units[{i}].attackRangeMeters");
         }
 
-        if (kinds.Count != Enum.GetValues<UnitKind>().Length)
-            throw new ArgumentException("A definition is required for every unit kind.", nameof(units));
+        if (!kinds.Contains(UnitKind.InfantrySquad) || !kinds.Contains(UnitKind.Tank))
+            throw new ArgumentException("Infantry and tank definitions are required.", nameof(units));
     }
 
     private static void ValidateBuildings(ImmutableArray<BuildingDefinition> buildings)

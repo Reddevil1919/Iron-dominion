@@ -13,6 +13,7 @@ public sealed partial class GameSimulation : IGameSimulation
     private readonly CommandValidator _validator;
     private readonly UnitMovement? _movement;
     private readonly UnitCombat? _combat;
+    private readonly UnitRepairs? _repairs;
     private readonly UnitProduction? _production;
     private readonly BuildingConstruction? _construction;
     private readonly PlayerEconomy? _economy;
@@ -54,6 +55,12 @@ public sealed partial class GameSimulation : IGameSimulation
         _combat = new UnitCombat(_entities, configuration, sight);
         _hasHeadquartersVictory = _entities.Buildings.Any(building => IsHeadquarters(building, new PlayerId(1)))
             && _entities.Buildings.Any(building => IsHeadquarters(building, new PlayerId(2)));
+        _repairs = new UnitRepairs(_entities, _movement!, _combat, sight);
+        var headquarters = _entities.Buildings.Where(building => building.Kind == BuildingKind.Headquarters).ToArray();
+        _playerOneHeadquarters = headquarters.Where(building => building.Owner == new PlayerId(1))
+            .Select(building => building.Id).ToArray();
+        _playerTwoHeadquarters = headquarters.Where(building => building.Owner == new PlayerId(2))
+            .Select(building => building.Id).ToArray();
         _sectorControl = new SectorControl(_initialSectors, _entities, configuration);
         _economy = new PlayerEconomy(_entities, configuration, _combat.Health, _initialSectors);
         _production = new UnitProduction(_entities, configuration, navigation, _movement!, _combat, _economy);
@@ -123,12 +130,16 @@ public sealed partial class GameSimulation : IGameSimulation
                 {
                     result = _movement.Plan(move);
                     if (result.Accepted)
+                    {
                         _combat?.CancelOrders(move.Units);
+                        _repairs?.Cancel(move.Units);
+                    }
                 }
                 else if (command is HoldPositionCommand hold)
                 {
                     _movement.Stop(hold.Units);
                     _combat?.CancelOrders(hold.Units);
+                    _repairs?.Cancel(hold.Units);
                 }
                 else if (command is AttackCommand attack && _combat is not null)
                 {
@@ -138,6 +149,10 @@ public sealed partial class GameSimulation : IGameSimulation
                 {
                     result = _production.Enqueue(train);
                 }
+                else if (command is RepairCommand repair)
+                {
+                    result = _repairs?.Order(repair) ?? new(false, "repair_unavailable");
+                }
             }
 
             events.Add(new CommandProcessed(tick, command, result));
@@ -145,11 +160,13 @@ public sealed partial class GameSimulation : IGameSimulation
 
         if (_combat is not null && _movement is not null)
             _combat.UpdateApproaches(_movement, tick);
+        _repairs?.UpdateApproaches(tick);
         _movement?.Advance(_combat, tick);
         if (_combat is not null && _movement is not null)
         {
             events ??= new List<IGameEvent>();
             _combat.Resolve(tick, _movement.Positions, events, _movement);
+            _repairs?.Resolve(tick, events);
 
             if (_construction is { Sites.IsEmpty: false } && ResolveMatchResult() == MatchResult.Running)
                 _construction.Advance(tick, events);
@@ -205,6 +222,7 @@ public sealed partial class GameSimulation : IGameSimulation
         _economy?.Income ?? ImmutableDictionary<PlayerId, long>.Empty,
         _sectorControl?.Sectors ?? _initialSectors,
         _construction?.Sites ?? [],
+        _repairs?.Active ?? ImmutableDictionary<EntityId, EntityId>.Empty,
         _production?.Queues ?? ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>>.Empty);
 
     private sealed record WorldSnapshot(long Tick, MatchResult Result, ImmutableDictionary<EntityId, SimVector> Positions,
@@ -215,6 +233,7 @@ public sealed partial class GameSimulation : IGameSimulation
         ImmutableDictionary<PlayerId, long> IncomeRates,
         ImmutableArray<SectorState> Sectors,
         ImmutableArray<ConstructionSite> ConstructionSites,
+        ImmutableDictionary<EntityId, EntityId> Repairs,
         ImmutableDictionary<EntityId, ImmutableList<TrainingOrder>> Queues) : IReadOnlyWorld
     {
         public bool TryGetUnitPosition(EntityId id, out SimVector position) => Positions.TryGetValue(id, out position);
@@ -225,6 +244,7 @@ public sealed partial class GameSimulation : IGameSimulation
             Health.GetValueOrDefault(id) > 0 && Units.TryGetValue(id, out var unit)
             && CoverZone.Protects(CoverZones, unit, Positions[id]);
         public bool IsSuppressed(EntityId id) => Suppression.TryGetValue(id, out var through) && Tick <= through;
+        public EntityId? RepairingTank(EntityId engineer) => Repairs.TryGetValue(engineer, out var tank) ? tank : null;
         public int Credits(PlayerId player) => Balances.GetValueOrDefault(player);
         public long IncomePerSecond(PlayerId player) => IncomeRates.GetValueOrDefault(player);
         public IReadOnlyList<TrainingOrder> TrainingQueue(EntityId producer) =>

@@ -22,4 +22,6 @@ public sealed class Building : WorldEntity
     public BuildingPlacement? Placement { get; }
     public UnitKind TrainedUnitKind => Kind is BuildingKind.Headquarters or BuildingKind.TankFactory
         ? UnitKind.Tank : UnitKind.InfantrySquad;
+    public bool CanTrain(UnitKind kind) => kind == TrainedUnitKind
+        || (Kind == BuildingKind.Barracks && kind == UnitKind.EngineerSquad);
 }

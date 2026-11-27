@@ -28,6 +28,16 @@
       "attackRangeMeters": 16,
       "damagePerShot": 45,
       "cooldownTicks": 40
+    },
+    {
+      "kind": "engineerSquad",
+      "maxHp": 300,
+      "cost": 150,
+      "buildTicks": 200,
+      "speedMetersPerSecond": 4,
+      "attackRangeMeters": 0,
+      "damagePerShot": 0,
+      "cooldownTicks": 0
     }
   ],
   "buildings": [

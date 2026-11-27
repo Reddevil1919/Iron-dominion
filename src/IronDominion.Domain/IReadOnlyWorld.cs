@@ -12,6 +12,7 @@ public interface IReadOnlyWorld
     PlayerId? LivingUnitOwner(EntityId id);
     bool HasCover(EntityId id);
     bool IsSuppressed(EntityId id);
+    EntityId? RepairingTank(EntityId engineer) => null;
     int Credits(PlayerId player);
     long IncomePerSecond(PlayerId player);
     ImmutableArray<SectorState> Sectors { get; }

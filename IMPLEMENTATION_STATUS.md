@@ -753,6 +753,25 @@ The Release build and all 164 xUnit tests passed. The construction tests
 exercise rejected orders without a debit, same-tick reservation, training
 from a completed factory, the reserve headquarters victory rule and a
 disk round-trip across pending, active and completed construction.
+## Engineers and compact health bars
+
+The barracks trains a four-person engineer squad in its shared production
+queue for 150 credits and ten seconds. With the squad selected, the pointer
+becomes a wrench over a living friendly tank. Right-click orders a repair.
+The squad approaches, follows the tank when needed, and restores up to
+30 HP per second at working range. Move and hold orders interrupt repair.
+The torch tracks the hull with a blue-white arc and falling sparks.
+
+Overhead health bars are shorter and thinner. The selection health strip
+is smaller, and the interface no longer prints the suppression status.
+Cover and suppression continue to affect eligible squads. Save format 3
+includes engineer queues and repair orders. Matching format 1 and 2 saves
+remain compatible.
+
+The Release build passed with zero warnings and errors. All 156 xUnit
+tests and 15 Godot headless scenarios passed. The depot capture confirmed
+the wrench cursor and the weld with OpenGL Compatibility on Linux Mesa llvmpipe.
+Graphical frame rates on Windows hardware remain unmeasured.
 
 ## Next
 

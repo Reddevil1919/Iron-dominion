@@ -56,6 +56,18 @@ Check replacement models
 at tactical zoom and overview. Preserve silhouette, faction identification
 and the frame budget at 50 and 100 units.
 
+## Engineer squad
+
+The engineers use the infantry skeleton with tinted welding visors,
+amber tool packs and short torches. The existing identification panels
+carry each faction's color. During a repair, the lead engineer raises
+the torch and traces a short seam. A blue-white arc follows the weld on
+the tank hull. Small amber sparks fall away from the contact.
+
+The compact overhead health bars sit closer to the units. Their fills
+track damage and repair. The interface labels cover, and the infantry
+posture and speed communicate suppression.
+
 ## Reference tank
 
 The tank model was authored in Blender around the existing turret, barrel

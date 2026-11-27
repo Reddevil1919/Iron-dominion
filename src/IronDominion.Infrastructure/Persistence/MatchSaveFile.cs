@@ -21,7 +21,7 @@ public sealed class MatchSaveFile(string path, string battlefield, GameConfigura
 
     private static string LegacyConfigurationHash(GameConfiguration configuration, int version)
     {
-        // The v1 fingerprint predates the optional suppression rules.
+        // Both earlier formats predate engineers. Format 1 also predates suppression.
         var document = JsonSerializer.SerializeToNode(configuration, Json)!.AsObject();
         if (version == 1)
             document.Remove("suppression");
@@ -34,6 +34,12 @@ public sealed class MatchSaveFile(string path, string battlefield, GameConfigura
             else
                 buildings.RemoveAt(index);
         }
+        var units = document["units"]!.AsArray();
+        for (var index = units.Count - 1; index >= 0; index--)
+            if (units[index]!["kind"]!.GetValue<int>() == (int)UnitKind.EngineerSquad)
+                units.RemoveAt(index);
+        if (version == 1)
+            document.Remove("suppression");
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(document, Json)));
     }
 
