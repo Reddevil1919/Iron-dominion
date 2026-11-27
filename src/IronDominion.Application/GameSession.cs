@@ -38,6 +38,12 @@ public sealed class GameSession
     public bool IsPaused { get; private set; }
     public PlayerObservation Observe(PlayerId player) => _simulation.Observe(player);
 
+    public EntityId? ConstructionHeadquarters(PlayerId player) => _simulation.ConstructionHeadquarters(player);
+    public CommandResult BuildAvailability(PlayerId player, EntityId? headquarters, BuildingKind kind) =>
+        _simulation.BuildAvailability(player, headquarters, kind);
+    public CommandResult CheckBuild(BuildCommand order) => _simulation.CheckBuild(order);
+    public void SyncRestoredConstructionNavigation() => _simulation.SyncConstructionNavigation(replan: false);
+
     public SessionCheckpoint Capture() => new(_simulation.Capture(), Commands.Capture(), IsPaused);
 
     public static GameSession Restore(WorldEntities map, GameConfiguration configuration,

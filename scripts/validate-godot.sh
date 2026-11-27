@@ -12,7 +12,8 @@ fi
 log=$(mktemp)
 save_test_data=$(mktemp -d)
 repair_test_data=$(mktemp -d)
-trap 'rm -f "$log"; rm -rf "$save_test_data" "$repair_test_data"' EXIT
+construction_test_data=$(mktemp -d)
+trap 'rm -f "$log"; rm -rf "$save_test_data" "$repair_test_data" "$construction_test_data"' EXIT
 
 run_godot() {
     "$godot" --headless --path "$repo_root/game" "$@" 2>&1 | tee "$log"
@@ -57,3 +58,5 @@ run_smoke_test match_lifecycle_smoke.gd 'Match lifecycle smoke checks passed.' 8
 
 XDG_DATA_HOME="$save_test_data" run_smoke_test save_load_smoke.gd 'Save and load smoke checks passed.' 1500
 XDG_DATA_HOME="$repair_test_data" run_smoke_test engineer_repair_smoke.gd 'Engineer repair smoke checks passed.' 2800
+
+XDG_DATA_HOME="$construction_test_data" run_smoke_test construction_menu_smoke.gd 'Construction menu smoke checks passed.' 3800

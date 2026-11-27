@@ -65,6 +65,22 @@ public sealed partial class GameSimulation : IGameSimulation
 
     public IReadOnlyWorld World { get; private set; }
 
+    public EntityId? ConstructionHeadquarters(PlayerId player) => _entities.Buildings
+        .Where(building => IsHeadquarters(building, player) && World.TryGetHitPoints(building.Id, out var hp) && hp > 0)
+        .OrderBy(building => building.Id.Value).FirstOrDefault()?.Id;
+
+    public CommandResult BuildAvailability(PlayerId player, EntityId? headquarters, BuildingKind kind) =>
+        _construction?.Availability(player, headquarters, kind) ?? new(false, "construction_unavailable");
+
+    public CommandResult CheckBuild(BuildCommand order) =>
+        _construction?.Check(order) ?? new(false, "construction_unavailable");
+
+    public void SyncConstructionNavigation(bool replan = true)
+    {
+        if (_movement is not null && _construction is not null)
+            _movement.UpdateConstructionObstacles(_construction, replan);
+    }
+
     public PlayerObservation Observe(PlayerId player)
     {
         var units = _entities.Units.Where(unit => World.LivingUnitOwner(unit.Id) == player)
@@ -109,6 +125,7 @@ public sealed partial class GameSimulation : IGameSimulation
         if (World.Result != MatchResult.Running)
             return [];
 
+        SyncConstructionNavigation();
         var tick = checked(World.Tick + 1);
         List<IGameEvent>? events = null;
         var startingBalances = _economy?.Credits ?? ImmutableDictionary<PlayerId, int>.Empty;
@@ -121,7 +138,9 @@ public sealed partial class GameSimulation : IGameSimulation
                 : _validator.Validate(command, _combat?.Health ?? _initialHealth);
             if (result.Accepted && _movement is not null)
             {
-                if (command is MoveCommand move)
+                if (command is BuildCommand)
+                    SyncConstructionNavigation();
+                else if (command is MoveCommand move)
                 {
                     result = _movement.Plan(move);
                     if (result.Accepted)
@@ -161,6 +180,8 @@ public sealed partial class GameSimulation : IGameSimulation
         {
             events ??= new List<IGameEvent>();
             _combat.Resolve(tick, _movement.Positions, events, _movement);
+            if (events.Any(item => item is EntityDestroyed))
+                SyncConstructionNavigation();
             _repairs?.Resolve(tick, events);
 
             if (_construction is { Sites.IsEmpty: false } && ResolveMatchResult() == MatchResult.Running)

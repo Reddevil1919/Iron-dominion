@@ -153,6 +153,12 @@ The simulation tests check shared queue ordering, invalid roles and targets,
 and deterministic repair pulses. The integration tests read older saves
 and resume both queued and active repairs from formats 3 and 4.
 
+The construction menu smoke checks all five entries, rotation, cancellation,
+and rejection over an occupied footprint. It places a barracks in the path
+of a moving tank and follows the detour to its destination. The scenario
+reloads the site and the completed building, then verifies that a tank can
+cross the footprint after combat destroys the building.
+
 ## Manual smoke checklist
 Launch match; camera pan/zoom; select single/group; move around obstacle; fight; capture sector; produce infantry and tank; AI captures/attacks; destroy HQ; pause/restart; exit without errors.
 

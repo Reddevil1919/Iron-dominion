@@ -234,6 +234,8 @@ public partial class UnitSelectionController : Control
         });
     }
 
+    internal void CancelConstructionInput() => CancelInput();
+
     public void ResetForLoad()
     {
         _pending.Clear();

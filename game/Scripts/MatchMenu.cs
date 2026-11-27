@@ -20,6 +20,7 @@ public partial class MatchMenu : Control
     private Func<GameSession>? _loadMatch;
     private Func<bool>? _hasSave;
     private bool _restarting;
+    internal Func<bool>? CloseConstruction { get; set; }
 
     public void Initialize(GameSession session, PlayerId localPlayer)
     {
@@ -90,7 +91,8 @@ public partial class MatchMenu : Control
             return;
 
         GetViewport().SetInputAsHandled();
-        TogglePause();
+        if (CloseConstruction?.Invoke() != true)
+            TogglePause();
     }
 
     public void ShowOutcome(MatchResult result)

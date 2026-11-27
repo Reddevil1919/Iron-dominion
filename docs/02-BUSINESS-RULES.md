@@ -59,3 +59,11 @@ paid once per player with any living headquarters. Defeat is evaluated after
 combat, before a site due on that tick can complete. Living completed
 buildings take damage. The barracks and tank factory have production exits.
 Airport production and research use their own later milestones.
+
+In the depot, the human builds on the west side and the AI has an east-side
+construction zone. The center lane, capture sectors, roadblock and map
+margin stay clear. Placement also preserves five meters of clearance from
+live units. An accepted site blocks movement immediately. The simulation
+recalculates active routes to their original destinations and stops units
+whose routes are blocked with no detour. Destroying a completed building
+reopens its footprint for subsequent orders.

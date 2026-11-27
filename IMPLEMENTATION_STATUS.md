@@ -781,7 +781,33 @@ The combined Release build passed with zero warnings and errors, and all
 queued and active format 3 repairs, and format 4 repairs and construction.
 The format 3 reader maps the historical repair ID on load.
 
+## Construction placement in the depot
+
+The Construction button and B open the five building choices with credits,
+build time and availability. The ground preview shows the rotated footprint,
+an outline and a placement message from the simulation's validation rules.
+R rotates by 90 degrees, left-click submits the order and Escape cancels.
+Each finished building has a distinct silhouette.
+
+An accepted site reserves its footprint in navigation during the same tick.
+Active routes are recalculated to their original destinations. Combat
+destruction releases the footprint. The existing format 4 save restores
+site progress, completed buildings and navigation without rewriting saved
+routes.
+
+The Release build passed without warnings or errors, and all 169 xUnit
+tests passed. The Godot validation script imported and launched the depot,
+and all 16 headless scenarios passed. GitHub Actions reported a billing
+lock on the repository account before starting the .NET, Godot and
+Windows export jobs for PR #42.
+
+The depot scenario in `tests/godot/construction_menu_smoke.gd` covers
+valid and refused placement, cancellation and rotation, a live tank detour,
+reloading during and after construction, and crossing the released footprint.
+The two placement captures use Godot 4.6.3 .NET in Compatibility mode on
+Linux Mesa llvmpipe. Windows graphical performance remains unmeasured.
+
 ## Next
 
-Connect the construction simulation to the depot placement menu. RTS-020
-remains in the backlog.
+Open the production menu from a selected barracks, tank factory or airport.
+RTS-020 remains in the backlog.

@@ -3,13 +3,17 @@ using IronDominion.Domain;
 
 namespace IronDominion.Game;
 
-internal sealed class BattlefieldNavigation : INavigationService
+internal sealed class BattlefieldNavigation : IConstructionNavigation
 {
-    private const float UnitClearance = 5f;
+    internal const float UnitClearance = 5f;
     private const float EndpointTolerance = 0.05f;
 
     private readonly NavigationRegion3D _region;
     private readonly float _height;
+    private readonly Rect2 _floor;
+    private readonly Rect2[] _staticHoles;
+    private ConstructionBounds[] _construction = [];
+    private ConstructionRoutes? _routes;
 
     public BattlefieldNavigation(NavigationRegion3D region, CollisionShape3D terrain,
         IReadOnlyList<CollisionShape3D> blockers)
@@ -17,11 +21,24 @@ internal sealed class BattlefieldNavigation : INavigationService
         _region = region;
         var bounds = BoxBounds(terrain);
         _height = bounds.End.Y;
-        var floor = Footprint(bounds).Grow(-UnitClearance);
-        var holes = blockers.Select(blocker => Footprint(BoxBounds(blocker)).Grow(UnitClearance).Intersection(floor))
+        _floor = Footprint(bounds).Grow(-UnitClearance);
+        _staticHoles = blockers.Select(blocker => Footprint(BoxBounds(blocker)).Grow(UnitClearance).Intersection(_floor))
             .Where(rect => rect.HasArea())
             .ToArray();
-        _region.NavigationMesh = CreateMesh(floor, holes);
+        _region.NavigationMesh = CreateMesh(_floor, _staticHoles);
+    }
+
+    public void SetConstructionObstacles(IReadOnlyList<ConstructionBounds> footprints)
+    {
+        if (_construction.SequenceEqual(footprints))
+            return;
+
+        var holes = _staticHoles.Concat(footprints.Select(area => new Rect2(area.Minimum.X, area.Minimum.Z,
+            area.Maximum.X - area.Minimum.X, area.Maximum.Z - area.Minimum.Z)
+            .Grow(UnitClearance).Intersection(_floor)).Where(area => area.HasArea())).ToArray();
+        // Runtime placement must affect the same simulation tick. The scene navmesh updates asynchronously.
+        _routes = footprints.Count == 0 ? null : new ConstructionRoutes(_floor, holes);
+        _construction = footprints.ToArray();
     }
 
     public long PathRequests { get; private set; }
@@ -29,6 +46,9 @@ internal sealed class BattlefieldNavigation : INavigationService
     public IReadOnlyList<SimVector> FindPath(SimVector start, SimVector destination, int movementMask)
     {
         PathRequests++;
+        if (_routes is not null)
+            return _routes.Find(start, destination);
+
         var map = _region.GetNavigationMap();
         if (NavigationServer3D.MapGetIterationId(map) == 0)
             return [];

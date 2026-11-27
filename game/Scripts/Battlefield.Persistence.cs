@@ -34,11 +34,11 @@ public partial class Battlefield
         // Stage the simulation, AI and map data before replacing the active match.
         var observation = session.Observe(LocalPlayer);
         fog.RestoreExplored(saved.Explored);
-        fog.Update(observation);
         _session = session;
         _enemyCommander = enemy;
         _enemyCommands = enemy is null ? null : session.Commands.ForPlayer(Opponent);
         _unitSelection.ResetForLoad();
+        _constructionMenu?.Cancel();
         _feedback?.Reset();
         _casualties?.Reset();
 
@@ -48,6 +48,8 @@ public partial class Battlefield
             view.QueueFree();
         }
         _views.Clear();
+        foreach (var id in _constructedBuildings.ToArray())
+            RemoveConstructedBuilding(id);
         _healthBars.Clear();
 
         foreach (var unit in simulation.Units.Where(unit => unit.HitPoints > 0))
@@ -58,6 +60,13 @@ public partial class Battlefield
 
         foreach (var building in simulation.Buildings)
         {
+            if (building.Placement is { } placement)
+            {
+                if (building.HitPoints > 0)
+                    AddConstructedBuilding(building.Id, placement, building.HitPoints);
+                continue;
+            }
+
             var body = _buildings[building.Id];
             RemoveBuildingBar(body);
             if (building.HitPoints == 0)
@@ -73,6 +82,9 @@ public partial class Battlefield
             bar.SetHitPoints(building.HitPoints);
         }
 
+        session.SyncRestoredConstructionNavigation();
+        fog.Update(observation);
+        UpdateConstructionSites(session.World, fog);
         UpdateActorVisibility(fog.VisibleActors);
         UpdateUnitViews(session.World);
         foreach (var view in _views)

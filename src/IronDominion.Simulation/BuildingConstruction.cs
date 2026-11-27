@@ -11,31 +11,43 @@ internal sealed class BuildingConstruction(WorldEntities world, GameConfiguratio
 
     public ImmutableArray<ConstructionSite> Sites { get; private set; } = [];
 
-    public CommandResult Order(BuildCommand order)
+    public CommandResult Availability(PlayerId player, EntityId? headquartersId, BuildingKind kind)
     {
-        if (world.Construction is not { } layout)
+        if (world.Construction is not { } layout || !layout.Zones.ContainsKey(player))
             return new(false, "construction_unavailable");
-        if (world.Find(order.Headquarters) is not Building { Kind: BuildingKind.Headquarters } headquarters)
+        if (headquartersId is not { } id || world.Find(id) is not Building { Kind: BuildingKind.Headquarters } headquarters)
             return new(false, "invalid_actor");
-        if (headquarters.Owner != order.Player)
+        if (headquarters.Owner != player)
             return new(false, "not_owner");
         if (combat.Health[headquarters.Id] <= 0)
             return new(false, "actor_destroyed");
-        if (!_definitions.TryGetValue(order.Kind, out var definition) || definition.Construction is not { } spec)
+        if (!_definitions.TryGetValue(kind, out var definition) || definition.Construction is not { } spec)
             return new(false, "invalid_building_kind");
 
+        if (kind == BuildingKind.Headquarters && (world.Buildings.Any(building => building.Owner == player
+                && building.Kind == BuildingKind.Headquarters && building.Placement is not null && combat.Health[building.Id] > 0)
+            || Sites.Any(site => site.Placement.Owner == player && site.Placement.Kind == BuildingKind.Headquarters)))
+            return new(false, "reserve_headquarters_limit");
+
+        return economy.Credits[player] < spec.Cost ? new(false, "insufficient_credits") : new(true, null);
+    }
+
+    public CommandResult Check(BuildCommand order)
+    {
+        var availability = Availability(order.Player, order.Headquarters, order.Kind);
+        if (!availability.Accepted)
+            return availability;
+
+        var layout = world.Construction!;
+        var definition = _definitions[order.Kind];
+        var spec = definition.Construction!;
         var placement = new BuildingPlacement(order.Player, order.Kind, order.Position, order.QuarterTurns);
         if (!TryFootprint(placement, spec, out var area) || !layout.Bounds.Contains(area))
             return new(false, "invalid_building_location");
-        if (!layout.Zones.TryGetValue(order.Player, out var zone) || !zone.Contains(area))
+        if (!layout.Zones[order.Player].Contains(area))
             return new(false, "outside_construction_zone");
 
         var buildings = world.Buildings.Where(building => combat.Health[building.Id] > 0);
-        if (order.Kind == BuildingKind.Headquarters && (buildings.Any(building => building.Owner == order.Player
-                && building.Kind == BuildingKind.Headquarters && building.Placement is not null)
-            || Sites.Any(site => site.Placement.Owner == order.Player && site.Placement.Kind == BuildingKind.Headquarters)))
-            return new(false, "reserve_headquarters_limit");
-
         var newExit = ProductionExit(placement, definition);
         if (newExit is { } egress && !layout.Bounds.Contains(egress))
             return new(false, "invalid_building_location");
@@ -48,14 +60,35 @@ internal sealed class BuildingConstruction(WorldEntities world, GameConfiguratio
             || Sites.Any(site => TryFootprint(site.Placement, _definitions[site.Placement.Kind].Construction!, out var reserved)
                 && Blocks(reserved) || ProductionExit(site.Placement, _definitions[site.Placement.Kind]) is { } exit
                 && area.Contains(exit))
-            || movement.Positions.Values.Any(area.Contains))
+            || movement.Positions.Values.Any(point => area.Contains(point, layout.UnitClearance)))
             return new(false, "building_location_occupied");
 
+        return new(true, null);
+    }
+
+    public CommandResult Order(BuildCommand order)
+    {
+        var result = Check(order);
+        if (!result.Accepted)
+            return result;
+
+        var spec = _definitions[order.Kind].Construction!;
         if (!economy.TrySpend(order.Player, spec.Cost))
             return new(false, "insufficient_credits");
 
+        var placement = new BuildingPlacement(order.Player, order.Kind, order.Position, order.QuarterTurns);
         Sites = Sites.Add(new ConstructionSite(placement, spec.BuildTicks));
-        return new(true, null);
+        return result;
+    }
+
+    public IEnumerable<ConstructionBounds> NavigationFootprints()
+    {
+        foreach (var building in world.Buildings)
+            if (building.Placement is not null && combat.Health[building.Id] > 0 && Footprint(building) is { } area)
+                yield return area;
+        foreach (var site in Sites)
+            if (TryFootprint(site.Placement, _definitions[site.Placement.Kind].Construction!, out var area))
+                yield return area;
     }
 
     public void Advance(long tick, List<IGameEvent> events)

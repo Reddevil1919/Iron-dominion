@@ -134,6 +134,33 @@ internal sealed class UnitMovement(
         Positions = Positions.Remove(id);
     }
 
+    private ConstructionBounds[]? _constructionObstacles;
+
+    public void UpdateConstructionObstacles(BuildingConstruction construction, bool replan)
+    {
+        if (navigation is not IConstructionNavigation dynamicNavigation)
+            return;
+
+        var footprints = construction.NavigationFootprints().OrderBy(area => area.Minimum.X)
+            .ThenBy(area => area.Minimum.Z).ThenBy(area => area.Maximum.X).ThenBy(area => area.Maximum.Z).ToArray();
+        if (_constructionObstacles is not null && _constructionObstacles.SequenceEqual(footprints))
+            return;
+
+        dynamicNavigation.SetConstructionObstacles(footprints);
+        _constructionObstacles = footprints;
+        if (!replan)
+            return;
+
+        foreach (var id in _routes.Keys.OrderBy(id => id.Value).ToArray())
+        {
+            var route = _routes[id];
+            if (FindRoute(Positions[id], route.Waypoints.Last()) is { } path)
+                _routes[id] = new Route(new Queue<SimVector>(path), route.AttackMove);
+            else
+                Stop(id);
+        }
+    }
+
     public void Advance(UnitCombat? combat, long tick)
     {
         if (_routes.Count == 0)
