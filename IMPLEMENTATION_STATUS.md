@@ -796,8 +796,10 @@ site progress, completed buildings and navigation without rewriting saved
 routes.
 
 The Release build passed without warnings or errors, and all 169 xUnit
-tests passed. The Godot validation script imports and launches the depot
-and runs 16 headless scenarios.
+tests passed. The Godot validation script imported and launched the depot,
+and all 16 headless scenarios passed. GitHub Actions reported a billing
+lock on the repository account before starting the .NET, Godot and
+Windows export jobs for PR #42.
 
 The depot scenario in `tests/godot/construction_menu_smoke.gd` covers
 valid and refused placement, cancellation and rotation, a live tank detour,
