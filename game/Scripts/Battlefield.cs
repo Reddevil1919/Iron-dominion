@@ -92,13 +92,16 @@ public partial class Battlefield : Node3D
         _sectorBoard = sectorBoard;
         var parcels = GetNode<Node3D>("CoverZones").GetChildren().OfType<MeshInstance3D>().ToArray();
         var cover = parcels.Select(ReadCoverZone);
-        var world = new WorldEntities([.. units, blueHq, orangeHq, blueBarracks, orangeBarracks, .. sectorBoard.Sectors],
-            cover);
         var ground = GetNode<StaticBody3D>("Terrain");
         var groundCollision = ground.GetNode<CollisionShape3D>("GroundCollision");
+        var roadblock = GetNode<CollisionShape3D>("Roadblock/Collision");
+        _buildingDefinitions = configuration.Buildings.ToDictionary(definition => definition.Kind);
+        var layout = CreateConstructionLayout(BattlefieldNavigation.BoxBounds(groundCollision), roadblock,
+            sectorBoard.Sectors, configuration.CaptureRadiusMeters);
+        var world = new WorldEntities([.. units, blueHq, orangeHq, blueBarracks, orangeBarracks, .. sectorBoard.Sectors],
+            cover, layout);
         var navigation = new BattlefieldNavigation(_navigationRegion, groundCollision,
-            _buildings.Values.Select(body => body.GetNode<CollisionShape3D>("Collision"))
-                .Append(GetNode<CollisionShape3D>("Roadblock/Collision")).ToArray());
+            _buildings.Values.Select(body => body.GetNode<CollisionShape3D>("Collision")).Append(roadblock).ToArray());
         _navigation = navigation;
         var sight = new BattlefieldSight(GetWorld3D(), _buildings);
         var fog = new BattlefieldFog(this, BattlefieldNavigation.BoxBounds(groundCollision), sight);
@@ -152,6 +155,15 @@ public partial class Battlefield : Node3D
             reason => feedback.Reject(reason, _session!.World.Tick));
         _productionPanel = new ProductionPanel(canvas, LocalPlayer, configuration,
             [blueBarracks, blueHq], (producer, kind) => _session!.Commands.ScheduleTraining(LocalPlayer, producer, kind));
+        if (benchmark is null)
+        {
+            var constructionMenu = new ConstructionMenu { Name = "ConstructionMenu" };
+            constructionMenu.Initialize(canvas, this, configuration, LocalPlayer, _constructionGround,
+                () => _session!, _unitSelection.CancelConstructionInput);
+            AddChild(constructionMenu);
+            _constructionMenu = constructionMenu;
+            menu.CloseConstruction = constructionMenu.Cancel;
+        }
         _productionPanel.Update(session.World);
         sectorBoard.Update(session.World, fog.CanSeeGround);
         UpdateActorVisibility(fog.VisibleActors);
@@ -249,6 +261,8 @@ public partial class Battlefield : Node3D
             }
             if (gameEvent is UnitSpawned spawn)
                 AddUnitView(spawn.Unit);
+            if (gameEvent is BuildingCompleted complete)
+                AddConstructedBuilding(complete.Building.Id, complete.Building.Placement!, complete.Building.HitPoints);
             if (gameEvent is EntityDestroyed death)
             {
                 DestroyView(death.Entity, death.Tick);
@@ -259,6 +273,8 @@ public partial class Battlefield : Node3D
         if (destroyed)
             _unitSelection.RefreshSelection();
 
+        UpdateConstructionSites(session.World, fog);
+        _constructionMenu?.Update(events);
         _productionPanel?.Update(session.World);
         _sectorBoard?.Update(session.World, fog.CanSeeGround);
         _selectionPanel?.Update(session.World, _views);
@@ -372,6 +388,8 @@ public partial class Battlefield : Node3D
 
     private void DestroyView(EntityId id, long tick)
     {
+        if (RemoveConstructedBuilding(id))
+            return;
         _healthBars.Remove(id);
         if (_buildings.TryGetValue(id, out var building))
         {
